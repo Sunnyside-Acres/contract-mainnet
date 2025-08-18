@@ -1,0 +1,10 @@
+item_id,item_name,item_type,rarity,max_stacked,is_stacked,is_tradable,attributes,drops
+1,Iron Sword,0,0,1,false,true,"Damage:15,Durability:100","2:25.5:2,3:15.2:1"
+2,Golden Apple,1,2,50,true,true,"Health:50",""
+3,Wheat Seed,3,0,100,true,true,"GrowthRate:5,YieldBonus:10","4:100.0:5"
+4,Diamond Pickaxe,7,3,1,false,true,"Durability:200,Speed:3",""
+5,Legendary Cow,5,4,1,false,false,"Health:100,Fertility:80,FeedEfficiency:90",""
+6,Carrot Crop,4,0,999,true,true,"Quality:75","",
+7,Animal Feed,6,1,200,true,true,"FeedEfficiency:85","",
+8,Quest Token,8,2,10,true,false,"","",
+9,Raw Material,2,0,500,true,true,"","10:50.0:3,11:30.0:2"
