@@ -7,7 +7,7 @@ module.exports = {
     seimainnet: {
       url: "https://evm-rpc.sei-apis.com",
       accounts: [
-        "09094442dabc562866823bb2fa37082e9f8317ca4303930ec19f426b270e00f4",
+        "",
       ],
     },
     local: {
