@@ -15,7 +15,8 @@ import {
   Server,
   Upload,
   Tractor,
-  Map
+  Map,
+  Store
 } from "lucide-react"
 
 import {
@@ -74,6 +75,16 @@ const navigationData = {
           title: "Farmer",
           url: "/plots",
           icon: Tractor,
+        },
+        {
+          title: "NPC Market",
+          url: "/npcmarket",
+          icon: Store,
+        },
+        {
+          title: "NPC Market Items",
+          url: "/npcmarket/items",
+          icon: Package,
         },
       ],
     },

@@ -237,6 +237,42 @@ async function main() {
   const fishingLogicAddress = await fishingLogic.getAddress();
   console.log("✅ FishingLogic deployed to:", fishingLogicAddress);
 
+  // 21. Deploy NPCMarketComponent
+  console.log("\n📦 Deploying NPCMarketComponent...");
+  const NPCMarketComponent = await ethers.getContractFactory(
+    "NPCMarketComponent"
+  );
+  const npcMarketComponent = await NPCMarketComponent.deploy();
+  await npcMarketComponent.waitForDeployment();
+  const npcMarketComponentAddress = await npcMarketComponent.getAddress();
+  console.log("✅ NPCMarketComponent deployed to:", npcMarketComponentAddress);
+
+  // 22. Deploy NPCMarketProxy
+  console.log("\n📦 Deploying NPCMarketProxy...");
+  const NPCMarketProxy = await ethers.getContractFactory("NPCMarketProxy");
+  const npcMarketProxy = await NPCMarketProxy.deploy(
+    worldAddress,
+    deployer.address,
+    npcMarketComponentAddress // Implementation address
+  );
+  await npcMarketProxy.waitForDeployment();
+  const npcMarketProxyAddress = await npcMarketProxy.getAddress();
+  console.log("✅ NPCMarketProxy deployed to:", npcMarketProxyAddress);
+
+  // 23. Deploy NPCMarketLogic
+  console.log("\n📦 Deploying NPCMarketLogic...");
+  const NPCMarketLogic = await ethers.getContractFactory("NPCMarketLogic");
+  const npcMarketLogic = await NPCMarketLogic.deploy(
+    worldAddress,
+    npcMarketProxyAddress,
+    itemProxyAddress,
+    inventoryProxyAddress,
+    playerProxyAddress
+  );
+  await npcMarketLogic.waitForDeployment();
+  const npcMarketLogicAddress = await npcMarketLogic.getAddress();
+  console.log("✅ NPCMarketLogic deployed to:", npcMarketLogicAddress);
+
   // 8. Cấu hình World contract
   console.log("\n⚙️ Configuring World contract...");
 
@@ -270,6 +306,13 @@ async function main() {
   await registerFishingLogicTx.wait();
   console.log("✅ FishingLogic registered in World");
 
+  // Register NPCMarketLogic trong World
+  const registerNPCMarketLogicTx = await world.registerLogic(
+    npcMarketLogicAddress
+  );
+  await registerNPCMarketLogicTx.wait();
+  console.log("✅ NPCMarketLogic registered in World");
+
   // 9. Lưu thông tin deploy
   const deploymentInfo = {
     network: "local",
@@ -296,6 +339,9 @@ async function main() {
       PlantLogic: plantLogicAddress,
       PlantProxy: plantProxyAddress,
       FishingLogic: fishingLogicAddress,
+      NPCMarketComponent: npcMarketComponentAddress,
+      NPCMarketLogic: npcMarketLogicAddress,
+      NPCMarketProxy: npcMarketProxyAddress,
     },
     timestamp: new Date().toISOString(),
     rpcUrl: "http://127.0.0.1:8545",
