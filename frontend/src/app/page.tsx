@@ -17,6 +17,7 @@ export default function Home() {
   const [artifacts, setArtifacts] = useState<Record<string, any>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [account, setAccount] = useState<string>('')
+  const [copyingABI, setCopyingABI] = useState<string | null>(null)
   const { signer, selectedNetwork } = useWallet()
 
   // Load contract addresses dựa trên network được chọn
@@ -93,6 +94,29 @@ export default function Home() {
     }
   }
 
+  const copyABI = async (contractName: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+
+    if (!artifacts[contractName]?.abi) {
+      console.error('Không tìm thấy ABI cho contract:', contractName)
+      return
+    }
+
+    try {
+      setCopyingABI(contractName)
+      const abiString = JSON.stringify(artifacts[contractName].abi, null, 2)
+      await navigator.clipboard.writeText(abiString)
+
+      // Reset copying state after 1 second
+      setTimeout(() => {
+        setCopyingABI(null)
+      }, 1000)
+    } catch (error) {
+      console.error('Lỗi copy ABI:', error)
+      setCopyingABI(null)
+    }
+  }
+
   // Group contracts by feature
   const contractGroups = {
     Core: ['World'],
@@ -158,57 +182,80 @@ export default function Home() {
               <div className="space-y-1">
                 {Object.entries(contractGroups).flatMap(([groupName, contracts]) =>
                   contracts.map((contractName) => (
-                    <Button
-                      key={contractName}
-                      variant={selectedContractName === contractName ? "default" : "ghost"}
-                      size="sm"
-                      className={`w-full justify-start text-xs h-7 px-2 ${selectedContractName === contractName
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                        }`}
-                      onClick={() => loadContract(contractName)}
-                      disabled={!contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] || !signer || isLoading}
-                    >
-                      <div className="flex items-center gap-1.5 w-full min-w-0">
-                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] ? 'bg-green-500' : 'bg-gray-400'
-                          }`} />
-                        <div className={`w-4 h-4 rounded flex items-center justify-center text-xs flex-shrink-0 ${groupName === 'Core' ? 'bg-gray-100 dark:bg-gray-800' :
-                          groupName === 'Player' ? 'bg-blue-100 dark:bg-blue-900' :
-                            groupName === 'Item' ? 'bg-green-100 dark:bg-green-900' :
-                              groupName === 'Weather' ? 'bg-yellow-100 dark:bg-yellow-900' :
-                                groupName === 'Plot' ? 'bg-orange-100 dark:bg-orange-900' :
-                                  groupName === 'Inventory' ? 'bg-purple-100 dark:bg-purple-900' :
-                                    'bg-pink-100 dark:bg-pink-900'
-                          }`}>
-                          {groupName === 'Core' ? '🌍' :
-                            groupName === 'Player' ? '👤' :
-                              groupName === 'Item' ? '📦' :
-                                groupName === 'Weather' ? '🌤️' :
-                                  groupName === 'Plot' ? '🏡' :
-                                    groupName === 'Inventory' ? '🎒' : '🌱'}
-                        </div>
-                        {contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] && (
-                          <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
-                            {contractAddresses.contracts[contractName as keyof typeof contractAddresses.contracts].slice(-5)}
+                    <div key={contractName} className="relative group">
+                      <Button
+                        variant={selectedContractName === contractName ? "default" : "ghost"}
+                        size="sm"
+                        className={`w-full justify-start text-xs h-7 px-2 pr-8 ${selectedContractName === contractName
+                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                          }`}
+                        onClick={() => loadContract(contractName)}
+                        disabled={!contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] || !signer || isLoading}
+                      >
+                        <div className="flex items-center gap-1.5 w-full min-w-0">
+                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] ? 'bg-green-500' : 'bg-gray-400'
+                            }`} />
+                          <div className={`w-4 h-4 rounded flex items-center justify-center text-xs flex-shrink-0 ${groupName === 'Core' ? 'bg-gray-100 dark:bg-gray-800' :
+                            groupName === 'Player' ? 'bg-blue-100 dark:bg-blue-900' :
+                              groupName === 'Item' ? 'bg-green-100 dark:bg-green-900' :
+                                groupName === 'Weather' ? 'bg-yellow-100 dark:bg-yellow-900' :
+                                  groupName === 'Plot' ? 'bg-orange-100 dark:bg-orange-900' :
+                                    groupName === 'Inventory' ? 'bg-purple-100 dark:bg-purple-900' :
+                                      'bg-pink-100 dark:bg-pink-900'
+                            }`}>
+                            {groupName === 'Core' ? '🌍' :
+                              groupName === 'Player' ? '👤' :
+                                groupName === 'Item' ? '📦' :
+                                  groupName === 'Weather' ? '🌤️' :
+                                    groupName === 'Plot' ? '🏡' :
+                                      groupName === 'Inventory' ? '🎒' : '🌱'}
+                          </div>
+                          {contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] && (
+                            <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
+                              {contractAddresses.contracts[contractName as keyof typeof contractAddresses.contracts].slice(-5)}
+                            </span>
+                          )}
+                          <span className="truncate text-xs">
+                            {isLoading && selectedContractName === contractName ? 'Loading...' : contractName}
                           </span>
-                        )}
-                        <span className="truncate text-xs">
-                          {isLoading && selectedContractName === contractName ? 'Loading...' : contractName}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={`ml-auto text-xs h-3 px-1 flex-shrink-0 ${contractName.includes('Component') ? 'border-blue-300 text-blue-700 bg-blue-50' :
-                            contractName.includes('Logic') ? 'border-purple-300 text-purple-700 bg-purple-50' :
-                              contractName.includes('Proxy') ? 'border-orange-300 text-orange-700 bg-orange-50' :
-                                'border-gray-300 text-gray-700 bg-gray-50'
+                          <Badge
+                            variant="outline"
+                            className={`ml-auto text-xs h-3 px-1 flex-shrink-0 ${contractName.includes('Component') ? 'border-blue-300 text-blue-700 bg-blue-50' :
+                              contractName.includes('Logic') ? 'border-purple-300 text-purple-700 bg-purple-50' :
+                                contractName.includes('Proxy') ? 'border-orange-300 text-orange-700 bg-orange-50' :
+                                  'border-gray-300 text-gray-700 bg-gray-50'
+                              }`}
+                          >
+                            {contractName.includes('Component') ? 'C' :
+                              contractName.includes('Logic') ? 'L' :
+                                contractName.includes('Proxy') ? 'P' : 'W'}
+                          </Badge>
+                        </div>
+                      </Button>
+
+                      {/* Copy ABI Button */}
+                      {artifacts[contractName]?.abi && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={`absolute right-1 top-0.5 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity ${copyingABI === contractName ? 'text-green-600' : 'text-gray-500 hover:text-gray-700'
                             }`}
+                          onClick={(e) => copyABI(contractName, e)}
+                          title="Copy ABI"
                         >
-                          {contractName.includes('Component') ? 'C' :
-                            contractName.includes('Logic') ? 'L' :
-                              contractName.includes('Proxy') ? 'P' : 'W'}
-                        </Badge>
-                      </div>
-                    </Button>
+                          {copyingABI === contractName ? (
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   ))
                 )}
               </div>
