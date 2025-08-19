@@ -9,6 +9,11 @@ async function main() {
 
   console.log("📝 Deployer address:", deployer.address);
   console.log("🌐 Network:", network.name || `Chain ID: ${network.chainId}`);
+  console.log(
+    "💰 Balance:",
+    ethers.formatEther(await ethers.provider.getBalance(deployer.address)),
+    "ETH"
+  );
 
   // 1. Deploy World contract trước
   console.log("\n📦 Deploying World contract...");
@@ -108,7 +113,40 @@ async function main() {
   const weatherLogicAddress = await weatherLogic.getAddress();
   console.log("✅ WeatherLogic deployed to:", weatherLogicAddress);
 
-  // 11. Deploy InventoryComponent
+  // 11. Deploy PlotComponent
+  console.log("\n📦 Deploying PlotComponent...");
+  const PlotComponent = await ethers.getContractFactory("PlotComponent");
+  const plotComponent = await PlotComponent.deploy();
+  await plotComponent.waitForDeployment();
+  const plotComponentAddress = await plotComponent.getAddress();
+  console.log("✅ PlotComponent deployed to:", plotComponentAddress);
+
+  // 12. Deploy PlotProxy
+  console.log("\n📦 Deploying PlotProxy...");
+  const PlotProxy = await ethers.getContractFactory("PlotProxy");
+  const plotProxy = await PlotProxy.deploy(
+    worldAddress,
+    deployer.address,
+    plotComponentAddress // Implementation address
+  );
+  await plotProxy.waitForDeployment();
+  const plotProxyAddress = await plotProxy.getAddress();
+  console.log("✅ PlotProxy deployed to:", plotProxyAddress);
+
+  // 13. Deploy PlotLogic
+  console.log("\n📦 Deploying PlotLogic...");
+  const PlotLogic = await ethers.getContractFactory("PlotLogic");
+  const plotLogic = await PlotLogic.deploy(
+    worldAddress,
+    plotProxyAddress,
+    weatherProxyAddress,
+    playerProxyAddress
+  );
+  await plotLogic.waitForDeployment();
+  const plotLogicAddress = await plotLogic.getAddress();
+  console.log("✅ PlotLogic deployed to:", plotLogicAddress);
+
+  // 14. Deploy InventoryComponent
   console.log("\n📦 Deploying InventoryComponent...");
   const InventoryComponent = await ethers.getContractFactory(
     "InventoryComponent"
@@ -118,7 +156,7 @@ async function main() {
   const inventoryComponentAddress = await inventoryComponent.getAddress();
   console.log("✅ InventoryComponent deployed to:", inventoryComponentAddress);
 
-  // 12. Deploy InventoryProxy
+  // 15. Deploy InventoryProxy
   console.log("\n📦 Deploying InventoryProxy...");
   const InventoryProxy = await ethers.getContractFactory("InventoryProxy");
   const inventoryProxy = await InventoryProxy.deploy(
@@ -130,7 +168,7 @@ async function main() {
   const inventoryProxyAddress = await inventoryProxy.getAddress();
   console.log("✅ InventoryProxy deployed to:", inventoryProxyAddress);
 
-  // 13. Deploy InventoryLogic
+  // 16. Deploy InventoryLogic
   console.log("\n📦 Deploying InventoryLogic...");
   const InventoryLogic = await ethers.getContractFactory("InventoryLogic");
   const inventoryLogic = await InventoryLogic.deploy(
@@ -143,7 +181,7 @@ async function main() {
   const inventoryLogicAddress = await inventoryLogic.getAddress();
   console.log("✅ InventoryLogic deployed to:", inventoryLogicAddress);
 
-  // 16. Deploy PlantComponent
+  // 17. Deploy PlantComponent
   console.log("\n📦 Deploying PlantComponent...");
   const PlantComponent = await ethers.getContractFactory("PlantComponent");
   const plantComponent = await PlantComponent.deploy();
@@ -151,7 +189,7 @@ async function main() {
   const plantComponentAddress = await plantComponent.getAddress();
   console.log("✅ PlantComponent deployed to:", plantComponentAddress);
 
-  // 17. Deploy PlantProxy
+  // 18. Deploy PlantProxy
   console.log("\n📦 Deploying PlantProxy...");
   const PlantProxy = await ethers.getContractFactory("PlantProxy");
   const plantProxy = await PlantProxy.deploy(
@@ -163,7 +201,7 @@ async function main() {
   const plantProxyAddress = await plantProxy.getAddress();
   console.log("✅ PlantProxy deployed to:", plantProxyAddress);
 
-  // 18. Deploy PlantLogic
+  // 19. Deploy PlantLogic
   console.log("\n📦 Deploying PlantLogic...");
   const PlantLogic = await ethers.getContractFactory("PlantLogic");
   const plantLogic = await PlantLogic.deploy(
@@ -177,6 +215,56 @@ async function main() {
   await plantLogic.waitForDeployment();
   const plantLogicAddress = await plantLogic.getAddress();
   console.log("✅ PlantLogic deployed to:", plantLogicAddress);
+
+  // 20. Deploy FishingLogic
+  console.log("\n📦 Deploying FishingLogic...");
+  const FishingLogic = await ethers.getContractFactory("FishingLogic");
+  const fishingLogic = await FishingLogic.deploy(
+    worldAddress,
+    inventoryProxyAddress,
+    itemProxyAddress,
+    playerProxyAddress,
+    weatherProxyAddress
+  );
+  await fishingLogic.waitForDeployment();
+  const fishingLogicAddress = await fishingLogic.getAddress();
+  console.log("✅ FishingLogic deployed to:", fishingLogicAddress);
+
+  // 21. Deploy NPCMarketComponent
+  console.log("\n📦 Deploying NPCMarketComponent...");
+  const NPCMarketComponent = await ethers.getContractFactory(
+    "NPCMarketComponent"
+  );
+  const npcMarketComponent = await NPCMarketComponent.deploy();
+  await npcMarketComponent.waitForDeployment();
+  const npcMarketComponentAddress = await npcMarketComponent.getAddress();
+  console.log("✅ NPCMarketComponent deployed to:", npcMarketComponentAddress);
+
+  // 22. Deploy NPCMarketProxy
+  console.log("\n📦 Deploying NPCMarketProxy...");
+  const NPCMarketProxy = await ethers.getContractFactory("NPCMarketProxy");
+  const npcMarketProxy = await NPCMarketProxy.deploy(
+    worldAddress,
+    deployer.address,
+    npcMarketComponentAddress // Implementation address
+  );
+  await npcMarketProxy.waitForDeployment();
+  const npcMarketProxyAddress = await npcMarketProxy.getAddress();
+  console.log("✅ NPCMarketProxy deployed to:", npcMarketProxyAddress);
+
+  // 23. Deploy NPCMarketLogic
+  console.log("\n📦 Deploying NPCMarketLogic...");
+  const NPCMarketLogic = await ethers.getContractFactory("NPCMarketLogic");
+  const npcMarketLogic = await NPCMarketLogic.deploy(
+    worldAddress,
+    npcMarketProxyAddress,
+    itemProxyAddress,
+    inventoryProxyAddress,
+    playerProxyAddress
+  );
+  await npcMarketLogic.waitForDeployment();
+  const npcMarketLogicAddress = await npcMarketLogic.getAddress();
+  console.log("✅ NPCMarketLogic deployed to:", npcMarketLogicAddress);
 
   // 8. Cấu hình World contract
   console.log("\n⚙️ Configuring World contract...");
@@ -196,6 +284,11 @@ async function main() {
   await registerWeatherLogicTx.wait();
   console.log("✅ WeatherLogic registered in World");
 
+  // Register PlotLogic trong World
+  const registerPlotLogicTx = await world.registerLogic(plotLogicAddress);
+  await registerPlotLogicTx.wait();
+  console.log("✅ PlotLogic registered in World");
+
   // Register InventoryLogic trong World
   const registerInventoryLogicTx = await world.registerLogic(
     inventoryLogicAddress
@@ -203,15 +296,22 @@ async function main() {
   await registerInventoryLogicTx.wait();
   console.log("✅ InventoryLogic registered in World");
 
-  // Register PlotLogic trong World
-  const registerPlotLogicTx = await world.registerLogic(plotLogicAddress);
-  await registerPlotLogicTx.wait();
-  console.log("✅ PlotLogic registered in World");
-
   // Register PlantLogic trong World
   const registerPlantLogicTx = await world.registerLogic(plantLogicAddress);
   await registerPlantLogicTx.wait();
   console.log("✅ PlantLogic registered in World");
+
+  // Register FishingLogic trong World
+  const registerFishingLogicTx = await world.registerLogic(fishingLogicAddress);
+  await registerFishingLogicTx.wait();
+  console.log("✅ FishingLogic registered in World");
+
+  // Register NPCMarketLogic trong World
+  const registerNPCMarketLogicTx = await world.registerLogic(
+    npcMarketLogicAddress
+  );
+  await registerNPCMarketLogicTx.wait();
+  console.log("✅ NPCMarketLogic registered in World");
 
   // 9. Lưu thông tin deploy
   const networkName = network.name || `chain-${network.chainId}`;
@@ -239,6 +339,10 @@ async function main() {
       PlantComponent: plantComponentAddress,
       PlantLogic: plantLogicAddress,
       PlantProxy: plantProxyAddress,
+      FishingLogic: fishingLogicAddress,
+      NPCMarketComponent: npcMarketComponentAddress,
+      NPCMarketLogic: npcMarketLogicAddress,
+      NPCMarketProxy: npcMarketProxyAddress,
     },
     timestamp: new Date().toISOString(),
   };
