@@ -72,6 +72,55 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
         }
     }, [selectedNetwork, hardhatAccounts, walletInfo])
 
+    // Theo dõi thay đổi network trong MetaMask
+    useEffect(() => {
+        if (typeof window.ethereum !== 'undefined') {
+            const handleChainChanged = (chainId: string) => {
+                console.log('Chain changed:', chainId)
+                // Chain ID từ MetaMask là hex string, cần convert sang decimal
+                const decimalChainId = parseInt(chainId, 16)
+
+                let networkName = 'hardhat'
+                if (decimalChainId === 1329) {
+                    networkName = 'seiMainnet'
+                } else if (decimalChainId === 1328) {
+                    networkName = 'seiTestnet'
+                } else if (decimalChainId === 31337) {
+                    networkName = 'hardhat'
+                }
+
+                setSelectedNetwork(networkName)
+                onNetworkChange?.(networkName)
+
+                // Reload page để cập nhật contract addresses
+                window.location.reload()
+            }
+
+            const handleAccountsChanged = (accounts: string[]) => {
+                console.log('Accounts changed:', accounts)
+                if (accounts.length === 0) {
+                    // User disconnected wallet
+                    setWalletInfo(null)
+                    setProvider(null)
+                    setSigner(null)
+                    onProviderChange?.(null)
+                    onSignerChange?.(null)
+                } else if (walletInfo?.type === 'metamask') {
+                    // Reconnect with new account
+                    connectMetamask()
+                }
+            }
+
+            window.ethereum.on('chainChanged', handleChainChanged)
+            window.ethereum.on('accountsChanged', handleAccountsChanged)
+
+            return () => {
+                window.ethereum?.removeListener('chainChanged', handleChainChanged)
+                window.ethereum?.removeListener('accountsChanged', handleAccountsChanged)
+            }
+        }
+    }, [walletInfo?.type])
+
     const loadHardhatAccounts = async () => {
         try {
             const hardhatProvider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545")
@@ -111,14 +160,28 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
                 const network = await provider.getNetwork()
                 const balance = await provider.getBalance(address)
 
+                // Xác định network name dựa trên chain ID
+                let networkName = 'hardhat'
+                if (network.chainId === 1329) {
+                    networkName = 'seiMainnet'
+                    setSelectedNetwork('seiMainnet')
+                } else if (network.chainId === 1328) {
+                    networkName = 'seiTestnet'
+                    setSelectedNetwork('seiTestnet')
+                } else if (network.chainId === 31337) {
+                    networkName = 'hardhat'
+                    setSelectedNetwork('hardhat')
+                }
+
                 setProvider(provider)
                 setSigner(signer)
                 onProviderChange?.(provider)
                 onSignerChange?.(signer)
+                onNetworkChange?.(networkName)
                 setWalletInfo({
                     address,
                     balance: formatBalance(balance),
-                    network: networkConfigs[selectedNetwork].name,
+                    network: networkConfigs[networkName].name,
                     type: 'metamask'
                 })
             } else {
@@ -160,6 +223,13 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
     const switchNetwork = async (network: string) => {
         try {
             setIsLoading(true)
+
+            // Nếu chọn Hardhat, không cần chuyển network trong MetaMask
+            if (network === 'hardhat') {
+                await switchToHardhat()
+                return
+            }
+
             if (typeof window.ethereum !== 'undefined') {
                 const config = networkConfigs[network]
                 const chainId = `0x${config.chainId.toString(16)}`
@@ -169,6 +239,9 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
                         method: 'wallet_switchEthereumChain',
                         params: [{ chainId }],
                     })
+
+                    setSelectedNetwork(network)
+                    onNetworkChange?.(network)
                 } catch (switchError: any) {
                     if (switchError.code === 4902) {
                         await window.ethereum.request({
@@ -185,13 +258,13 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
                                 blockExplorerUrls: config.blockExplorer ? [config.blockExplorer] : undefined
                             }]
                         })
+
+                        setSelectedNetwork(network)
+                        onNetworkChange?.(network)
                     } else {
                         throw switchError
                     }
                 }
-
-                setSelectedNetwork(network)
-                onNetworkChange?.(network)
             }
         } catch (error) {
             console.error('Lỗi chuyển mạng:', error)

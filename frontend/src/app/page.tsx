@@ -125,7 +125,9 @@ export default function Home() {
     Weather: ['WeatherComponent', 'WeatherLogic', 'WeatherProxy'],
     Plot: ['PlotComponent', 'PlotLogic', 'PlotProxy'],
     Inventory: ['InventoryComponent', 'InventoryLogic', 'InventoryProxy'],
-    Plant: ['PlantComponent', 'PlantLogic', 'PlantProxy']
+    Plant: ['PlantComponent', 'PlantLogic', 'PlantProxy'],
+    Fishing: ['FishingLogic'],
+    NPCMarket: ['NPCMarketComponent', 'NPCMarketLogic', 'NPCMarketProxy']
   }
 
   return (
@@ -202,14 +204,18 @@ export default function Home() {
                                 groupName === 'Weather' ? 'bg-yellow-100 dark:bg-yellow-900' :
                                   groupName === 'Plot' ? 'bg-orange-100 dark:bg-orange-900' :
                                     groupName === 'Inventory' ? 'bg-purple-100 dark:bg-purple-900' :
-                                      'bg-pink-100 dark:bg-pink-900'
+                                      groupName === 'Plant' ? 'bg-pink-100 dark:bg-pink-900' :
+                                        groupName === 'Fishing' ? 'bg-cyan-100 dark:bg-cyan-900' :
+                                          'bg-indigo-100 dark:bg-indigo-900'
                             }`}>
                             {groupName === 'Core' ? '🌍' :
                               groupName === 'Player' ? '👤' :
                                 groupName === 'Item' ? '📦' :
                                   groupName === 'Weather' ? '🌤️' :
                                     groupName === 'Plot' ? '🏡' :
-                                      groupName === 'Inventory' ? '🎒' : '🌱'}
+                                      groupName === 'Inventory' ? '🎒' :
+                                        groupName === 'Plant' ? '🌱' :
+                                          groupName === 'Fishing' ? '🎣' : '🏪'}
                           </div>
                           {contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] && (
                             <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
@@ -224,12 +230,14 @@ export default function Home() {
                             className={`ml-auto text-xs h-3 px-1 flex-shrink-0 ${contractName.includes('Component') ? 'border-blue-300 text-blue-700 bg-blue-50' :
                               contractName.includes('Logic') ? 'border-purple-300 text-purple-700 bg-purple-50' :
                                 contractName.includes('Proxy') ? 'border-orange-300 text-orange-700 bg-orange-50' :
-                                  'border-gray-300 text-gray-700 bg-gray-50'
+                                  contractName === 'World' ? 'border-gray-300 text-gray-700 bg-gray-50' :
+                                    'border-green-300 text-green-700 bg-green-50'
                               }`}
                           >
                             {contractName.includes('Component') ? 'C' :
                               contractName.includes('Logic') ? 'L' :
-                                contractName.includes('Proxy') ? 'P' : 'W'}
+                                contractName.includes('Proxy') ? 'P' : 
+                                  contractName === 'World' ? 'W' : 'F'}
                           </Badge>
                         </div>
                       </Button>

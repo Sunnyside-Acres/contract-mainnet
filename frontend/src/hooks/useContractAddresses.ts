@@ -24,6 +24,10 @@ interface ContractAddresses {
         PlantComponent: string
         PlantLogic: string
         PlantProxy: string
+        FishingLogic: string
+        NPCMarketComponent: string
+        NPCMarketLogic: string
+        NPCMarketProxy: string
     }
     timestamp: string
     rpcUrl?: string
@@ -44,18 +48,17 @@ export function useContractAddresses(network: string) {
             try {
                 let fileName: string
 
-                switch (network) {
-                    case 'hardhat':
-                        fileName = 'contract-addresses-local.json'
-                        break
-                    case 'seiMainnet':
-                        fileName = 'contract-addresses-seimainnet.json'
-                        break
-                    case 'seiTestnet':
-                        fileName = 'contract-addresses-seitestnet.json'
-                        break
-                    default:
-                        throw new Error(`Network không được hỗ trợ: ${network}`)
+                // Xử lý cả network name và chain ID
+                const networkKey = network.toLowerCase()
+
+                if (networkKey === 'hardhat' || networkKey === '31337' || networkKey === 'chain-31337') {
+                    fileName = 'contract-addresses-local.json'
+                } else if (networkKey === 'seimainnet' || networkKey === '1329' || networkKey === 'chain-1329') {
+                    fileName = 'contract-addresses-seimainnet.json'
+                } else if (networkKey === 'seitestnet' || networkKey === '1328' || networkKey === 'chain-1328') {
+                    fileName = 'contract-addresses-seitestnet.json'
+                } else {
+                    throw new Error(`Network không được hỗ trợ: ${network}`)
                 }
 
                 const response = await fetch(`/api/contract-addresses?file=${fileName}`)
