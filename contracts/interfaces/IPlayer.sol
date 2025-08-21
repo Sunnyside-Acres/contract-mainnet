@@ -14,5 +14,11 @@ interface IPlayerComponent {
 
     function addSunny(address _playerAddress, uint256 _amount) external;
 
+    function subtractSunny(address _playerAddress, uint256 _amount) external;
+
+    function subtractSunlight(address _playerAddress, uint256 _amount) external;
+
+    function getSunlight(address _playerAddress) external view returns (uint256);
+
     function getPlayerAddresses() external view returns (address[] memory);
 }

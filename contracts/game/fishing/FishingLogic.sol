@@ -221,10 +221,12 @@ contract FishingLogic {
         uint256[] memory amounts = new uint256[](rewardCount);
 
         for (uint256 i = 0; i < rewardCount; i++) {
-            inventoryComponent.addItem(
+            inventoryComponent.setItem(
                 msg.sender,
                 rewards[i].itemId,
-                rewards[i].amount
+                rewards[i].amount,
+                100,
+                0
             );
             itemIds[i] = rewards[i].itemId;
             amounts[i] = rewards[i].amount;

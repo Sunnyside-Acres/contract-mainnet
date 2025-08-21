@@ -139,8 +139,6 @@ contract PlantLogic {
         Plant memory plant = plantProxy.getPlantedCrop(plantId);
         require(!plant.isHarvested, "Plant already harvested");
 
-        uint256 qualityModifier = plantProxy.plantHarvest(plantId);
-
         ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
             plant.itemId
         );
@@ -173,7 +171,8 @@ contract PlantLogic {
                 if (drops[i].yield == 0) {
                     itemAmount = 1;
                 } else {
-                    itemAmount = qualityModifier / drops[i].yield;
+                    // Sử dụng yield làm số lượng cơ bản, qualityModifier làm hệ số nhân
+                    itemAmount = (drops[i].yield * qualityMultiplier) / 100;
                     if (itemAmount == 0) {
                         itemAmount = 1;
                     }
@@ -187,7 +186,13 @@ contract PlantLogic {
                 harvestedItemCount++;
 
                 // Thêm item vào inventory
-                inventoryProxy.addItem(msg.sender, drops[i].itemId, itemAmount);
+                inventoryProxy.setItem(
+                    msg.sender,
+                    drops[i].itemId,
+                    itemAmount,
+                    100,
+                    0
+                );
             }
         }
 
@@ -197,7 +202,7 @@ contract PlantLogic {
             harvestedItemAmounts[0] = 1;
             harvestedItemCount = 1;
 
-            inventoryProxy.addItem(msg.sender, drops[0].itemId, 1);
+            inventoryProxy.setItem(msg.sender, drops[0].itemId, 1, 100, 0);
         }
 
         uint256[] memory finalItemIds = new uint256[](harvestedItemCount);

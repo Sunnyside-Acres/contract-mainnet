@@ -34,43 +34,6 @@ contract InventoryComponent {
         _;
     }
 
-    function addItem(
-        address _player,
-        uint256 _itemId,
-        uint256 _quantity
-    ) external onlyAuthorized {
-        require(_quantity > 0, "Quantity must be greater than 0");
-        require(_itemId > 0, "Invalid item ID");
-
-        // Nếu item đã tồn tại, cập nhật số lượng
-        if (inventory[_player][_itemId].quantity > 0) {
-            uint256 newQuantity = inventory[_player][_itemId].quantity +
-                _quantity;
-            require(
-                newQuantity >= inventory[_player][_itemId].quantity,
-                "Quantity overflow"
-            );
-            inventory[_player][_itemId].quantity = newQuantity;
-        } else {
-            // Tạo item mới
-            uint256 instanceId = uint256(
-                keccak256(abi.encodePacked(_player, _itemId, block.timestamp))
-            );
-
-            inventory[_player][_itemId] = InventoryItem({
-                itemId: _itemId,
-                quantity: _quantity,
-                instanceId: instanceId,
-                durability: 100,
-                expiration: 0
-            });
-
-            playerItems[_player].push(_itemId);
-        }
-
-        emit ItemAdded(_player, _itemId, _quantity);
-    }
-
     function setItem(
         address _player,
         uint256 _itemId,
@@ -78,6 +41,7 @@ contract InventoryComponent {
         uint256 _durability,
         uint256 _expiration
     ) external onlyAuthorized {
+        require(_itemId > 0, "Invalid item ID");
         require(_quantity >= 0, "Quantity cannot be negative");
         require(_durability <= 100, "Durability cannot exceed 100");
 
@@ -85,13 +49,31 @@ contract InventoryComponent {
             // Nếu quantity = 0, xóa item
             removeItem(_player, _itemId);
         } else {
-            // Cập nhật thông tin item
-            inventory[_player][_itemId].quantity = _quantity;
-            inventory[_player][_itemId].durability = _durability;
-            inventory[_player][_itemId].expiration = _expiration;
+            // Kiểm tra xem item đã tồn tại chưa
+            bool itemExists = inventory[_player][_itemId].quantity > 0;
 
-            // Nếu item chưa có trong danh sách, thêm vào
-            if (!_hasItem(_player, _itemId)) {
+            if (itemExists) {
+                // Cập nhật thông tin item đã tồn tại
+                inventory[_player][_itemId].quantity = _quantity;
+                inventory[_player][_itemId].durability = _durability;
+                inventory[_player][_itemId].expiration = _expiration;
+            } else {
+                // Tạo item mới với đầy đủ thông tin
+                uint256 instanceId = uint256(
+                    keccak256(
+                        abi.encodePacked(_player, _itemId, block.timestamp)
+                    )
+                );
+
+                inventory[_player][_itemId] = InventoryItem({
+                    itemId: _itemId,
+                    quantity: _quantity,
+                    instanceId: instanceId,
+                    durability: _durability,
+                    expiration: _expiration
+                });
+
+                // Thêm vào danh sách playerItems
                 playerItems[_player].push(_itemId);
             }
 
@@ -119,7 +101,9 @@ contract InventoryComponent {
         for (uint256 i = 0; i < items.length; i++) {
             if (items[i] == _itemId) {
                 // Thay thế phần tử cần xóa bằng phần tử cuối cùng
-                items[i] = items[items.length - 1];
+                if (i < items.length - 1) {
+                    items[i] = items[items.length - 1];
+                }
                 items.pop();
                 break;
             }
@@ -144,13 +128,28 @@ contract InventoryComponent {
     function getItems(
         address _playerAddress
     ) external view returns (InventoryItem[] memory) {
-        uint256 itemCount = playerItems[_playerAddress].length;
-        InventoryItem[] memory items = new InventoryItem[](itemCount);
-        for (uint256 i = 0; i < itemCount; i++) {
-            items[i] = inventory[_playerAddress][
-                playerItems[_playerAddress][i]
-            ];
+        uint256[] storage itemIds = playerItems[_playerAddress];
+        uint256 validItemCount = 0;
+
+        // Đếm số lượng item hợp lệ
+        for (uint256 i = 0; i < itemIds.length; i++) {
+            if (inventory[_playerAddress][itemIds[i]].quantity > 0) {
+                validItemCount++;
+            }
         }
+
+        // Tạo mảng với kích thước chính xác
+        InventoryItem[] memory items = new InventoryItem[](validItemCount);
+        uint256 currentIndex = 0;
+
+        for (uint256 i = 0; i < itemIds.length; i++) {
+            InventoryItem memory item = inventory[_playerAddress][itemIds[i]];
+            if (item.quantity > 0) {
+                items[currentIndex] = item;
+                currentIndex++;
+            }
+        }
+
         return items;
     }
 
@@ -166,5 +165,22 @@ contract InventoryComponent {
         uint256 _itemId
     ) external view returns (bool) {
         return inventory[_player][_itemId].quantity > 0;
+    }
+
+    // Hàm dọn dẹp playerItems array, loại bỏ những item không còn tồn tại
+    function cleanupPlayerItems(address _player) external onlyAuthorized {
+        uint256[] storage items = playerItems[_player];
+        uint256 i = 0;
+        while (i < items.length) {
+            if (inventory[_player][items[i]].quantity == 0) {
+                // Thay thế phần tử cần xóa bằng phần tử cuối cùng
+                if (i < items.length - 1) {
+                    items[i] = items[items.length - 1];
+                }
+                items.pop();
+            } else {
+                i++;
+            }
+        }
     }
 }

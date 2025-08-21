@@ -4,12 +4,6 @@ pragma solidity ^0.8.28;
 import "../struct/Inventory.sol";
 
 interface IInventoryComponent {
-    function addItem(
-        address _player,
-        uint256 _itemId,
-        uint256 _quantity
-    ) external;
-
     function setItem(
         address _player,
         uint256 _itemId,
@@ -31,4 +25,6 @@ interface IInventoryComponent {
         address _player,
         uint256 _itemId
     ) external view returns (bool);
+
+    function cleanupPlayerItems(address _player) external;
 }

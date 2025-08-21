@@ -21,6 +21,16 @@ contract NPCMarketLogic {
     // Constants
     uint256 public constant MAX_TRANSACTION_AMOUNT = 1000000;
 
+    // Reentrancy guard
+    bool private _locked;
+
+    modifier nonReentrant() {
+        require(!_locked, "Reentrant call");
+        _locked = true;
+        _;
+        _locked = false;
+    }
+
     // Events
     event ItemPurchased(
         address indexed player,
@@ -117,7 +127,7 @@ contract NPCMarketLogic {
         uint256 _npcId,
         uint256 _itemId,
         uint256 _quantity
-    ) external {
+    ) external nonReentrant {
         address player = msg.sender;
 
         // Validate inputs
@@ -151,22 +161,26 @@ contract NPCMarketLogic {
             "Purchase limit exceeded for this user"
         );
 
-        // Calculate total price
+        // Calculate total price (check for overflow)
         uint256 totalPrice = marketItem.pricePerUnit * _quantity;
+        require(
+            totalPrice / _quantity == marketItem.pricePerUnit,
+            "Price overflow"
+        );
 
         // Check if player exists and has enough currency
         Player memory playerData = playerProxy.getPlayer(player);
         require(playerData.level > 0, "Player not initialized");
         require(playerData.sunny >= totalPrice, "Not enough currency");
 
-        // Validate item exists
+        // Validate item exists and is not banned
         ItemStructs.Item memory itemData = itemProxy.getItem(_itemId);
+        require(itemData.id > 0, "Item does not exist");
         require(!itemData.isBanned, "Item is banned");
 
         // Process transaction
-        // 1. Check if player has enough currency (already checked above)
-        // NOTE: This logic assumes player currency is managed externally or
-        // that the component will handle deduction internally
+        // 1. Deduct currency from player
+        playerProxy.subtractSunlight(player, totalPrice);
 
         // 2. Add item to player inventory
         InventoryItem memory currentItem = inventoryProxy.getItem(
@@ -193,7 +207,7 @@ contract NPCMarketLogic {
         uint256 _npcId,
         uint256 _itemId,
         uint256 _quantity
-    ) external {
+    ) external nonReentrant {
         address player = msg.sender;
 
         // Validate inputs
@@ -216,7 +230,7 @@ contract NPCMarketLogic {
         require(marketItem.active, "Item not available in market");
         require(!marketItem.isSelling, "NPC is not buying this item");
 
-        // Check user sell limit (limitPerUser applies to selling too)
+        // Check user sell limit (using same tracking as purchase for simplicity)
         require(
             npcMarketProxy.canUserPurchaseMore(
                 _npcId,
@@ -231,14 +245,23 @@ contract NPCMarketLogic {
         Player memory playerData = playerProxy.getPlayer(player);
         require(playerData.level > 0, "Player not initialized");
 
+        // Validate item exists and is not banned
+        ItemStructs.Item memory itemData = itemProxy.getItem(_itemId);
+        require(itemData.id > 0, "Item does not exist");
+        require(!itemData.isBanned, "Item is banned");
+
         InventoryItem memory playerItem = inventoryProxy.getItem(
             player,
             _itemId
         );
         require(playerItem.quantity >= _quantity, "Not enough items to sell");
 
-        // Calculate total price
+        // Calculate total price (check for overflow)
         uint256 totalPrice = marketItem.pricePerUnit * _quantity;
+        require(
+            totalPrice / _quantity == marketItem.pricePerUnit,
+            "Price overflow"
+        );
 
         // Process transaction
         // 1. Remove item from player inventory
@@ -251,7 +274,7 @@ contract NPCMarketLogic {
         );
 
         // 2. Add currency to player
-        playerProxy.addSunny(player, totalPrice);
+        playerProxy.addSunlight(player, totalPrice);
 
         // 3. Track user sale
         npcMarketProxy.addUserPurchase(_npcId, _itemId, player, _quantity);
@@ -268,16 +291,143 @@ contract NPCMarketLogic {
         return npcMarketProxy.getMarketItem(_npcId, _itemId);
     }
 
+    function getMarketItemWithDetails(
+        uint256 _npcId,
+        uint256 _itemId
+    )
+        external
+        view
+        returns (
+            MarketItemView memory marketItem,
+            ItemStructs.Item memory itemDetails
+        )
+    {
+        marketItem = npcMarketProxy.getMarketItem(_npcId, _itemId);
+        itemDetails = itemProxy.getItem(_itemId);
+        return (marketItem, itemDetails);
+    }
+
+    function getMarketItemWithDetailsAndUserInfo(
+        uint256 _npcId,
+        uint256 _itemId,
+        address _user
+    )
+        external
+        view
+        returns (
+            MarketItemView memory marketItem,
+            ItemStructs.Item memory itemDetails,
+            uint256 userPurchased,
+            uint256 remainingLimit
+        )
+    {
+        marketItem = npcMarketProxy.getMarketItem(_npcId, _itemId);
+        itemDetails = itemProxy.getItem(_itemId);
+        userPurchased = npcMarketProxy.getUserPurchases(_npcId, _itemId, _user);
+
+        // Tính toán giới hạn còn lại
+        if (marketItem.limitPerUser == 0) {
+            remainingLimit = type(uint256).max; // Không giới hạn
+        } else if (userPurchased >= marketItem.limitPerUser) {
+            remainingLimit = 0; // Đã hết giới hạn
+        } else {
+            remainingLimit = marketItem.limitPerUser - userPurchased;
+        }
+
+        return (marketItem, itemDetails, userPurchased, remainingLimit);
+    }
+
     function getAllMarketItems(
         uint256 _npcId
     ) external view returns (MarketItemView[] memory) {
         return npcMarketProxy.getAllMarketItems(_npcId);
     }
 
+    function getAllMarketItemsWithDetails(
+        uint256 _npcId
+    )
+        external
+        view
+        returns (
+            MarketItemView[] memory marketItems,
+            ItemStructs.Item[] memory itemDetails
+        )
+    {
+        marketItems = npcMarketProxy.getAllMarketItems(_npcId);
+        itemDetails = new ItemStructs.Item[](marketItems.length);
+
+        for (uint256 i = 0; i < marketItems.length; i++) {
+            itemDetails[i] = itemProxy.getItem(marketItems[i].itemId);
+        }
+
+        return (marketItems, itemDetails);
+    }
+
     function getMarketItemIds(
         uint256 _npcId
     ) external view returns (uint256[] memory) {
         return npcMarketProxy.getMarketItemIds(_npcId);
+    }
+
+    function getMarketItemIdsWithDetails(
+        uint256 _npcId
+    )
+        external
+        view
+        returns (
+            uint256[] memory itemIds,
+            ItemStructs.Item[] memory itemDetails
+        )
+    {
+        itemIds = npcMarketProxy.getMarketItemIds(_npcId);
+        itemDetails = new ItemStructs.Item[](itemIds.length);
+
+        for (uint256 i = 0; i < itemIds.length; i++) {
+            itemDetails[i] = itemProxy.getItem(itemIds[i]);
+        }
+
+        return (itemIds, itemDetails);
+    }
+
+    function getAllMarketItemsWithDetailsAndUserInfo(
+        uint256 _npcId,
+        address _user
+    )
+        external
+        view
+        returns (
+            MarketItemView[] memory marketItems,
+            ItemStructs.Item[] memory itemDetails,
+            uint256[] memory userPurchased,
+            uint256[] memory remainingLimit
+        )
+    {
+        marketItems = npcMarketProxy.getAllMarketItems(_npcId);
+        itemDetails = new ItemStructs.Item[](marketItems.length);
+        userPurchased = new uint256[](marketItems.length);
+        remainingLimit = new uint256[](marketItems.length);
+
+        for (uint256 i = 0; i < marketItems.length; i++) {
+            itemDetails[i] = itemProxy.getItem(marketItems[i].itemId);
+            userPurchased[i] = npcMarketProxy.getUserPurchases(
+                _npcId,
+                marketItems[i].itemId,
+                _user
+            );
+
+            // Tính toán giới hạn còn lại
+            if (marketItems[i].limitPerUser == 0) {
+                remainingLimit[i] = type(uint256).max; // Không giới hạn
+            } else if (userPurchased[i] >= marketItems[i].limitPerUser) {
+                remainingLimit[i] = 0; // Đã hết giới hạn
+            } else {
+                remainingLimit[i] =
+                    marketItems[i].limitPerUser -
+                    userPurchased[i];
+            }
+        }
+
+        return (marketItems, itemDetails, userPurchased, remainingLimit);
     }
 
     function getNPCMarketInfo(

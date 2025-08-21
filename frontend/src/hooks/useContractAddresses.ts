@@ -50,6 +50,7 @@ export function useContractAddresses(network: string) {
 
                 // Xử lý cả network name và chain ID
                 const networkKey = network.toLowerCase()
+                console.log('Loading contract addresses for network:', networkKey)
 
                 if (networkKey === 'hardhat' || networkKey === '31337' || networkKey === 'chain-31337') {
                     fileName = 'contract-addresses-local.json'
@@ -61,13 +62,15 @@ export function useContractAddresses(network: string) {
                     throw new Error(`Network không được hỗ trợ: ${network}`)
                 }
 
-                const response = await fetch(`/api/contract-addresses?file=${fileName}`)
+                console.log('Using file:', fileName)
+                const response = await fetch(`/api/contract-addresses?network=${networkKey}`)
 
                 if (!response.ok) {
                     throw new Error(`Không thể load contract addresses cho ${network}`)
                 }
 
                 const data: ContractAddresses = await response.json()
+                console.log('Loaded contract addresses:', data)
                 setAddresses(data)
             } catch (err) {
                 console.error('Lỗi load contract addresses:', err)

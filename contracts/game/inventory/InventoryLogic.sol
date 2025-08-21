@@ -69,26 +69,33 @@ contract InventoryLogic {
         Player memory playerData = playerProxy.getPlayer(_player);
         require(playerData.level > 0, "Player not initialized");
 
-        // Get current item data
-        InventoryItem memory currentItem = inventoryProxy.getItem(
-            _player,
-            _itemId
-        );
+        // Check if item already exists in player's inventory
+        bool itemExists = inventoryProxy.exists(_player, _itemId);
 
-        // Calculate new quantity with overflow check
-        uint256 newQuantity = currentItem.quantity + _quantity;
-        require(newQuantity >= currentItem.quantity, "Quantity overflow");
-        require(newQuantity <= MAX_QUANTITY, "Exceeds maximum quantity");
-
-        // Set durability and expiration
+        uint256 newQuantity;
         uint256 durability;
         uint256 expiration;
 
-        if (currentItem.quantity > 0) {
-            // Keep existing values if item exists
+        if (itemExists) {
+            // Get current item data
+            InventoryItem memory currentItem = inventoryProxy.getItem(
+                _player,
+                _itemId
+            );
+
+            // Calculate new quantity with overflow check
+            newQuantity = currentItem.quantity + _quantity;
+            require(newQuantity >= currentItem.quantity, "Quantity overflow");
+            require(newQuantity <= MAX_QUANTITY, "Exceeds maximum quantity");
+
+            // Keep existing values
             durability = currentItem.durability;
             expiration = currentItem.expiration;
         } else {
+            // Item doesn't exist, set new quantity directly
+            newQuantity = _quantity;
+            require(newQuantity <= MAX_QUANTITY, "Exceeds maximum quantity");
+
             // Set default values for new item
             durability = 100;
             expiration = 0;
@@ -198,5 +205,9 @@ contract InventoryLogic {
         address _playerAddress
     ) external view returns (InventoryItem[] memory) {
         return inventoryProxy.getItems(_playerAddress);
+    }
+
+    function cleanupPlayerItems(address _player) external onlyAdmin {
+        inventoryProxy.cleanupPlayerItems(_player);
     }
 }

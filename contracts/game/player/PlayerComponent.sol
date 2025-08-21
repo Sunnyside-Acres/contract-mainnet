@@ -16,6 +16,8 @@ contract PlayerComponent {
     event PlayerCreated(address indexed playerAddress, string name);
     event AddSunlight(address indexed playerAddress, uint256 amount);
     event AddSunny(address indexed playerAddress, uint256 amount);
+    event SubtractSunny(address indexed playerAddress, uint256 amount);
+    event SubtractSunlight(address indexed playerAddress, uint256 amount);
 
     modifier onlyAuthorized() {
         require(
@@ -69,6 +71,35 @@ contract PlayerComponent {
         players[_playerAddress].sunny += _amount;
 
         emit AddSunny(_playerAddress, _amount);
+    }
+
+    function subtractSunny(
+        address _playerAddress,
+        uint256 _amount
+    ) external onlyAuthorized {
+        require(playerExists[_playerAddress], "[COMPONENT] Player not found");
+        require(
+            players[_playerAddress].sunny >= _amount,
+            "[COMPONENT] Insufficient sunny"
+        );
+        players[_playerAddress].sunny -= _amount;
+
+        emit SubtractSunny(_playerAddress, _amount);
+    }
+
+    function subtractSunlight(
+        address _playerAddress,
+        uint256 _amount
+    ) external onlyAuthorized {
+        require(playerExists[_playerAddress], "[COMPONENT] Player not found");
+        players[_playerAddress].sunlight -= _amount;
+    }
+
+    function getSunlight(
+        address _playerAddress
+    ) external view returns (uint256) {
+        require(playerExists[_playerAddress], "[COMPONENT] Player not found");
+        return players[_playerAddress].sunlight;
     }
 
     function getPlayer(

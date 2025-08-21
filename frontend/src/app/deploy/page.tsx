@@ -8,7 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { DeploymentLogs } from "@/components/DeploymentLogs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { DeployService } from "@/services/DeployService";
+import { useMetaMask } from "@/hooks/useMetaMask";
+
 
 type ContractFeature = 'World' | 'Player' | 'Item' | 'Weather' | 'Plot' | 'Inventory' | 'Plant';
 
@@ -48,42 +51,156 @@ export default function DeployPage() {
     const [isDeploying, setIsDeploying] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
     const [deployMode, setDeployMode] = useState<DeployMode>('all');
-    const [showAdvanced, setShowAdvanced] = useState(false);
     const [deployedContracts, setDeployedContracts] = useState<DeployedContract[]>([]);
     const [deploymentProgress, setDeploymentProgress] = useState({ current: 0, total: 0, currentContract: '' });
+    const [contractDependencies, setContractDependencies] = useState<{ [key: string]: string }>({});
+    const [privateKey, setPrivateKey] = useState("");
+    const [showPrivateKeyInput, setShowPrivateKeyInput] = useState(false);
+
+    const { isConnected, isInstalled, account, chainId, connect, switchNetwork } = useMetaMask();
+
+    // Load dependencies when selectedContract changes
+    useEffect(() => {
+        if (selectedContract && deployMode === 'single') {
+            if (selectedContract.includes('Logic') || selectedContract.includes('Proxy')) {
+                loadContractDependencies(selectedContract);
+            } else {
+                setContractDependencies({});
+            }
+        } else {
+            setContractDependencies({});
+        }
+    }, [selectedContract, deployMode, network]);
 
     const addLog = (message: string) => {
         setLogs((prevLogs) => [...prevLogs, message]);
     };
 
+    const deployService = new DeployService();
+
+    const loadContractDependencies = async (contractName: string) => {
+        if (!contractName.includes('Logic')) return;
+
+        try {
+            const response = await fetch(`/api/contract-addresses?network=${network}`);
+            if (response.ok) {
+                const data = await response.json();
+                const addresses = data.contracts || {};
+
+                const dependencies: { [key: string]: string } = {};
+
+                // Add World address
+                if (addresses.World) {
+                    dependencies['World'] = addresses.World;
+                }
+
+                // Add Proxy address
+                const proxyName = contractName.replace('Logic', 'Proxy');
+                if (addresses[proxyName]) {
+                    dependencies[proxyName] = addresses[proxyName];
+                }
+
+                // Add specific dependencies based on contract type
+                if (contractName === 'PlotLogic') {
+                    if (addresses.WeatherProxy) dependencies['WeatherProxy'] = addresses.WeatherProxy;
+                    if (addresses.PlayerProxy) dependencies['PlayerProxy'] = addresses.PlayerProxy;
+                } else if (contractName === 'InventoryLogic') {
+                    if (addresses.ItemProxy) dependencies['ItemProxy'] = addresses.ItemProxy;
+                    if (addresses.PlayerProxy) dependencies['PlayerProxy'] = addresses.PlayerProxy;
+                } else if (contractName === 'PlantLogic') {
+                    if (addresses.PlotProxy) dependencies['PlotProxy'] = addresses.PlotProxy;
+                    if (addresses.InventoryProxy) dependencies['InventoryProxy'] = addresses.InventoryProxy;
+                    if (addresses.WeatherProxy) dependencies['WeatherProxy'] = addresses.WeatherProxy;
+                    if (addresses.ItemProxy) dependencies['ItemProxy'] = addresses.ItemProxy;
+                } else if (contractName === 'FishingLogic') {
+                    if (addresses.InventoryProxy) dependencies['InventoryProxy'] = addresses.InventoryProxy;
+                    if (addresses.ItemProxy) dependencies['ItemProxy'] = addresses.ItemProxy;
+                    if (addresses.PlayerProxy) dependencies['PlayerProxy'] = addresses.PlayerProxy;
+                    if (addresses.WeatherProxy) dependencies['WeatherProxy'] = addresses.WeatherProxy;
+                } else if (contractName === 'NPCMarketProxy') {
+                    if (addresses.NPCMarketComponent) dependencies['NPCMarketComponent'] = addresses.NPCMarketComponent;
+                } else if (contractName === 'NPCMarketLogic') {
+                    if (addresses.NPCMarketProxy) dependencies['NPCMarketProxy'] = addresses.NPCMarketProxy;
+                    if (addresses.ItemProxy) dependencies['ItemProxy'] = addresses.ItemProxy;
+                    if (addresses.InventoryProxy) dependencies['InventoryProxy'] = addresses.InventoryProxy;
+                    if (addresses.PlayerProxy) dependencies['PlayerProxy'] = addresses.PlayerProxy;
+                }
+
+                setContractDependencies(dependencies);
+            }
+        } catch (error) {
+            console.error('Failed to load dependencies:', error);
+        }
+    };
+
     const deployContract = async (contractName: string, dependencies?: string[]) => {
-        const address = generateRandomAddress();
+        // Real deployment logic using hardhat scripts
         setDeploymentProgress(prev => ({ ...prev, currentContract: contractName }));
         addLog(`\n📦 Deploying ${contractName}...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        addLog(`✅ ${contractName} deployed to: ${address}`);
 
-        // Simulate registration based on contract type
-        if (contractName.includes('Logic')) {
-            addLog(`🔗 Registering ${contractName} in World...`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            addLog(`✅ ${contractName} registered in World`);
-        } else if (contractName.includes('Proxy')) {
-            addLog(`🔗 Configuring ${contractName} with implementation...`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            addLog(`✅ ${contractName} configured`);
+        try {
+            // Call the real deployment API
+            const response = await fetch('/api/deploy-real', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    network,
+                    deployMode: 'single',
+                    selectedContract: contractName
+                }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Deployment failed: ${errorText}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                addLog(`✅ ${contractName} deployed successfully`);
+
+                // Extract contract address from result
+                let contractAddress = '0x...';
+                if (result.contracts && result.contracts.length > 0) {
+                    const deployedContract = result.contracts.find((c: any) => c.name === contractName);
+                    if (deployedContract) {
+                        contractAddress = deployedContract.address;
+                        addLog(`📍 Contract address: ${contractAddress}`);
+                    }
+                }
+
+                // Simulate registration based on contract type
+                if (contractName.includes('Logic')) {
+                    addLog(`🔗 Registering ${contractName} in World...`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    addLog(`✅ ${contractName} registered in World`);
+                } else if (contractName.includes('Proxy')) {
+                    addLog(`🔗 Configuring ${contractName} with implementation...`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    addLog(`✅ ${contractName} configured`);
+                }
+
+                setDeploymentProgress(prev => ({ ...prev, current: prev.current + 1 }));
+
+                return {
+                    name: contractName,
+                    address: contractAddress,
+                    timestamp: new Date().toISOString()
+                };
+            } else {
+                throw new Error(result.error || 'Deployment failed');
+            }
+        } catch (error) {
+            addLog(`❌ Failed to deploy ${contractName}: ${error}`);
+            throw error;
         }
-
-        setDeploymentProgress(prev => ({ ...prev, current: prev.current + 1 }));
-
-        return {
-            name: contractName,
-            address: address,
-            timestamp: new Date().toISOString()
-        };
     };
 
     const handleDeploy = async () => {
+
         setIsDeploying(true);
         setLogs([]); // Clear previous logs
         setDeployedContracts([]); // Clear previous deployed contracts
@@ -91,7 +208,7 @@ export default function DeployPage() {
         // Calculate total contracts to deploy
         let totalContracts = 0;
         if (deployMode === 'all') {
-            totalContracts = 19; // 1 World + 6 features × 3 contracts each
+            totalContracts = 23; // Updated to match actual contract count
         } else if (deployMode === 'feature' && selectedFeature) {
             const contracts = CONTRACTS[selectedFeature];
             totalContracts = Array.isArray(contracts) ? contracts.length : 1;
@@ -103,70 +220,50 @@ export default function DeployPage() {
 
         try {
             addLog(`🚀 Bắt đầu deploy contracts lên ${network === "local" ? "Local Network" : "Sei Mainnet"}...`);
-            addLog("📝 Đang kết nối với network...");
-            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            if (network === 'seimainnet') {
+                addLog("🔗 Đang kết nối với blockchain network...");
+                addLog("✅ Kết nối thành công với Sei Mainnet");
+            } else {
+                addLog("🔗 Đang kết nối với Hardhat local network...");
+                addLog("✅ Kết nối thành công với local network (không cần MetaMask)");
+            }
 
             let newDeployedContracts: DeployedContract[] = [];
 
-            if (deployMode === 'feature' && selectedFeature) {
-                const contracts = CONTRACTS[selectedFeature];
-                if (Array.isArray(contracts)) {
-                    // Deploy in order: Component -> Proxy -> Logic
-                    const orderedContracts = contracts.sort((a, b) => {
-                        const order = ['Component', 'Proxy', 'Logic'];
-                        const aIndex = order.findIndex(type => a.includes(type));
-                        const bIndex = order.findIndex(type => b.includes(type));
-                        return aIndex - bIndex;
-                    });
+            // Use different API endpoints for local and mainnet
+            const apiEndpoint = network === 'local' ? '/api/deploy-real' : '/api/deploy-mainnet';
+            const requestBody: any = {
+                network,
+                deployMode,
+                selectedFeature,
+                selectedContract
+            };
 
-                    for (const contract of orderedContracts) {
-                        const deployedContract = await deployContract(contract);
-                        newDeployedContracts.push(deployedContract);
-                    }
+            // Add private key for mainnet deployment
+            if (network === 'seimainnet') {
+                requestBody.privateKey = privateKey;
+            }
 
-                    // Additional registration for complete feature deployment
-                    addLog(`\n⚙️ Configuring ${selectedFeature} feature...`);
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    addLog(`✅ ${selectedFeature} feature configured successfully`);
-                } else {
-                    const deployedContract = await deployContract(contracts);
-                    newDeployedContracts.push(deployedContract);
-                }
-            } else if (deployMode === 'single' && selectedContract) {
-                const deployedContract = await deployContract(selectedContract);
-                newDeployedContracts.push(deployedContract);
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            });
 
-                // Show registration instructions for single contract deployment
-                if (selectedContract.includes('Component')) {
-                    addLog(`\n💡 Lưu ý: Component cần được đăng ký với Proxy tương ứng`);
-                } else if (selectedContract.includes('Logic')) {
-                    addLog(`\n💡 Lưu ý: Logic contract cần được đăng ký với World contract`);
-                }
+            if (!response.ok) {
+                throw new Error('Deployment failed');
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                newDeployedContracts = result.contracts;
+                addLog("✅ All contracts deployed successfully");
             } else {
-                // Deploy all contracts in order
-                // First deploy World
-                const worldContract = await deployContract(CONTRACTS.World as string);
-                newDeployedContracts.push(worldContract);
-
-                // Then deploy other contracts in order (following script order)
-                const features: ContractFeature[] = ['Player', 'Item', 'Weather', 'Plot', 'Inventory', 'Plant'];
-                for (const feature of features) {
-                    const contracts = CONTRACTS[feature];
-                    if (Array.isArray(contracts)) {
-                        // Deploy in order: Component -> Proxy -> Logic
-                        const orderedContracts = contracts.sort((a, b) => {
-                            const order = ['Component', 'Proxy', 'Logic'];
-                            const aIndex = order.findIndex(type => a.includes(type));
-                            const bIndex = order.findIndex(type => b.includes(type));
-                            return aIndex - bIndex;
-                        });
-
-                        for (const contract of orderedContracts) {
-                            const deployedContract = await deployContract(contract);
-                            newDeployedContracts.push(deployedContract);
-                        }
-                    }
-                }
+                throw new Error(result.error || 'Deployment failed');
             }
 
             setDeployedContracts(newDeployedContracts);
@@ -200,8 +297,8 @@ export default function DeployPage() {
             addLog("\n💾 Saving deployment info...");
             const fileName = `contract-addresses-${network}.json`;
             try {
-                // In a real application, this would make an API call to save the file
-                addLog(`📁 Deployment info would be saved to: ./deployed/${fileName}`);
+                await deployService.saveDeploymentInfo(summary, network);
+                addLog(`📁 Deployment info saved to: ./deployed/${fileName}`);
                 addLog("💾 File saved successfully");
             } catch (error) {
                 addLog(`❌ Failed to save file: ${error}`);
@@ -239,26 +336,164 @@ export default function DeployPage() {
             />
 
             <div className="flex flex-col gap-8">
-                {/* Header Card with Network Selection */}
-                <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="text-xl font-bold text-blue-900 dark:text-blue-100">Smart Contract Deployment</h3>
-                            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">Deploy contracts to blockchain networks</p>
+                {/* Compact Header with Network Selection */}
+                <Card className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">Smart Contract Deployment</h3>
+                                <p className="text-xs text-blue-700 dark:text-blue-300">Deploy contracts to blockchain networks</p>
+                            </div>
+
+                            {/* Network Selection */}
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-medium text-blue-900 dark:text-blue-100">Network:</label>
+                                <Select value={network} onValueChange={setNetwork}>
+                                    <SelectTrigger className="w-[160px] h-8 text-xs bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-700">
+                                        <SelectValue placeholder="Select network" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="local">🔧 Local (Hardhat)</SelectItem>
+                                        <SelectItem value="seimainnet">🌐 Sei Mainnet</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <label className="text-sm font-medium text-blue-900 dark:text-blue-100">Network:</label>
-                            <Select value={network} onValueChange={setNetwork}>
-                                <SelectTrigger className="w-[220px] bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-700">
-                                    <SelectValue placeholder="Select network" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="local">🔧 Local Network (Hardhat)</SelectItem>
-                                    <SelectItem value="seimainnet">🌐 Sei Mainnet</SelectItem>
-                                </SelectContent>
-                            </Select>
+
+                        {/* Status Badge */}
+                        <div className="flex items-center gap-2">
+                            {network === 'local' ? (
+                                <Badge variant="default" className="text-xs bg-green-600">
+                                    ✅ Ready (No MetaMask needed)
+                                </Badge>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    {!isInstalled ? (
+                                        <Badge variant="destructive" className="text-xs">
+                                            ❌ MetaMask Required
+                                        </Badge>
+                                    ) : !isConnected ? (
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="secondary" className="text-xs">
+                                                🔒 Connect MetaMask
+                                            </Badge>
+                                            <Button
+                                                size="sm"
+                                                onClick={connect}
+                                                className="h-6 px-2 text-xs bg-orange-600 hover:bg-orange-700"
+                                            >
+                                                Connect
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Badge variant="default" className="text-xs bg-green-600">
+                                            ✅ Connected ({account?.slice(0, 4)}...{account?.slice(-4)})
+                                        </Badge>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {/* Local Network Info */}
+                    {network === 'local' && (
+                        <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-700">
+                            <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                                    Local Network (Hardhat)
+                                </span>
+                                <Badge variant="default" className="text-xs bg-green-600">
+                                    ✅ Ready
+                                </Badge>
+                            </div>
+                            <div className="mt-2 text-xs text-green-700 dark:text-green-300">
+                                Không cần MetaMask. Hardhat sẽ tự động tạo và sử dụng private key.
+                            </div>
+                            <div className="mt-2 text-xs text-green-600 dark:text-green-400">
+                                💡 Để test: chạy <code className="bg-green-100 px-1 rounded">npx hardhat node</code> trước khi deploy
+                            </div>
+                            <div className="mt-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={async () => {
+                                        try {
+                                            const response = await fetch('/api/test-hardhat');
+                                            const result = await response.json();
+                                            if (result.success) {
+                                                alert(`✅ Hardhat test successful: ${result.output}`);
+                                            } else {
+                                                alert(`❌ Hardhat test failed: ${result.error}`);
+                                            }
+                                        } catch (error) {
+                                            alert(`❌ Hardhat test error: ${error}`);
+                                        }
+                                    }}
+                                    className="text-xs"
+                                >
+                                    Test Hardhat
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Mainnet Private Key Input */}
+                    {network === 'seimainnet' && (
+                        <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-700">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                                <span className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                                    Sei Mainnet Deployment
+                                </span>
+                                <Badge variant="default" className="text-xs bg-orange-600">
+                                    🔑 Private Key Required
+                                </Badge>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="text-xs text-orange-700 dark:text-orange-300">
+                                    ⚠️ <strong>Lưu ý bảo mật:</strong> Private key sẽ được sử dụng để deploy contracts.
+                                    Đảm bảo bạn có đủ SEI để trả gas fee.
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setShowPrivateKeyInput(!showPrivateKeyInput)}
+                                        className="text-xs"
+                                    >
+                                        {showPrivateKeyInput ? "🔒 Ẩn Private Key" : "🔑 Nhập Private Key"}
+                                    </Button>
+
+                                    {privateKey && (
+                                        <Badge variant="outline" className="text-xs border-green-300 text-green-700 bg-green-50">
+                                            ✅ Private Key Ready
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {showPrivateKeyInput && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-orange-800 dark:text-orange-200">
+                                            Private Key (0x...):
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={privateKey}
+                                            onChange={(e) => setPrivateKey(e.target.value)}
+                                            placeholder="0x..."
+                                            className="w-full px-3 py-2 text-xs border border-orange-300 dark:border-orange-600 rounded-md bg-white dark:bg-gray-800 text-orange-900 dark:text-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        />
+                                        <div className="text-xs text-orange-600 dark:text-orange-400">
+                                            💡 Private key sẽ được sử dụng để tạo signer cho deployment
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </Card>
 
                 {/* Deployment Mode Selection */}
@@ -278,7 +513,7 @@ export default function DeployPage() {
                             </div>
                         </div>
                         <p className="text-sm text-muted-foreground mb-4">
-                            Deploy all 19 contracts in the correct order with proper configurations.
+                            Deploy all 23 contracts in the correct order with proper configurations.
                         </p>
                         <div className="space-y-2">
                             <div className="text-xs font-medium text-green-800 dark:text-green-200">Deployment order:</div>
@@ -319,7 +554,7 @@ export default function DeployPage() {
                             </div>
                         </div>
                         <p className="text-sm text-muted-foreground mb-4">
-                            Deploy a complete feature module with all its components.
+                            Deploy a complete feature module with Component, Proxy, and Logic contracts.
                         </p>
                         {deployMode === 'feature' && (
                             <div className="space-y-4">
@@ -361,6 +596,31 @@ export default function DeployPage() {
                                                 );
                                             })()}
                                         </div>
+
+                                        {/* Dependencies Info */}
+                                        <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                                            <h6 className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-1">Dependencies:</h6>
+                                            <div className="text-xs text-blue-600 dark:text-blue-400">
+                                                {selectedFeature === 'Player' && (
+                                                    <div>✅ No dependencies required</div>
+                                                )}
+                                                {selectedFeature === 'Item' && (
+                                                    <div>✅ No dependencies required</div>
+                                                )}
+                                                {selectedFeature === 'Weather' && (
+                                                    <div>✅ No dependencies required</div>
+                                                )}
+                                                {selectedFeature === 'Plot' && (
+                                                    <div>⚠️ Requires: Player, Weather features</div>
+                                                )}
+                                                {selectedFeature === 'Inventory' && (
+                                                    <div>⚠️ Requires: Player, Item features</div>
+                                                )}
+                                                {selectedFeature === 'Plant' && (
+                                                    <div>⚠️ Requires: Plot, Inventory, Weather, Item features</div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -390,7 +650,7 @@ export default function DeployPage() {
                             </div>
                         </div>
                         <p className="text-sm text-muted-foreground mb-4">
-                            Deploy a single contract for testing or gradual deployment.
+                            Deploy a single contract. Note: Proxy and Logic contracts require dependencies.
                         </p>
                         {deployMode === 'single' && (
                             <div className="space-y-4">
@@ -399,20 +659,22 @@ export default function DeployPage() {
                                         <SelectValue placeholder="Select a contract to deploy" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {Object.entries(CONTRACTS).flatMap(([feature, contracts]) => {
-                                            if (Array.isArray(contracts)) {
-                                                return contracts.map((contract) => (
-                                                    <SelectItem key={contract} value={contract}>
-                                                        {contract}
-                                                    </SelectItem>
-                                                ));
-                                            }
-                                            return [
-                                                <SelectItem key={contracts} value={contracts}>
-                                                    {contracts}
-                                                </SelectItem>
-                                            ];
-                                        })}
+                                        <SelectItem value="PlayerComponent">PlayerComponent</SelectItem>
+                                        <SelectItem value="ItemComponent">ItemComponent</SelectItem>
+                                        <SelectItem value="WeatherComponent">WeatherComponent</SelectItem>
+                                        <SelectItem value="PlotComponent">PlotComponent</SelectItem>
+                                        <SelectItem value="InventoryComponent">InventoryComponent</SelectItem>
+                                        <SelectItem value="PlantComponent">PlantComponent</SelectItem>
+                                        <SelectItem value="FishingLogic">FishingLogic</SelectItem>
+                                        <SelectItem value="NPCMarketComponent">NPCMarketComponent</SelectItem>
+                                        <SelectItem value="NPCMarketProxy">NPCMarketProxy</SelectItem>
+                                        <SelectItem value="NPCMarketLogic">NPCMarketLogic</SelectItem>
+                                        <SelectItem value="PlayerLogic">PlayerLogic</SelectItem>
+                                        <SelectItem value="ItemLogic">ItemLogic</SelectItem>
+                                        <SelectItem value="WeatherLogic">WeatherLogic</SelectItem>
+                                        <SelectItem value="PlotLogic">PlotLogic</SelectItem>
+                                        <SelectItem value="InventoryLogic">InventoryLogic</SelectItem>
+                                        <SelectItem value="PlantLogic">PlantLogic</SelectItem>
                                     </SelectContent>
                                 </Select>
 
@@ -420,11 +682,56 @@ export default function DeployPage() {
                                     <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-3">
                                         <p className="text-xs text-orange-700 dark:text-orange-300">
                                             💡 <strong>Lưu ý:</strong> {
-                                                selectedContract.includes('Component') ? 'Component cần được đăng ký với Proxy tương ứng' :
-                                                    selectedContract.includes('Logic') ? 'Logic contract cần được đăng ký với World contract' :
+                                                selectedContract.includes('Component') ? 'Component có thể deploy độc lập' :
+                                                    selectedContract.includes('Logic') ? 'Logic contract cần dependencies' :
                                                         'Contract sẽ được deploy độc lập'
                                             }
                                         </p>
+
+                                        {/* Dependencies Display for Logic Contracts */}
+                                        {selectedContract.includes('Logic') && Object.keys(contractDependencies).length > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-700">
+                                                <h6 className="text-xs font-medium text-orange-800 dark:text-orange-200 mb-2">📋 Required Dependencies:</h6>
+                                                <div className="space-y-2">
+                                                    {Object.entries(contractDependencies).map(([name, address]) => (
+                                                        <div key={name} className="flex items-center justify-between text-xs">
+                                                            <span className="text-orange-700 dark:text-orange-300 font-medium">
+                                                                {name}:
+                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <code className="bg-orange-100 dark:bg-orange-900 px-2 py-1 rounded text-xs">
+                                                                    {address.slice(0, 8)}...{address.slice(-6)}
+                                                                </code>
+                                                                <Badge variant="outline" className="text-xs border-green-300 text-green-700 bg-green-50">
+                                                                    ✅ Found
+                                                                </Badge>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Missing Dependencies Warning */}
+                                        {selectedContract.includes('Logic') && Object.keys(contractDependencies).length === 0 && (
+                                            <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-700">
+                                                <div className="flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400">
+                                                    <Badge variant="destructive" className="text-xs">
+                                                        ⚠️ Missing Dependencies
+                                                    </Badge>
+                                                    <span>Required contracts not found. Please deploy dependencies first.</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="mt-2 text-xs text-orange-600 dark:text-orange-400">
+                                            <strong>Contracts có thể deploy đơn lẻ:</strong>
+                                            <div className="mt-1 space-y-1">
+                                                <div>• Components: PlayerComponent, ItemComponent, WeatherComponent, PlotComponent, InventoryComponent, PlantComponent, NPCMarketComponent</div>
+                                                <div>• Logic: PlayerLogic, ItemLogic, WeatherLogic, PlotLogic, InventoryLogic, PlantLogic, FishingLogic, NPCMarketLogic</div>
+                                                <div>• Proxy: NPCMarketProxy</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 

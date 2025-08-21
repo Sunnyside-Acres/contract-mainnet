@@ -4,6 +4,7 @@
   "scripts": {
     "deploy": "hardhat run script/deploy.js --network seimainnet",
     "deploy:local": "hardhat run script/deploy-local.js --network local",
+    "deploy:single": "hardhat run script/deploy-single.js --network seimainnet",
     "compile": "hardhat compile",
     "test": "hardhat test",
     "node": "hardhat node",

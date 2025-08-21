@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { useContractAddresses } from '@/hooks/useContractAddresses'
 import { useWallet } from '@/context/WalletContext'
+import { NetworkSelector } from '@/components/NetworkSelector'
 
 export default function Home() {
   const [contract, setContract] = useState<ethers.Contract | null>(null)
@@ -18,10 +19,18 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [account, setAccount] = useState<string>('')
   const [copyingABI, setCopyingABI] = useState<string | null>(null)
-  const { signer, selectedNetwork } = useWallet()
+  const { signer, selectedNetwork, setSelectedNetwork } = useWallet()
 
   // Load contract addresses dựa trên network được chọn
-  const { addresses: contractAddresses } = useContractAddresses(selectedNetwork)
+  const { addresses: contractAddresses, loading: addressesLoading, error: addressesError } = useContractAddresses(selectedNetwork)
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Selected network:', selectedNetwork)
+    console.log('Contract addresses:', contractAddresses)
+    console.log('Addresses loading:', addressesLoading)
+    console.log('Addresses error:', addressesError)
+  }, [selectedNetwork, contractAddresses, addressesLoading, addressesError])
 
   // Load artifacts on mount
   useEffect(() => {
@@ -48,11 +57,13 @@ export default function Home() {
 
   const loadArtifacts = async () => {
     try {
+      console.log('Loading artifacts...')
       const response = await fetch('/api/artifacts')
       if (!response.ok) {
         throw new Error('Lỗi tải artifacts')
       }
       const artifactsData = await response.json()
+      console.log('Loaded artifacts:', Object.keys(artifactsData))
       setArtifacts(artifactsData)
     } catch (error) {
       console.error('Lỗi tải artifacts:', error)
@@ -65,12 +76,19 @@ export default function Home() {
   }
 
   const loadContract = async (contractName: string) => {
+    console.log('Loading contract:', contractName)
+    console.log('Signer:', signer)
+    console.log('Contract addresses:', contractAddresses)
+    console.log('Available artifacts:', Object.keys(artifacts))
+
     if (!signer) {
       console.error('Vui lòng kết nối ví trước')
       return
     }
 
     const contractAddress = contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts]
+    console.log('Contract address for', contractName, ':', contractAddress)
+
     if (!contractAddress) {
       console.error('Không tìm thấy địa chỉ contract:', contractName)
       return
@@ -78,6 +96,8 @@ export default function Home() {
 
     if (!artifacts[contractName]?.abi) {
       console.error('Không tìm thấy ABI cho contract:', contractName)
+      console.log('Available artifacts:', Object.keys(artifacts))
+      console.log('Looking for:', contractName)
       return
     }
 
@@ -150,9 +170,10 @@ export default function Home() {
                 </div>
               </div>
             )}
-            <Badge variant="secondary" className="bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100">
-              {selectedNetwork === 'local' ? '🔧 Local' : '🌐 Mainnet'}
-            </Badge>
+            <NetworkSelector
+              selectedNetwork={selectedNetwork}
+              onNetworkChange={setSelectedNetwork}
+            />
           </div>
         </div>
       </Card>
@@ -166,6 +187,16 @@ export default function Home() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Contracts</h2>
                 <div className="flex items-center gap-2">
+                  {addressesLoading && (
+                    <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                      Loading...
+                    </Badge>
+                  )}
+                  {addressesError && (
+                    <Badge variant="outline" className="text-xs bg-red-50 text-red-700">
+                      Error
+                    </Badge>
+                  )}
                   {contractAddresses && (
                     <Badge variant="outline" className="text-xs">
                       {Object.values(contractAddresses.contracts).filter(Boolean).length}
@@ -181,6 +212,44 @@ export default function Home() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-3">
+              {!signer && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="text-sm font-medium text-blue-800">Kết nối ví</div>
+                  <div className="text-xs text-blue-600 mt-1">Vui lòng kết nối ví để tương tác với contracts</div>
+                </div>
+              )}
+              {addressesError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <div className="text-sm font-medium text-red-800">Lỗi load contract addresses:</div>
+                  <div className="text-xs text-red-600 mt-1">{addressesError}</div>
+                </div>
+              )}
+              {artifacts && Object.keys(artifacts).length > 0 && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <div className="text-sm font-medium text-green-800">ABIs loaded:</div>
+                  <div className="text-xs text-green-600 mt-1">
+                    {Object.keys(artifacts).length} contracts có ABI
+                  </div>
+                </div>
+              )}
+              {contractAddresses && artifacts && (
+                (() => {
+                  const missingABIs = Object.keys(contractAddresses.contracts).filter(
+                    contractName => !artifacts[contractName]?.abi
+                  );
+                  if (missingABIs.length > 0) {
+                    return (
+                      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <div className="text-sm font-medium text-yellow-800">Thiếu ABI:</div>
+                        <div className="text-xs text-yellow-600 mt-1">
+                          {missingABIs.join(', ')}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              )}
               <div className="space-y-1">
                 {Object.entries(contractGroups).flatMap(([groupName, contracts]) =>
                   contracts.map((contractName) => (
@@ -193,10 +262,21 @@ export default function Home() {
                           : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                           }`}
                         onClick={() => loadContract(contractName)}
-                        disabled={!contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] || !signer || isLoading}
+                        disabled={!contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] || !artifacts[contractName]?.abi || isLoading}
+                        title={!contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts]
+                          ? `Không tìm thấy địa chỉ contract cho ${contractName}`
+                          : !artifacts[contractName]?.abi
+                            ? `Không tìm thấy ABI cho ${contractName}`
+                            : isLoading
+                              ? 'Đang tải...'
+                              : `Tải contract ${contractName}`}
                       >
                         <div className="flex items-center gap-1.5 w-full min-w-0">
-                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] ? 'bg-green-500' : 'bg-gray-400'
+                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] && artifacts[contractName]?.abi
+                            ? 'bg-green-500'
+                            : contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] && !artifacts[contractName]?.abi
+                              ? 'bg-yellow-500'
+                              : 'bg-gray-400'
                             }`} />
                           <div className={`w-4 h-4 rounded flex items-center justify-center text-xs flex-shrink-0 ${groupName === 'Core' ? 'bg-gray-100 dark:bg-gray-800' :
                             groupName === 'Player' ? 'bg-blue-100 dark:bg-blue-900' :
@@ -236,7 +316,7 @@ export default function Home() {
                           >
                             {contractName.includes('Component') ? 'C' :
                               contractName.includes('Logic') ? 'L' :
-                                contractName.includes('Proxy') ? 'P' : 
+                                contractName.includes('Proxy') ? 'P' :
                                   contractName === 'World' ? 'W' : 'F'}
                           </Badge>
                         </div>

@@ -39,11 +39,41 @@ contract PlayerLogic {
         emit PlayerCreated(msg.sender);
     }
 
+    function addSunny(
+        address _playerAddress,
+        uint256 _amount
+    ) external onlyAdmin {
+        playerProxy.addSunny(_playerAddress, _amount);
+    }
+
+    function subtractSunny(
+        address _playerAddress,
+        uint256 _amount
+    ) external onlyAdmin {
+        playerProxy.subtractSunny(_playerAddress, _amount);
+    }
+
+    function addSunlight(
+        address _playerAddress,
+        uint256 _amount
+    ) external onlyAdmin {
+        playerProxy.addSunlight(_playerAddress, _amount);
+    }
+
+    function subtractSunlight(
+        address _playerAddress,
+        uint256 _amount
+    ) external onlyAdmin {
+        playerProxy.subtractSunlight(_playerAddress, _amount);
+    }
+
     function getPlayerList() external view returns (address[] memory) {
         return playerProxy.getPlayerAddresses();
     }
 
-    function getPlayerData(address _playerAddress) external view returns (Player memory) {
+    function getPlayerData(
+        address _playerAddress
+    ) external view returns (Player memory) {
         return playerProxy.getPlayer(_playerAddress);
     }
 }
