@@ -6,6 +6,7 @@ import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { formatAddress, formatShortAddress } from '@/utils/address'
 
 interface ContractInfo {
     name: string
@@ -58,6 +59,8 @@ export default function ContractManager({ provider, signer, contractAddresses, o
     const [contractHistory, setContractHistory] = useState<ContractInfo[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [autoLoadNotification, setAutoLoadNotification] = useState<string | null>(null)
+
+
 
     useEffect(() => {
         loadArtifacts()
@@ -256,7 +259,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                 body: JSON.stringify({
                     address: contractAddress,
                     abi,
-                    name: selectedContract || `Contract (${contractAddress.slice(0, 6)}...${contractAddress.slice(-4)})`
+                    name: selectedContract || `Contract (${formatShortAddress(contractAddress)})`
                 })
             })
 
@@ -557,7 +560,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">World Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.World.slice(0, 8)}...{contractAddresses.contracts.World.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.World)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -589,7 +592,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Player Logic Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlayerLogic.slice(0, 8)}...{contractAddresses.contracts.PlayerLogic.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlayerLogic)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -614,7 +617,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Player Proxy Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlayerProxy.slice(0, 8)}...{contractAddresses.contracts.PlayerProxy.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlayerProxy)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -639,7 +642,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Player Component Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlayerComponent.slice(0, 8)}...{contractAddresses.contracts.PlayerComponent.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlayerComponent)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -671,7 +674,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Item Logic Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.ItemLogic.slice(0, 8)}...{contractAddresses.contracts.ItemLogic.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.ItemLogic)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -696,7 +699,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Item Proxy Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.ItemProxy.slice(0, 8)}...{contractAddresses.contracts.ItemProxy.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.ItemProxy)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -721,7 +724,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Item Component Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.ItemComponent.slice(0, 8)}...{contractAddresses.contracts.ItemComponent.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.ItemComponent)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -753,7 +756,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Weather Logic Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.WeatherLogic.slice(0, 8)}...{contractAddresses.contracts.WeatherLogic.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.WeatherLogic)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -778,7 +781,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Weather Proxy Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.WeatherProxy.slice(0, 8)}...{contractAddresses.contracts.WeatherProxy.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.WeatherProxy)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -803,7 +806,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Weather Component Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.WeatherComponent.slice(0, 8)}...{contractAddresses.contracts.WeatherComponent.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.WeatherComponent)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -835,7 +838,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Plot Logic Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlotLogic.slice(0, 8)}...{contractAddresses.contracts.PlotLogic.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlotLogic)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -860,7 +863,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Plot Proxy Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlotProxy.slice(0, 8)}...{contractAddresses.contracts.PlotProxy.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlotProxy)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -885,7 +888,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Plot Component Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlotComponent.slice(0, 8)}...{contractAddresses.contracts.PlotComponent.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlotComponent)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -917,7 +920,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Inventory Logic Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.InventoryLogic.slice(0, 8)}...{contractAddresses.contracts.InventoryLogic.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.InventoryLogic)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -942,7 +945,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Inventory Proxy Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.InventoryProxy.slice(0, 8)}...{contractAddresses.contracts.InventoryProxy.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.InventoryProxy)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -967,7 +970,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Inventory Component Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.InventoryComponent.slice(0, 8)}...{contractAddresses.contracts.InventoryComponent.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.InventoryComponent)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -999,7 +1002,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Plant Logic Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlantLogic.slice(0, 8)}...{contractAddresses.contracts.PlantLogic.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlantLogic)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1024,7 +1027,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Plant Proxy Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlantProxy.slice(0, 8)}...{contractAddresses.contracts.PlantProxy.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlantProxy)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1049,7 +1052,7 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                 <div className="min-w-0 flex-1">
                                                     <h4 className="text-sm font-medium truncate">Plant Component Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
-                                                        {contractAddresses.contracts.PlantComponent.slice(0, 8)}...{contractAddresses.contracts.PlantComponent.slice(-6)}
+                                                        {formatAddress(contractAddresses.contracts.PlantComponent)}
                                                     </p>
                                                 </div>
                                             </div>

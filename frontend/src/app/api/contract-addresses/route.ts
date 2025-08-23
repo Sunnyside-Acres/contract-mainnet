@@ -23,11 +23,42 @@ export async function POST(request: NextRequest) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        fs.writeFileSync(filePath, JSON.stringify(deploymentInfo, null, 2));
+        // Read existing deployment info if file exists
+        let existingInfo = {
+            network: network,
+            chainId: network === "local" ? 31337 : 1329,
+            deployer: deploymentInfo.deployer || "0x...",
+            contracts: {},
+            timestamp: new Date().toISOString(),
+            rpcUrl: network === "local" ? "http://127.0.0.1:8545" : "https://evm-rpc.sei-apis.com"
+        };
+
+        if (fs.existsSync(filePath)) {
+            try {
+                const fileContent = fs.readFileSync(filePath, 'utf8');
+                existingInfo = JSON.parse(fileContent);
+            } catch (error) {
+                console.warn('Error reading existing deployment info, creating new file:', error);
+            }
+        }
+
+        // Merge new contracts with existing contracts
+        const updatedInfo = {
+            ...existingInfo,
+            contracts: {
+                ...existingInfo.contracts,
+                ...deploymentInfo.contracts,
+            },
+            timestamp: new Date().toISOString(),
+            deployer: deploymentInfo.deployer || existingInfo.deployer
+        };
+
+        fs.writeFileSync(filePath, JSON.stringify(updatedInfo, null, 2));
 
         return NextResponse.json({
             success: true,
-            message: `Deployment info saved to ${fileName}`
+            message: `Deployment info saved to ${fileName}`,
+            mergedContracts: Object.keys(deploymentInfo.contracts || {}).length
         });
     } catch (error) {
         console.error('Error saving contract addresses:', error);

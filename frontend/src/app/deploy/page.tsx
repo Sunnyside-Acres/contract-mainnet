@@ -272,34 +272,107 @@ export default function DeployPage() {
             await new Promise(resolve => setTimeout(resolve, 1000));
             addLog("✅ All contracts configured successfully");
 
+            // Load all contracts (existing + new) for display
             addLog("\n📋 Deployment Summary:");
-            const summary = {
-                network: network,
-                chainId: network === "local" ? 31337 : 1329,
-                deployer: "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
-                contracts: newDeployedContracts.reduce((acc, contract) => {
-                    acc[contract.name] = contract.address;
-                    return acc;
-                }, {} as Record<string, string>),
-                timestamp: new Date().toISOString(),
-                rpcUrl: network === "local" ? "http://127.0.0.1:8545" : "https://evm-rpc.sei-apis.com"
-            };
-            addLog(JSON.stringify(summary, null, 2));
+            try {
+                const response = await fetch(`/api/contract-addresses?network=${network}`);
+                if (response.ok) {
+                    const allContracts = await response.json();
+                    const summary = {
+                        network: network,
+                        chainId: network === "local" ? 31337 : 1329,
+                        deployer: allContracts.deployer || "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+                        contracts: allContracts.contracts || {},
+                        timestamp: new Date().toISOString(),
+                        rpcUrl: network === "local" ? "http://127.0.0.1:8545" : "https://evm-rpc.sei-apis.com"
+                    };
+                    addLog(JSON.stringify(summary, null, 2));
 
-            // Thêm bảng địa chỉ contract
-            addLog("\n📜 Contract Addresses:");
-            const addressTable = newDeployedContracts.map(contract =>
-                `${contract.name.padEnd(30)} | ${contract.address}`
-            ).join('\n');
-            addLog(addressTable);
+                    // Thêm bảng địa chỉ contract (tất cả contracts)
+                    addLog("\n📜 All Contract Addresses:");
+                    const allContractEntries = Object.entries(allContracts.contracts || {});
+                    const addressTable = allContractEntries.map(([name, address]) =>
+                        `${name.padEnd(30)} | ${address}`
+                    ).join('\n');
+                    addLog(addressTable);
+
+                    // Hiển thị contracts mới được deploy
+                    if (newDeployedContracts.length > 0) {
+                        addLog("\n🆕 Newly Deployed Contracts:");
+                        const newAddressTable = newDeployedContracts.map(contract =>
+                            `${contract.name.padEnd(30)} | ${contract.address}`
+                        ).join('\n');
+                        addLog(newAddressTable);
+                    }
+                } else {
+                    // Fallback to old method if API fails
+                    const summary = {
+                        network: network,
+                        chainId: network === "local" ? 31337 : 1329,
+                        deployer: "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+                        contracts: newDeployedContracts.reduce((acc, contract) => {
+                            acc[contract.name] = contract.address;
+                            return acc;
+                        }, {} as Record<string, string>),
+                        timestamp: new Date().toISOString(),
+                        rpcUrl: network === "local" ? "http://127.0.0.1:8545" : "https://evm-rpc.sei-apis.com"
+                    };
+                    addLog(JSON.stringify(summary, null, 2));
+
+                    addLog("\n📜 Contract Addresses:");
+                    const addressTable = newDeployedContracts.map(contract =>
+                        `${contract.name.padEnd(30)} | ${contract.address}`
+                    ).join('\n');
+                    addLog(addressTable);
+                }
+            } catch (error) {
+                console.error('Error loading all contracts:', error);
+                // Fallback to old method
+                const summary = {
+                    network: network,
+                    chainId: network === "local" ? 31337 : 1329,
+                    deployer: "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+                    contracts: newDeployedContracts.reduce((acc, contract) => {
+                        acc[contract.name] = contract.address;
+                        return acc;
+                    }, {} as Record<string, string>),
+                    timestamp: new Date().toISOString(),
+                    rpcUrl: network === "local" ? "http://127.0.0.1:8545" : "https://evm-rpc.sei-apis.com"
+                };
+                addLog(JSON.stringify(summary, null, 2));
+
+                addLog("\n📜 Contract Addresses:");
+                const addressTable = newDeployedContracts.map(contract =>
+                    `${contract.name.padEnd(30)} | ${contract.address}`
+                ).join('\n');
+                addLog(addressTable);
+            }
 
             // Save deployment info to file
             addLog("\n💾 Saving deployment info...");
             const fileName = `contract-addresses-${network}.json`;
             try {
-                await deployService.saveDeploymentInfo(summary, network);
-                addLog(`📁 Deployment info saved to: ./deployed/${fileName}`);
-                addLog("💾 File saved successfully");
+                // For single contract deployment, script already saves to file
+                if (deployMode !== 'single') {
+                    // Use the contracts from newDeployedContracts for saving (API will merge them)
+                    const summary = {
+                        network: network,
+                        chainId: network === "local" ? 31337 : 1329,
+                        deployer: "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+                        contracts: newDeployedContracts.reduce((acc, contract) => {
+                            acc[contract.name] = contract.address;
+                            return acc;
+                        }, {} as Record<string, string>),
+                        timestamp: new Date().toISOString(),
+                        rpcUrl: network === "local" ? "http://127.0.0.1:8545" : "https://evm-rpc.sei-apis.com"
+                    };
+                    await deployService.saveDeploymentInfo(summary, network);
+                    addLog(`📁 Deployment info saved to: ./deployed/${fileName}`);
+                    addLog("💾 File saved successfully");
+                } else {
+                    addLog("📁 Deployment info already saved by script");
+                    addLog("💾 File saved successfully");
+                }
             } catch (error) {
                 addLog(`❌ Failed to save file: ${error}`);
             }

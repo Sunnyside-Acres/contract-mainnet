@@ -21,9 +21,6 @@ contract PlantProxy {
     // Mapping từ plantId đến owner
     mapping(uint256 => address) public plantOwners;
 
-    // Mapping từ owner đến danh sách plantId đã thu hoạch
-    mapping(address => uint256[]) public ownerHarvestedPlants;
-
     event ComponentUpdated(address indexed newImplementation);
 
     modifier onlyAdmin() {

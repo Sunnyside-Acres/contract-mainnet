@@ -66,8 +66,11 @@ export async function POST(request: NextRequest) {
                 rpcUrl: "https://evm-rpc.sei-apis.com"
             };
 
-            // Save deployment info
-            await saveDeploymentInfo(deploymentInfo, network);
+            // Only save deployment info for feature and all deployments
+            // Single contract deployment already saves to file in the script
+            if (deployMode !== 'single') {
+                await saveDeploymentInfo(deploymentInfo, network);
+            }
 
             return NextResponse.json({
                 success: true,
@@ -182,7 +185,37 @@ async function saveDeploymentInfo(deploymentInfo: any, network: string) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        fs.writeFileSync(filePath, JSON.stringify(deploymentInfo, null, 2));
+        // Read existing deployment info if file exists
+        let existingInfo = {
+            network: network,
+            chainId: 1329, // Sei Mainnet
+            deployer: deploymentInfo.deployer || "0x...",
+            contracts: {},
+            timestamp: new Date().toISOString(),
+            rpcUrl: "https://evm-rpc.sei-apis.com"
+        };
+
+        if (fs.existsSync(filePath)) {
+            try {
+                const fileContent = fs.readFileSync(filePath, 'utf8');
+                existingInfo = JSON.parse(fileContent);
+            } catch (error) {
+                console.warn('Error reading existing deployment info, creating new file:', error);
+            }
+        }
+
+        // Merge new contracts with existing contracts
+        const updatedInfo = {
+            ...existingInfo,
+            contracts: {
+                ...existingInfo.contracts,
+                ...deploymentInfo.contracts,
+            },
+            timestamp: new Date().toISOString(),
+            deployer: deploymentInfo.deployer || existingInfo.deployer
+        };
+
+        fs.writeFileSync(filePath, JSON.stringify(updatedInfo, null, 2));
         return true;
     } catch (error) {
         console.error('Error saving deployment info:', error);

@@ -69,8 +69,43 @@ async function main() {
     // Handle different constructor parameters based on contract type
     if (contractName.includes("Component")) {
       contract = await ContractFactory.connect(deployer).deploy();
+    } else if (contractName === "FishingLogic") {
+      // FishingLogic needs multiple proxy dependencies
+      const worldAddress = existingAddresses.World;
+      const inventoryProxyAddress = existingAddresses.InventoryProxy;
+      const itemProxyAddress = existingAddresses.ItemProxy;
+      const playerProxyAddress = existingAddresses.PlayerProxy;
+      const weatherProxyAddress = existingAddresses.WeatherProxy;
+
+      if (!worldAddress) {
+        console.log("❌ World contract not found. Please deploy World first.");
+        process.exit(1);
+      }
+
+      if (
+        !inventoryProxyAddress ||
+        !itemProxyAddress ||
+        !playerProxyAddress ||
+        !weatherProxyAddress
+      ) {
+        console.log(
+          "❌ InventoryProxy, ItemProxy, PlayerProxy, and WeatherProxy required for FishingLogic"
+        );
+        console.log(
+          "💡 Please deploy Inventory, Item, Player, and Weather features first"
+        );
+        process.exit(1);
+      }
+
+      contract = await ContractFactory.connect(deployer).deploy(
+        worldAddress,
+        inventoryProxyAddress,
+        itemProxyAddress,
+        playerProxyAddress,
+        weatherProxyAddress
+      );
     } else if (contractName.includes("Logic")) {
-      // For logic contracts, we need the world address and proxy address
+      // For other logic contracts, we need the world address and proxy address
       const worldAddress = existingAddresses.World;
       const proxyName = contractName.replace("Logic", "Proxy");
       const proxyAddress = existingAddresses[proxyName];
@@ -157,41 +192,6 @@ async function main() {
           proxyAddress
         );
       }
-    } else if (contractName === "FishingLogic") {
-      // FishingLogic needs multiple dependencies
-      const worldAddress = existingAddresses.World;
-      const inventoryProxyAddress = existingAddresses.InventoryProxy;
-      const itemProxyAddress = existingAddresses.ItemProxy;
-      const playerProxyAddress = existingAddresses.PlayerProxy;
-      const weatherProxyAddress = existingAddresses.WeatherProxy;
-
-      if (!worldAddress) {
-        console.log("❌ World contract not found. Please deploy World first.");
-        process.exit(1);
-      }
-
-      if (
-        !inventoryProxyAddress ||
-        !itemProxyAddress ||
-        !playerProxyAddress ||
-        !weatherProxyAddress
-      ) {
-        console.log(
-          "❌ InventoryProxy, ItemProxy, PlayerProxy, and WeatherProxy required for FishingLogic"
-        );
-        console.log(
-          "💡 Please deploy Inventory, Item, Player, and Weather features first"
-        );
-        process.exit(1);
-      }
-
-      contract = await ContractFactory.connect(deployer).deploy(
-        worldAddress,
-        inventoryProxyAddress,
-        itemProxyAddress,
-        playerProxyAddress,
-        weatherProxyAddress
-      );
     } else if (contractName === "NPCMarketComponent") {
       contract = await ContractFactory.connect(deployer).deploy();
     } else if (contractName === "NPCMarketProxy") {

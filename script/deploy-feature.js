@@ -10,7 +10,7 @@ async function main() {
       "❌ Vui lòng cung cấp tên feature qua environment variable: FEATURE_NAME=<FeatureName> npx hardhat run script/deploy-feature.js"
     );
     console.log(
-      "📋 Available features: Player, Item, Weather, Plot, Inventory, Plant"
+      "📋 Available features: Player, Item, Weather, Plot, Inventory, Plant, Fishing"
     );
     process.exit(1);
   }
@@ -36,6 +36,7 @@ async function main() {
     Plot: ["PlotComponent", "PlotProxy", "PlotLogic"],
     Inventory: ["InventoryComponent", "InventoryProxy", "InventoryLogic"],
     Plant: ["PlantComponent", "PlantProxy", "PlantLogic"],
+    Fishing: ["FishingLogic"],
   };
 
   const contractsToDeploy = featureContracts[featureName];
@@ -114,106 +115,137 @@ async function main() {
           componentAddress
         );
       } else if (contractName.includes("Logic")) {
-        // For logic contracts, we need World address and Proxy address
-        const proxyName = contractName.replace("Logic", "Proxy");
-        const proxyAddress = deployedContracts[proxyName];
-
-        if (!proxyAddress) {
-          console.log(
-            `❌ Proxy ${proxyName} not found. Please deploy it first.`
-          );
-          process.exit(1);
-        }
-
         // Handle different logic contracts with their specific dependencies
-        if (contractName === "PlayerLogic") {
-          contract = await ContractFactory.deploy(
-            requiredContracts.World,
-            proxyAddress
-          );
-        } else if (contractName === "ItemLogic") {
-          contract = await ContractFactory.deploy(
-            requiredContracts.World,
-            proxyAddress
-          );
-        } else if (contractName === "WeatherLogic") {
-          contract = await ContractFactory.deploy(
-            requiredContracts.World,
-            proxyAddress
-          );
-        } else if (contractName === "PlotLogic") {
-          // PlotLogic needs additional dependencies
-          const weatherProxyAddress = existingAddresses.WeatherProxy;
-          const playerProxyAddress = existingAddresses.PlayerProxy;
-
-          if (!weatherProxyAddress || !playerProxyAddress) {
-            console.log(
-              "❌ WeatherProxy and PlayerProxy required for PlotLogic"
-            );
-            console.log("💡 Please deploy Weather and Player features first");
-            process.exit(1);
-          }
-
-          contract = await ContractFactory.deploy(
-            requiredContracts.World,
-            proxyAddress,
-            weatherProxyAddress,
-            playerProxyAddress
-          );
-        } else if (contractName === "InventoryLogic") {
-          // InventoryLogic needs additional dependencies
-          const itemProxyAddress = existingAddresses.ItemProxy;
-          const playerProxyAddress = existingAddresses.PlayerProxy;
-
-          if (!itemProxyAddress || !playerProxyAddress) {
-            console.log(
-              "❌ ItemProxy and PlayerProxy required for InventoryLogic"
-            );
-            console.log("💡 Please deploy Item and Player features first");
-            process.exit(1);
-          }
-
-          contract = await ContractFactory.deploy(
-            requiredContracts.World,
-            proxyAddress,
-            itemProxyAddress,
-            playerProxyAddress
-          );
-        } else if (contractName === "PlantLogic") {
-          // PlantLogic needs multiple dependencies
-          const plotProxyAddress = existingAddresses.PlotProxy;
+        if (contractName === "FishingLogic") {
+          // FishingLogic needs multiple proxy dependencies
           const inventoryProxyAddress = existingAddresses.InventoryProxy;
-          const weatherProxyAddress = existingAddresses.WeatherProxy;
           const itemProxyAddress = existingAddresses.ItemProxy;
+          const playerProxyAddress = existingAddresses.PlayerProxy;
+          const weatherProxyAddress = existingAddresses.WeatherProxy;
 
           if (
-            !plotProxyAddress ||
             !inventoryProxyAddress ||
-            !weatherProxyAddress ||
-            !itemProxyAddress
+            !itemProxyAddress ||
+            !playerProxyAddress ||
+            !weatherProxyAddress
           ) {
             console.log(
-              "❌ PlotProxy, InventoryProxy, WeatherProxy, and ItemProxy required for PlantLogic"
+              "❌ InventoryProxy, ItemProxy, PlayerProxy, and WeatherProxy required for FishingLogic"
             );
             console.log(
-              "💡 Please deploy Plot, Inventory, Weather, and Item features first"
+              "💡 Please deploy Inventory, Item, Player, and Weather features first"
             );
             process.exit(1);
           }
 
           contract = await ContractFactory.deploy(
             requiredContracts.World,
-            proxyAddress,
-            plotProxyAddress,
             inventoryProxyAddress,
-            weatherProxyAddress,
-            itemProxyAddress
+            itemProxyAddress,
+            playerProxyAddress,
+            weatherProxyAddress
           );
         } else {
-          contract = await ContractFactory.deploy(
-            requiredContracts.World,
-            proxyAddress
-          );
+          // For other logic contracts, we need World address and Proxy address
+          const proxyName = contractName.replace("Logic", "Proxy");
+          const proxyAddress = deployedContracts[proxyName];
+
+          if (!proxyAddress) {
+            console.log(
+              `❌ Proxy ${proxyName} not found. Please deploy it first.`
+            );
+            process.exit(1);
+          }
+
+          if (contractName === "PlayerLogic") {
+            contract = await ContractFactory.deploy(
+              requiredContracts.World,
+              proxyAddress
+            );
+          } else if (contractName === "ItemLogic") {
+            contract = await ContractFactory.deploy(
+              requiredContracts.World,
+              proxyAddress
+            );
+          } else if (contractName === "WeatherLogic") {
+            contract = await ContractFactory.deploy(
+              requiredContracts.World,
+              proxyAddress
+            );
+          } else if (contractName === "PlotLogic") {
+            // PlotLogic needs additional dependencies
+            const weatherProxyAddress = existingAddresses.WeatherProxy;
+            const playerProxyAddress = existingAddresses.PlayerProxy;
+
+            if (!weatherProxyAddress || !playerProxyAddress) {
+              console.log(
+                "❌ WeatherProxy and PlayerProxy required for PlotLogic"
+              );
+              console.log("💡 Please deploy Weather and Player features first");
+              process.exit(1);
+            }
+
+            contract = await ContractFactory.deploy(
+              requiredContracts.World,
+              proxyAddress,
+              weatherProxyAddress,
+              playerProxyAddress
+            );
+          } else if (contractName === "InventoryLogic") {
+            // InventoryLogic needs additional dependencies
+            const itemProxyAddress = existingAddresses.ItemProxy;
+            const playerProxyAddress = existingAddresses.PlayerProxy;
+
+            if (!itemProxyAddress || !playerProxyAddress) {
+              console.log(
+                "❌ ItemProxy and PlayerProxy required for InventoryLogic"
+              );
+              console.log("💡 Please deploy Item and Player features first");
+              process.exit(1);
+            }
+
+            contract = await ContractFactory.deploy(
+              requiredContracts.World,
+              proxyAddress,
+              itemProxyAddress,
+              playerProxyAddress
+            );
+          } else if (contractName === "PlantLogic") {
+            // PlantLogic needs multiple dependencies
+            const plotProxyAddress = existingAddresses.PlotProxy;
+            const inventoryProxyAddress = existingAddresses.InventoryProxy;
+            const weatherProxyAddress = existingAddresses.WeatherProxy;
+            const itemProxyAddress = existingAddresses.ItemProxy;
+
+            if (
+              !plotProxyAddress ||
+              !inventoryProxyAddress ||
+              !weatherProxyAddress ||
+              !itemProxyAddress
+            ) {
+              console.log(
+                "❌ PlotProxy, InventoryProxy, WeatherProxy, and ItemProxy required for PlantLogic"
+              );
+              console.log(
+                "💡 Please deploy Plot, Inventory, Weather, and Item features first"
+              );
+              process.exit(1);
+            }
+
+            contract = await ContractFactory.deploy(
+              requiredContracts.World,
+              proxyAddress,
+              plotProxyAddress,
+              inventoryProxyAddress,
+              weatherProxyAddress,
+              itemProxyAddress
+            );
+          } else {
+            contract = await ContractFactory.deploy(
+              requiredContracts.World,
+              proxyAddress
+            );
+          }
         }
       }
 

@@ -248,7 +248,7 @@ contract FishingLogic {
         if (block.timestamp >= nextFishingTime) {
             return 0;
         }
-        return nextFishingTime - block.timestamp;
+        return nextFishingTime;
     }
 
     /**

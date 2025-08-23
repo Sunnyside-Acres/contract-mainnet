@@ -8,7 +8,6 @@ struct Player {
     uint256 xp;
     uint16 mana;
     uint16 maxMana;
-    
     uint256 sunlight;
     uint256 sunny;
     uint256 lastLogin;

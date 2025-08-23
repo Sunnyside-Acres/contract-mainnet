@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { useContractAddresses } from '@/hooks/useContractAddresses'
 import { useWallet } from '@/context/WalletContext'
 import { NetworkSelector } from '@/components/NetworkSelector'
+import { formatShortAddress } from '@/utils/address'
 
 export default function Home() {
   const [contract, setContract] = useState<ethers.Contract | null>(null)
@@ -166,7 +167,7 @@ export default function Home() {
               <div className="text-right">
                 <div className="text-sm font-medium text-indigo-900 dark:text-indigo-100">Connected</div>
                 <div className="text-xs text-indigo-700 dark:text-indigo-300 font-mono">
-                  {account.slice(0, 6)}...{account.slice(-4)}
+                  {formatShortAddress(account)}
                 </div>
               </div>
             )}
@@ -299,7 +300,7 @@ export default function Home() {
                           </div>
                           {contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] && (
                             <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
-                              {contractAddresses.contracts[contractName as keyof typeof contractAddresses.contracts].slice(-5)}
+                              {formatShortAddress(contractAddresses.contracts[contractName as keyof typeof contractAddresses.contracts]).slice(-5)}
                             </span>
                           )}
                           <span className="truncate text-xs">

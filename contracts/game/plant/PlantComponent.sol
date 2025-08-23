@@ -150,17 +150,18 @@ contract PlantComponent {
             "Plant not fully grown"
         );
 
-        // Lưu owner và plotId trước khi xóa
+        // Lưu thông tin cần thiết trước khi xóa
         address owner = plantOwners[_plantId];
         uint256 plotId = plant.plotId;
         uint256 qualityModifier = plant.qualityModifier;
 
-        // Xóa các mapping
+        // Xóa khỏi danh sách owner trước
+        removePlantFromOwnerList(owner, _plantId);
+
+        // Sau đó xóa các mapping
         delete plantOwners[_plantId];
         delete plants[_plantId];
         delete plotPlants[plotId];
-
-        removePlantFromOwnerList(owner, _plantId);
 
         emit PlantHarvested(_plantId);
         return qualityModifier;
@@ -168,21 +169,18 @@ contract PlantComponent {
 
     function removePlantFromOwnerList(address owner, uint256 plantId) internal {
         uint256[] storage ownerPlantList = ownerPlants[owner];
-        for (uint256 i = 0; i < ownerPlantList.length; i++) {
-            if (ownerPlantList[i] == plantId) {
-                // Kiểm tra index hợp lệ
-                require(i < ownerPlantList.length, "Invalid index");
+        uint256 length = ownerPlantList.length;
 
-                // Di chuyển phần tử cuối lên vị trí hiện tại
-                if (i < ownerPlantList.length - 1) {
-                    ownerPlantList[i] = ownerPlantList[
-                        ownerPlantList.length - 1
-                    ];
+        for (uint256 i = 0; i < length; i++) {
+            if (ownerPlantList[i] == plantId) {
+                // Di chuyển phần tử cuối lên vị trí hiện tại (nếu không phải phần tử cuối)
+                if (i < length - 1) {
+                    ownerPlantList[i] = ownerPlantList[length - 1];
                 }
 
                 // Xóa phần tử cuối
                 ownerPlantList.pop();
-                break;
+                return; // Thoát ngay khi tìm thấy và xóa
             }
         }
     }
@@ -213,14 +211,14 @@ contract PlantComponent {
         uint256[] memory allPlants = ownerPlants[owner];
         uint256 count = 0;
 
-        // Đếm số lượng cây hợp lệ (chưa thu hoạch và chưa hết hạn)
+        // Đếm số lượng cây hợp lệ (còn tồn tại trong mapping và chưa thu hoạch)
         for (uint256 i = 0; i < allPlants.length; i++) {
             uint256 plantId = allPlants[i];
             if (
                 plantOwners[plantId] == owner && // Kiểm tra quyền sở hữu
-                !plants[plantId].isHarvested
+                plants[plantId].id != 0 && // Kiểm tra plant còn tồn tại
+                !plants[plantId].isHarvested // Kiểm tra chưa thu hoạch
             ) {
-                // Chưa hết hạn
                 count++;
             }
         }
@@ -232,10 +230,12 @@ contract PlantComponent {
         // Lấy thông tin các cây hợp lệ
         for (uint256 i = 0; i < allPlants.length; i++) {
             uint256 plantId = allPlants[i];
-            if (plantOwners[plantId] == owner && !plants[plantId].isHarvested) {
-                // Cập nhật trạng thái tăng trưởng
+            if (
+                plantOwners[plantId] == owner &&
+                plants[plantId].id != 0 &&
+                !plants[plantId].isHarvested
+            ) {
                 Plant memory plant = plants[plantId];
-
                 result[index] = plant;
                 index++;
             }
@@ -248,5 +248,25 @@ contract PlantComponent {
         uint256 plantId
     ) external view onlyAuthorized returns (address) {
         return plantOwners[plantId];
+    }
+
+    // Hàm dọn dẹp danh sách owner plants (loại bỏ các plant đã bị xóa)
+    function cleanupOwnerPlants(address owner) external onlyAuthorized {
+        uint256[] storage ownerPlantList = ownerPlants[owner];
+        uint256 length = ownerPlantList.length;
+
+        for (uint256 i = length; i > 0; i--) {
+            uint256 plantId = ownerPlantList[i - 1];
+            // Kiểm tra xem plant còn tồn tại không
+            if (plants[plantId].id == 0 || plantOwners[plantId] != owner) {
+                // Di chuyển phần tử cuối lên vị trí hiện tại (nếu không phải phần tử cuối)
+                if (i - 1 < length - 1) {
+                    ownerPlantList[i - 1] = ownerPlantList[length - 1];
+                }
+                // Xóa phần tử cuối
+                ownerPlantList.pop();
+                length--;
+            }
+        }
     }
 }

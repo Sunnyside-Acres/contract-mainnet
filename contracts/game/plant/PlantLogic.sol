@@ -143,6 +143,8 @@ contract PlantLogic {
             plant.itemId
         );
 
+        plantProxy.plantHarvest(plantId);
+
         require(drops.length > 0, "No item drops configured");
 
         uint256 qualityMultiplier = plant.qualityModifier;

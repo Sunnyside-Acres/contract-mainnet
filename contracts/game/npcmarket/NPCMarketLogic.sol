@@ -171,7 +171,7 @@ contract NPCMarketLogic {
         // Check if player exists and has enough currency
         Player memory playerData = playerProxy.getPlayer(player);
         require(playerData.level > 0, "Player not initialized");
-        require(playerData.sunny >= totalPrice, "Not enough currency");
+        require(playerData.sunlight >= totalPrice, "Not enough currency");
 
         // Validate item exists and is not banned
         ItemStructs.Item memory itemData = itemProxy.getItem(_itemId);
@@ -491,7 +491,7 @@ contract NPCMarketLogic {
 
             // Check currency
             uint256 totalPrice = marketItem.pricePerUnit * _quantity;
-            if (playerData.sunny < totalPrice) {
+            if (playerData.sunlight < totalPrice) {
                 return (false, "Not enough currency");
             }
 
