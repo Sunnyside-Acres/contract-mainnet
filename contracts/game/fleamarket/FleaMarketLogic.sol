@@ -1089,4 +1089,45 @@ contract FleaMarketLogic {
         bestPrice = bestPrice == type(uint256).max ? 0 : bestPrice;
         averagePrice = totalQuantity > 0 ? totalPrice / totalQuantity : 0;
     }
+
+    /**
+     * @dev Lấy danh sách chi tiết tất cả listing của một player đối với một item cụ thể
+     * @param _player Địa chỉ người chơi
+     * @param _itemId ID của item
+     * @return playerItemListings Mảng các MarketListing của player cho item này
+     */
+    function getPlayerItemListings(
+        address _player,
+        uint256 _itemId
+    ) external view returns (MarketListing[] memory playerItemListings) {
+        MarketListing[] memory allPlayerListings = fleaMarketProxy
+            .getListingsBySeller(_player);
+
+        // Count listings for this specific item
+        uint256 count = 0;
+        for (uint256 i = 0; i < allPlayerListings.length; i++) {
+            if (allPlayerListings[i].itemId == _itemId) {
+                count++;
+            }
+        }
+
+        // Handle edge cases
+        if (count == 0) {
+            playerItemListings = new MarketListing[](0);
+            return playerItemListings;
+        }
+
+        // Create filtered array
+        playerItemListings = new MarketListing[](count);
+        uint256 resultIndex = 0;
+
+        for (uint256 i = 0; i < allPlayerListings.length; i++) {
+            if (allPlayerListings[i].itemId == _itemId) {
+                playerItemListings[resultIndex] = allPlayerListings[i];
+                resultIndex++;
+            }
+        }
+
+        return playerItemListings;
+    }
 }

@@ -33,7 +33,7 @@
     "TaskLogic": "0x27e754C003BDF2167b47D0E1f714Ea5C8a71f354",
     "TaskProxy": "0x09eCf6819F832255BA559bF6DF608A97329f3F34",
     "FleaMarketComponent": "0x6092355ACb5c79EB263A5291186A97662b6fc805",
-    "FleaMarketLogic": "0x173cC347BbA8deDa3dB9EdcF973A68183357407E",
+    "FleaMarketLogic": "0xB9214Cc559B8f3c7c9ba635C724776C5cfB46C83",
     "FleaMarketProxy": "0x0a6Ff2a5c72c6f61AB619862Ae5782b3780e93AD",
     "CraftingComponent": "0xfCcb8F5e503b9e62954981C5551f7C07162Dbbb1",
     "CraftingLogic": "0xd46a0F1dA054a72E8f7C111ff9c87B3C4A9Ddcf1",
@@ -44,6 +44,6 @@
   },
   "timestamp": "2025-08-25T03:41:46.467Z",
   "rpcUrl": "Mainnet RPC",
-  "lastUpdated": "2025-08-25T08:39:21.321Z",
+  "lastUpdated": "2025-08-25T09:23:20.731Z",
   "fleamarketLogicDeployed": true
 }
