@@ -26,16 +26,38 @@ contract WeatherComponent {
         _;
     }
 
+    modifier onlyAdmin() {
+        require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
+        _;
+    }
+
     event WeatherUpdated(
         WeatherStructs.WeatherState newState,
         uint256 startTime,
         uint256 duration
     );
 
-    function random(uint256 max) private view returns (uint256) {
+    event WeatherInitialized(
+        WeatherStructs.WeatherState initialState,
+        uint256 startTime,
+        uint256 duration
+    );
+
+    // Sử dụng nonce để tăng tính ngẫu nhiên
+    uint256 private nonce = 0;
+
+    function random(uint256 max) private returns (uint256) {
+        nonce++;
         return
             uint256(
-                keccak256(abi.encodePacked(block.timestamp, block.number))
+                keccak256(
+                    abi.encodePacked(
+                        block.timestamp,
+                        block.number,
+                        nonce,
+                        msg.sender
+                    )
+                )
             ) % max;
     }
 
@@ -44,7 +66,7 @@ contract WeatherComponent {
             block.timestamp >=
             currentWeather.startTime + currentWeather.duration
         ) {
-            uint256 randomState = random(5);
+            uint256 randomState = random(4); // Sửa từ 5 thành 4
             WeatherStructs.WeatherState newState = WeatherStructs.WeatherState(
                 randomState
             );
@@ -79,5 +101,12 @@ contract WeatherComponent {
         returns (WeatherStructs.WeatherState)
     {
         return currentWeather.state;
+    }
+
+    // Hàm để kiểm tra xem thời tiết có cần cập nhật không
+    function shouldUpdateWeather() external view returns (bool) {
+        return
+            block.timestamp >=
+            currentWeather.startTime + currentWeather.duration;
     }
 }

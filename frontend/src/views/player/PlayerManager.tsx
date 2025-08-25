@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search } from "@/components/Search"
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, MoreHorizontal, Eye, ChevronsUpDown, Settings, Zap, Shield, Heart, Star, Gauge, RefreshCw, X, User, Crown, Coins, Sun, Package } from "lucide-react"
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, MoreHorizontal, Eye, ChevronsUpDown, Settings, Zap, Shield, Heart, Star, Gauge, RefreshCw, X, User, Crown, Coins, Sun, Package, Copy } from "lucide-react"
 import { usePlayerContext } from "@/context/PlayerContext"
 import { Player } from "@/types/player.type"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -56,6 +56,7 @@ export function PlayerManager({ signer }: PlayerManagerProps) {
     const [selectedRows, setSelectedRows] = React.useState<Player[]>([])
     const [searchValue, setSearchValue] = React.useState("")
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
+    const [walletAddress, setWalletAddress] = React.useState<string>("")
     const [minLevel, setMinLevel] = React.useState<string>("")
     const [maxLevel, setMaxLevel] = React.useState<string>("")
     const [minXp, setMinXp] = React.useState<string>("")
@@ -66,6 +67,24 @@ export function PlayerManager({ signer }: PlayerManagerProps) {
     const [maxSunny, setMaxSunny] = React.useState<string>("")
     const { players, pagination, setPagination, filters, setFilters, refreshPlayers, isLoading, error, contract } = usePlayerContext()
     const router = useRouter()
+
+    // Lấy wallet address từ signer
+    React.useEffect(() => {
+        const getWalletAddress = async () => {
+            if (signer) {
+                try {
+                    const address = await signer.getAddress()
+                    setWalletAddress(address)
+                } catch (error) {
+                    console.error('Lỗi lấy wallet address:', error)
+                    setWalletAddress("")
+                }
+            } else {
+                setWalletAddress("")
+            }
+        }
+        getWalletAddress()
+    }, [signer])
 
     // =======================
     // 2. Filter & Bulk Actions
@@ -169,6 +188,27 @@ export function PlayerManager({ signer }: PlayerManagerProps) {
             console.error("Failed to delete selected players:", error);
         }
     };
+
+    const handleCopyWalletAddress = async () => {
+        if (walletAddress) {
+            try {
+                await navigator.clipboard.writeText(walletAddress)
+                // Có thể thêm toast notification ở đây nếu muốn
+                console.log('Wallet address copied to clipboard')
+            } catch (error) {
+                console.error('Lỗi copy wallet address:', error)
+            }
+        }
+    }
+
+    const handleCopyPlayerAddress = async (address: string) => {
+        try {
+            await navigator.clipboard.writeText(address)
+            console.log('Player address copied to clipboard')
+        } catch (error) {
+            console.error('Lỗi copy player address:', error)
+        }
+    }
 
     const handleCreatePlayer = async () => {
         try {
@@ -316,11 +356,20 @@ export function PlayerManager({ signer }: PlayerManagerProps) {
             accessorKey: "playerAddress",
             header: "Address",
             cell: ({ row }) => {
+                const address = row.getValue("playerAddress") as string
                 return (
-                    <div className="w-[120px]">
+                    <div className="w-[140px] flex items-center gap-2">
                         <Badge variant="outline" className="font-mono text-xs">
-                            {formatAddress(row.getValue("playerAddress"))}
+                            {formatAddress(address)}
                         </Badge>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopyPlayerAddress(address)}
+                            className="h-6 w-6 p-0 hover:bg-muted"
+                        >
+                            <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </Button>
                     </div>
                 )
             },
@@ -720,6 +769,17 @@ export function PlayerManager({ signer }: PlayerManagerProps) {
                             </Popover>
                         </div>
                         <div className="flex items-center gap-2">
+                            {walletAddress && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleCopyWalletAddress}
+                                    className="font-mono text-xs"
+                                >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    {`${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+                                </Button>
+                            )}
                             {selectedRows.length > 0 && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>

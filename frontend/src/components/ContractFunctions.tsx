@@ -10,7 +10,7 @@ interface Props {
     contract?: ethers.Contract
 }
 
-export default function ContractFunctions({ contract }: Props) {
+export function ContractFunctions({ contract }: Props) {
     const [results, setResults] = useState<Record<string, any>>({})
     const [isLoading, setIsLoading] = useState<Record<string, boolean>>({})
     const [showClearNotification, setShowClearNotification] = useState(false)
@@ -731,3 +731,5 @@ export default function ContractFunctions({ contract }: Props) {
         </div>
     )
 }
+
+export default ContractFunctions

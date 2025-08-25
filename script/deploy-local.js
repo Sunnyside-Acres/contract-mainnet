@@ -181,13 +181,6 @@ async function main() {
   const inventoryLogicAddress = await inventoryLogic.getAddress();
   console.log("✅ InventoryLogic deployed to:", inventoryLogicAddress);
 
-  // Register InventoryLogic trong World
-  const registerInventoryLogicTx = await world.registerLogic(
-    inventoryLogicAddress
-  );
-  await registerInventoryLogicTx.wait();
-  console.log("✅ InventoryLogic registered in World");
-
   // 17. Deploy PlantComponent
   console.log("\n📦 Deploying PlantComponent...");
   const PlantComponent = await ethers.getContractFactory("PlantComponent");
@@ -273,7 +266,188 @@ async function main() {
   const npcMarketLogicAddress = await npcMarketLogic.getAddress();
   console.log("✅ NPCMarketLogic deployed to:", npcMarketLogicAddress);
 
-  // 8. Cấu hình World contract
+  // === DEPLOY CÁC CONTRACT MỚI ===
+
+  // 24. Deploy GachaComponent
+  console.log("\n📦 Deploying GachaComponent...");
+  const GachaComponent = await ethers.getContractFactory("GachaComponent");
+  const gachaComponent = await GachaComponent.deploy();
+  await gachaComponent.waitForDeployment();
+  const gachaComponentAddress = await gachaComponent.getAddress();
+  console.log("✅ GachaComponent deployed to:", gachaComponentAddress);
+
+  // 25. Deploy GachaProxy
+  console.log("\n📦 Deploying GachaProxy...");
+  const GachaProxy = await ethers.getContractFactory("GachaProxy");
+  const gachaProxy = await GachaProxy.deploy(
+    worldAddress,
+    deployer.address,
+    gachaComponentAddress // Implementation address
+  );
+  await gachaProxy.waitForDeployment();
+  const gachaProxyAddress = await gachaProxy.getAddress();
+  console.log("✅ GachaProxy deployed to:", gachaProxyAddress);
+
+  // 26. Deploy GachaLogic
+  console.log("\n📦 Deploying GachaLogic...");
+  const GachaLogic = await ethers.getContractFactory("GachaLogic");
+  const gachaLogic = await GachaLogic.deploy(
+    worldAddress,
+    gachaProxyAddress,
+    playerProxyAddress,
+    inventoryProxyAddress,
+    itemProxyAddress,
+    deployer.address // deployerWallet
+  );
+  await gachaLogic.waitForDeployment();
+  const gachaLogicAddress = await gachaLogic.getAddress();
+  console.log("✅ GachaLogic deployed to:", gachaLogicAddress);
+
+  // 27. Deploy TaskComponent
+  console.log("\n📦 Deploying TaskComponent...");
+  const TaskComponent = await ethers.getContractFactory("TaskComponent");
+  const taskComponent = await TaskComponent.deploy();
+  await taskComponent.waitForDeployment();
+  const taskComponentAddress = await taskComponent.getAddress();
+  console.log("✅ TaskComponent deployed to:", taskComponentAddress);
+
+  // 28. Deploy TaskProxy
+  console.log("\n📦 Deploying TaskProxy...");
+  const TaskProxy = await ethers.getContractFactory("TaskProxy");
+  const taskProxy = await TaskProxy.deploy(
+    worldAddress,
+    deployer.address,
+    taskComponentAddress // Implementation address
+  );
+  await taskProxy.waitForDeployment();
+  const taskProxyAddress = await taskProxy.getAddress();
+  console.log("✅ TaskProxy deployed to:", taskProxyAddress);
+
+  // 29. Deploy TaskLogic
+  console.log("\n📦 Deploying TaskLogic...");
+  const TaskLogic = await ethers.getContractFactory("TaskLogic");
+  const taskLogic = await TaskLogic.deploy(
+    worldAddress,
+    taskProxyAddress,
+    playerProxyAddress,
+    itemProxyAddress,
+    inventoryProxyAddress
+  );
+  await taskLogic.waitForDeployment();
+  const taskLogicAddress = await taskLogic.getAddress();
+  console.log("✅ TaskLogic deployed to:", taskLogicAddress);
+
+  // 30. Deploy FleaMarketComponent
+  console.log("\n📦 Deploying FleaMarketComponent...");
+  const FleaMarketComponent = await ethers.getContractFactory(
+    "FleaMarketComponent"
+  );
+  const fleaMarketComponent = await FleaMarketComponent.deploy();
+  await fleaMarketComponent.waitForDeployment();
+  const fleaMarketComponentAddress = await fleaMarketComponent.getAddress();
+  console.log(
+    "✅ FleaMarketComponent deployed to:",
+    fleaMarketComponentAddress
+  );
+
+  // 31. Deploy FleaMarketProxy
+  console.log("\n📦 Deploying FleaMarketProxy...");
+  const FleaMarketProxy = await ethers.getContractFactory("FleaMarketProxy");
+  const fleaMarketProxy = await FleaMarketProxy.deploy(
+    worldAddress,
+    deployer.address,
+    fleaMarketComponentAddress // Implementation address
+  );
+  await fleaMarketProxy.waitForDeployment();
+  const fleaMarketProxyAddress = await fleaMarketProxy.getAddress();
+  console.log("✅ FleaMarketProxy deployed to:", fleaMarketProxyAddress);
+
+  // 32. Deploy FleaMarketLogic
+  console.log("\n📦 Deploying FleaMarketLogic...");
+  const FleaMarketLogic = await ethers.getContractFactory("FleaMarketLogic");
+  const fleaMarketLogic = await FleaMarketLogic.deploy(
+    worldAddress,
+    fleaMarketProxyAddress,
+    itemProxyAddress,
+    inventoryProxyAddress,
+    playerProxyAddress
+  );
+  await fleaMarketLogic.waitForDeployment();
+  const fleaMarketLogicAddress = await fleaMarketLogic.getAddress();
+  console.log("✅ FleaMarketLogic deployed to:", fleaMarketLogicAddress);
+
+  // 33. Deploy CraftingComponent
+  console.log("\n📦 Deploying CraftingComponent...");
+  const CraftingComponent = await ethers.getContractFactory(
+    "CraftingComponent"
+  );
+  const craftingComponent = await CraftingComponent.deploy();
+  await craftingComponent.waitForDeployment();
+  const craftingComponentAddress = await craftingComponent.getAddress();
+  console.log("✅ CraftingComponent deployed to:", craftingComponentAddress);
+
+  // 34. Deploy CraftingProxy
+  console.log("\n📦 Deploying CraftingProxy...");
+  const CraftingProxy = await ethers.getContractFactory("CraftingProxy");
+  const craftingProxy = await CraftingProxy.deploy(
+    worldAddress,
+    deployer.address,
+    craftingComponentAddress // Implementation address
+  );
+  await craftingProxy.waitForDeployment();
+  const craftingProxyAddress = await craftingProxy.getAddress();
+  console.log("✅ CraftingProxy deployed to:", craftingProxyAddress);
+
+  // 35. Deploy CraftingLogic
+  console.log("\n📦 Deploying CraftingLogic...");
+  const CraftingLogic = await ethers.getContractFactory("CraftingLogic");
+  const craftingLogic = await CraftingLogic.deploy(
+    worldAddress,
+    craftingProxyAddress,
+    inventoryProxyAddress,
+    itemProxyAddress,
+    playerProxyAddress
+  );
+
+  await craftingLogic.waitForDeployment();
+  const craftingLogicAddress = await craftingLogic.getAddress();
+  console.log("✅ CraftingLogic deployed to:", craftingLogicAddress);
+
+  // 36. Deploy RaisingComponent
+  console.log("\n📦 Deploying RaisingComponent...");
+  const RaisingComponent = await ethers.getContractFactory("RaisingComponent");
+  const raisingComponent = await RaisingComponent.deploy();
+  await raisingComponent.waitForDeployment();
+  const raisingComponentAddress = await raisingComponent.getAddress();
+  console.log("✅ RaisingComponent deployed to:", raisingComponentAddress);
+
+  // 37. Deploy RaisingProxy
+  console.log("\n📦 Deploying RaisingProxy...");
+  const RaisingProxy = await ethers.getContractFactory("RaisingProxy");
+  const raisingProxy = await RaisingProxy.deploy(
+    worldAddress,
+    deployer.address,
+    raisingComponentAddress // Implementation address
+  );
+  await raisingProxy.waitForDeployment();
+  const raisingProxyAddress = await raisingProxy.getAddress();
+  console.log("✅ RaisingProxy deployed to:", raisingProxyAddress);
+
+  // 38. Deploy RaisingLogic
+  console.log("\n📦 Deploying RaisingLogic...");
+  const RaisingLogic = await ethers.getContractFactory("RaisingLogic");
+  const raisingLogic = await RaisingLogic.deploy(
+    worldAddress,
+    raisingProxyAddress,
+    itemProxyAddress,
+    inventoryProxyAddress,
+    playerProxyAddress
+  );
+  await raisingLogic.waitForDeployment();
+  const raisingLogicAddress = await raisingLogic.getAddress();
+  console.log("✅ RaisingLogic deployed to:", raisingLogicAddress);
+
+  // === CẤU HÌNH WORLD CONTRACT ===
   console.log("\n⚙️ Configuring World contract...");
 
   // Register PlayerLogic trong World
@@ -313,7 +487,43 @@ async function main() {
   await registerNPCMarketLogicTx.wait();
   console.log("✅ NPCMarketLogic registered in World");
 
-  // 9. Lưu thông tin deploy
+  // Register InventoryLogic trong World
+  const registerInventoryLogicTx = await world.registerLogic(
+    inventoryLogicAddress
+  );
+  await registerInventoryLogicTx.wait();
+  console.log("✅ InventoryLogic registered in World");
+
+  // Register GachaLogic trong World
+  const registerGachaLogicTx = await world.registerLogic(gachaLogicAddress);
+  await registerGachaLogicTx.wait();
+  console.log("✅ GachaLogic registered in World");
+
+  // Register TaskLogic trong World
+  const registerTaskLogicTx = await world.registerLogic(taskLogicAddress);
+  await registerTaskLogicTx.wait();
+  console.log("✅ TaskLogic registered in World");
+
+  // Register FleaMarketLogic trong World
+  const registerFleaMarketLogicTx = await world.registerLogic(
+    fleaMarketLogicAddress
+  );
+  await registerFleaMarketLogicTx.wait();
+  console.log("✅ FleaMarketLogic registered in World");
+
+  // Register CraftingLogic trong World
+  const registerCraftingLogicTx = await world.registerLogic(
+    craftingLogicAddress
+  );
+  await registerCraftingLogicTx.wait();
+  console.log("✅ CraftingLogic registered in World");
+
+  // Register RaisingLogic trong World
+  const registerRaisingLogicTx = await world.registerLogic(raisingLogicAddress);
+  await registerRaisingLogicTx.wait();
+  console.log("✅ RaisingLogic registered in World");
+
+  // === LƯU THÔNG TIN DEPLOY ===
   const deploymentInfo = {
     network: "local",
     chainId: Number(network.chainId),
@@ -342,6 +552,22 @@ async function main() {
       NPCMarketComponent: npcMarketComponentAddress,
       NPCMarketLogic: npcMarketLogicAddress,
       NPCMarketProxy: npcMarketProxyAddress,
+      // Contract mới
+      GachaComponent: gachaComponentAddress,
+      GachaLogic: gachaLogicAddress,
+      GachaProxy: gachaProxyAddress,
+      TaskComponent: taskComponentAddress,
+      TaskLogic: taskLogicAddress,
+      TaskProxy: taskProxyAddress,
+      FleaMarketComponent: fleaMarketComponentAddress,
+      FleaMarketLogic: fleaMarketLogicAddress,
+      FleaMarketProxy: fleaMarketProxyAddress,
+      CraftingComponent: craftingComponentAddress,
+      CraftingLogic: craftingLogicAddress,
+      CraftingProxy: craftingProxyAddress,
+      RaisingComponent: raisingComponentAddress,
+      RaisingLogic: raisingLogicAddress,
+      RaisingProxy: raisingProxyAddress,
     },
     timestamp: new Date().toISOString(),
     rpcUrl: "http://127.0.0.1:8545",
@@ -366,6 +592,10 @@ async function main() {
   console.log("\n🎉 Deploy lên Local Network hoàn tất thành công!");
   console.log("🔗 Để test, hãy chạy: npx hardhat node");
   console.log("🌐 Frontend sẽ tự động load contract addresses từ file local");
+  console.log("\n📊 Tổng số contract đã deploy: 38 contracts");
+  console.log(
+    "✨ Bao gồm 5 hệ thống mới: Gacha, Task, FleaMarket, Crafting, Raising"
+  );
 }
 
 main()

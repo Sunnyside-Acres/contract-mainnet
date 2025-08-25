@@ -39,6 +39,25 @@ interface ContractAddresses {
         PlantComponent: string
         PlantLogic: string
         PlantProxy: string
+        FishingLogic: string
+        NPCMarketComponent: string
+        NPCMarketLogic: string
+        NPCMarketProxy: string
+        GachaComponent: string
+        GachaLogic: string
+        GachaProxy: string
+        TaskComponent: string
+        TaskLogic: string
+        TaskProxy: string
+        FleaMarketComponent: string
+        FleaMarketLogic: string
+        FleaMarketProxy: string
+        CraftingComponent: string
+        CraftingLogic: string
+        CraftingProxy: string
+        RaisingComponent: string
+        RaisingLogic: string
+        RaisingProxy: string
     }
     timestamp: string
     rpcUrl?: string
@@ -109,7 +128,26 @@ export default function ContractManager({ provider, signer, contractAddresses, o
             [contractAddresses?.contracts.InventoryProxy || '']: 'InventoryProxy',
             [contractAddresses?.contracts.PlantComponent || '']: 'PlantComponent',
             [contractAddresses?.contracts.PlantLogic || '']: 'PlantLogic',
-            [contractAddresses?.contracts.PlantProxy || '']: 'PlantProxy'
+            [contractAddresses?.contracts.PlantProxy || '']: 'PlantProxy',
+            [contractAddresses?.contracts.FishingLogic || '']: 'FishingLogic',
+            [contractAddresses?.contracts.NPCMarketComponent || '']: 'NPCMarketComponent',
+            [contractAddresses?.contracts.NPCMarketLogic || '']: 'NPCMarketLogic',
+            [contractAddresses?.contracts.NPCMarketProxy || '']: 'NPCMarketProxy',
+            [contractAddresses?.contracts.GachaComponent || '']: 'GachaComponent',
+            [contractAddresses?.contracts.GachaLogic || '']: 'GachaLogic',
+            [contractAddresses?.contracts.GachaProxy || '']: 'GachaProxy',
+            [contractAddresses?.contracts.TaskComponent || '']: 'TaskComponent',
+            [contractAddresses?.contracts.TaskLogic || '']: 'TaskLogic',
+            [contractAddresses?.contracts.TaskProxy || '']: 'TaskProxy',
+            [contractAddresses?.contracts.FleaMarketComponent || '']: 'FleaMarketComponent',
+            [contractAddresses?.contracts.FleaMarketLogic || '']: 'FleaMarketLogic',
+            [contractAddresses?.contracts.FleaMarketProxy || '']: 'FleaMarketProxy',
+            [contractAddresses?.contracts.CraftingComponent || '']: 'CraftingComponent',
+            [contractAddresses?.contracts.CraftingLogic || '']: 'CraftingLogic',
+            [contractAddresses?.contracts.CraftingProxy || '']: 'CraftingProxy',
+            [contractAddresses?.contracts.RaisingComponent || '']: 'RaisingComponent',
+            [contractAddresses?.contracts.RaisingLogic || '']: 'RaisingLogic',
+            [contractAddresses?.contracts.RaisingProxy || '']: 'RaisingProxy'
         }
 
         const contractName = contractMapping[contractAddress]
@@ -1053,6 +1091,381 @@ export default function ContractManager({ provider, signer, contractAddresses, o
                                                     <h4 className="text-sm font-medium truncate">Plant Component Contract</h4>
                                                     <p className="text-xs text-muted-foreground font-mono truncate">
                                                         {formatAddress(contractAddresses.contracts.PlantComponent)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Component
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Gacha Logic Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.GachaLogic)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Gacha Logic Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.GachaLogic)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                {isLoading && contractAddress === contractAddresses.contracts.GachaLogic ? 'Loading...' : 'Logic'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Gacha Proxy Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.GachaProxy)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Gacha Proxy Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.GachaProxy)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Proxy
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Gacha Component Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.GachaComponent)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Gacha Component Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.GachaComponent)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Component
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Task Logic Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.TaskLogic)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Task Logic Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.TaskLogic)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                {isLoading && contractAddress === contractAddresses.contracts.TaskLogic ? 'Loading...' : 'Logic'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Task Proxy Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.TaskProxy)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Task Proxy Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.TaskProxy)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Proxy
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Task Component Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.TaskComponent)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Task Component Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.TaskComponent)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Component
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* FleaMarket Logic Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.FleaMarketLogic)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m6 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">FleaMarket Logic Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.FleaMarketLogic)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                {isLoading && contractAddress === contractAddresses.contracts.FleaMarketLogic ? 'Loading...' : 'Logic'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* FleaMarket Proxy Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.FleaMarketProxy)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">FleaMarket Proxy Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.FleaMarketProxy)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Proxy
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* FleaMarket Component Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.FleaMarketComponent)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">FleaMarket Component Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.FleaMarketComponent)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Component
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Crafting Logic Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.CraftingLogic)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Crafting Logic Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.CraftingLogic)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                {isLoading && contractAddress === contractAddresses.contracts.CraftingLogic ? 'Loading...' : 'Logic'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Crafting Proxy Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.CraftingProxy)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Crafting Proxy Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.CraftingProxy)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Proxy
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Crafting Component Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.CraftingComponent)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Crafting Component Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.CraftingComponent)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Component
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Raising Logic Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.RaisingLogic)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Raising Logic Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.RaisingLogic)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                {isLoading && contractAddress === contractAddresses.contracts.RaisingLogic ? 'Loading...' : 'Logic'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Raising Proxy Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.RaisingProxy)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Raising Proxy Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.RaisingProxy)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                                Proxy
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Raising Component Contract */}
+                                    <div
+                                        className="group relative border rounded-lg p-3 hover:bg-accent transition-colors cursor-pointer"
+                                        onClick={() => handleDeployedContractSelect(contractAddresses.contracts.RaisingComponent)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+                                                    <svg className="h-3 w-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium truncate">Raising Component Contract</h4>
+                                                    <p className="text-xs text-muted-foreground font-mono truncate">
+                                                        {formatAddress(contractAddresses.contracts.RaisingComponent)}
                                                     </p>
                                                 </div>
                                             </div>

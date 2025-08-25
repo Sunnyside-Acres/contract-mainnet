@@ -11,5 +11,12 @@ interface IWeatherComponent {
         view
         returns (WeatherStructs.Weather memory);
 
-    function getCurrentWeatherState() external  view returns (WeatherStructs.WeatherState);
+    function getCurrentWeatherState()
+        external
+        view
+        returns (WeatherStructs.WeatherState);
+
+    function initializeWeather() external;
+
+    function shouldUpdateWeather() external view returns (bool);
 }

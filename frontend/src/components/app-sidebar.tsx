@@ -16,7 +16,8 @@ import {
   Upload,
   Tractor,
   Map,
-  Store
+  Store,
+  Hammer
 } from "lucide-react"
 
 import {
@@ -35,6 +36,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useWallet } from "@/context/WalletContext"
+import { WalletSelectorCompact } from "@/components/WalletSelectorCompact"
 
 // Navigation data
 const navigationData = {
@@ -85,6 +87,16 @@ const navigationData = {
           title: "NPC Market Items",
           url: "/npcmarket/items",
           icon: Package,
+        },
+        {
+          title: "Flea Market",
+          url: "/fleamarket",
+          icon: Store,
+        },
+        {
+          title: "Crafting",
+          url: "/crafting",
+          icon: Hammer,
         },
       ],
     },
@@ -281,69 +293,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
         <SidebarGroup className="mt-auto">
           <Card className="mx-3 mb-4">
             <CardContent className="p-3">
-              {!signer ? (
-                <div className="space-y-2">
-                  {!showNetworkOptions ? (
-                    <Button
-                      onClick={() => setShowNetworkOptions(true)}
-                      disabled={isConnecting}
-                      className="w-full text-xs"
-                      size="sm"
-                    >
-                      <Wallet className="mr-2 h-3 w-3" />
-                      Kết nối Ví
-                    </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      <Button
-                        onClick={() => connectWallet('metamask')}
-                        disabled={isConnecting}
-                        className="w-full text-xs"
-                        size="sm"
-                      >
-                        <Wallet className="mr-2 h-3 w-3" />
-                        MetaMask
-                      </Button>
-                      <Button
-                        onClick={() => connectWallet('hardhat')}
-                        disabled={isConnecting}
-                        variant="outline"
-                        className="w-full text-xs"
-                        size="sm"
-                      >
-                        <Server className="mr-2 h-3 w-3" />
-                        Hardhat Local
-                      </Button>
-                      <Button
-                        onClick={() => setShowNetworkOptions(false)}
-                        variant="ghost"
-                        className="w-full text-xs"
-                        size="sm"
-                      >
-                        Hủy
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium">Đã kết nối</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={disconnectWallet}
-                      className="h-6 px-2 text-xs"
-                    >
-                      Ngắt
-                    </Button>
-                  </div>
-                  <WalletAddress signer={signer} />
-                  <div className="text-xs text-muted-foreground">
-                    Network: {selectedNetwork}
-                  </div>
-                </div>
-              )}
+              <WalletSelectorCompact />
             </CardContent>
           </Card>
         </SidebarGroup>

@@ -11,6 +11,17 @@ import "../../struct/Inventory.sol";
 import "../../struct/Item.sol";
 import "../../struct/Player.sol";
 
+/**
+ * @title NPCMarketLogic
+ * @dev Logic contract cho hệ thống NPC Market - cho phép người chơi mua bán item với NPC
+ *
+ * Tính năng chính:
+ * - Quản lý market của các NPC
+ * - Mua item từ NPC với giới hạn per user
+ * - Bán item cho NPC
+ * - Theo dõi lịch sử giao dịch của người chơi
+ * - Quản lý giá cả và giới hạn mua bán
+ */
 contract NPCMarketLogic {
     IWorld public world;
     INPCMarketComponent public npcMarketProxy;
@@ -18,20 +29,17 @@ contract NPCMarketLogic {
     IInventoryComponent public inventoryProxy;
     IPlayerComponent public playerProxy;
 
-    // Constants
+    // ============ CONSTANTS ============
+
     uint256 public constant MAX_TRANSACTION_AMOUNT = 1000000;
+
+    // ============ STATE VARIABLES ============
 
     // Reentrancy guard
     bool private _locked;
 
-    modifier nonReentrant() {
-        require(!_locked, "Reentrant call");
-        _locked = true;
-        _;
-        _locked = false;
-    }
+    // ============ EVENTS ============
 
-    // Events
     event ItemPurchased(
         address indexed player,
         uint256 indexed npcId,
@@ -50,6 +58,40 @@ contract NPCMarketLogic {
 
     event MarketStateChanged(uint256 indexed npcId, bool isOpen);
 
+    event NPCMarketCreated(uint256 indexed npcId, string name);
+
+    event ItemAddedToMarket(
+        uint256 indexed npcId,
+        uint256 indexed itemId,
+        uint256 limitPerUser,
+        uint256 pricePerUnit,
+        bool isSelling
+    );
+
+    event ItemUpdatedInMarket(
+        uint256 indexed npcId,
+        uint256 indexed itemId,
+        uint256 limitPerUser,
+        uint256 pricePerUnit
+    );
+
+    event ItemRemovedFromMarket(uint256 indexed npcId, uint256 indexed itemId);
+
+    event UserPurchasesReset(
+        uint256 indexed npcId,
+        uint256 indexed itemId,
+        address indexed user
+    );
+
+    // ============ MODIFIERS ============
+
+    modifier nonReentrant() {
+        require(!_locked, "Reentrant call");
+        _locked = true;
+        _;
+        _locked = false;
+    }
+
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
         _;
@@ -62,6 +104,8 @@ contract NPCMarketLogic {
         );
         _;
     }
+
+    // ============ CONSTRUCTOR ============
 
     constructor(
         address _world,
@@ -77,13 +121,44 @@ contract NPCMarketLogic {
         playerProxy = IPlayerComponent(_playerProxy);
     }
 
+    // ============ WRITE FUNCTIONS (EXTERNAL) ============
+
+    /**
+     * @dev Tạo NPC Market mới (chỉ admin)
+     * @param _npcId ID của NPC
+     * @param _name Tên của NPC Market
+     *
+     * Quy trình:
+     * 1. Validate input parameters
+     * 2. Tạo NPC Market trong component
+     * 3. Emit event NPCMarketCreated
+     */
     function createNPCMarket(
         uint256 _npcId,
         string memory _name
     ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(bytes(_name).length > 0, "NPC name cannot be empty");
+
         npcMarketProxy.createNPCMarket(_npcId, _name);
+
+        emit NPCMarketCreated(_npcId, _name);
     }
 
+    /**
+     * @dev Thêm item vào NPC Market (chỉ admin)
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _limitPerUser Giới hạn mua bán per user (0 = không giới hạn)
+     * @param _pricePerUnit Giá per unit
+     * @param _isSelling NPC bán item (true) hay mua item (false)
+     *
+     * Quy trình:
+     * 1. Validate input parameters
+     * 2. Kiểm tra item tồn tại
+     * 3. Thêm item vào market
+     * 4. Emit event ItemAddedToMarket
+     */
     function addItemToMarket(
         uint256 _npcId,
         uint256 _itemId,
@@ -91,7 +166,23 @@ contract NPCMarketLogic {
         uint256 _pricePerUnit,
         bool _isSelling
     ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(_itemId > 0, "Invalid Item ID");
+        require(_pricePerUnit > 0, "Price must be greater than 0");
+
+        // Kiểm tra item tồn tại
+        ItemStructs.Item memory itemData = itemProxy.getItem(_itemId);
+        require(itemData.id > 0, "Item does not exist");
+
         npcMarketProxy.addItemToMarket(
+            _npcId,
+            _itemId,
+            _limitPerUser,
+            _pricePerUnit,
+            _isSelling
+        );
+
+        emit ItemAddedToMarket(
             _npcId,
             _itemId,
             _limitPerUser,
@@ -100,29 +191,76 @@ contract NPCMarketLogic {
         );
     }
 
+    /**
+     * @dev Cập nhật item trong NPC Market (chỉ admin)
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _limitPerUser Giới hạn mới per user
+     * @param _pricePerUnit Giá mới per unit
+     *
+     * Quy trình:
+     * 1. Validate input parameters
+     * 2. Kiểm tra item tồn tại trong market
+     * 3. Cập nhật thông tin item
+     * 4. Emit event ItemUpdatedInMarket
+     */
     function updateItemInMarket(
         uint256 _npcId,
         uint256 _itemId,
         uint256 _limitPerUser,
         uint256 _pricePerUnit
     ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(_itemId > 0, "Invalid Item ID");
+        require(_pricePerUnit > 0, "Price must be greater than 0");
+
         npcMarketProxy.updateItemInMarket(
             _npcId,
             _itemId,
             _limitPerUser,
             _pricePerUnit
         );
+
+        emit ItemUpdatedInMarket(_npcId, _itemId, _limitPerUser, _pricePerUnit);
     }
 
+    /**
+     * @dev Xóa item khỏi NPC Market (chỉ admin)
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     *
+     * Quy trình:
+     * 1. Validate input parameters
+     * 2. Xóa item khỏi market
+     * 3. Emit event ItemRemovedFromMarket
+     */
     function removeItemFromMarket(
         uint256 _npcId,
         uint256 _itemId
     ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(_itemId > 0, "Invalid Item ID");
+
         npcMarketProxy.removeItemFromMarket(_npcId, _itemId);
+
+        emit ItemRemovedFromMarket(_npcId, _itemId);
     }
 
-    // ============ PLAYER FUNCTIONS ============
-
+    /**
+     * @dev Mua item từ NPC (người chơi gọi)
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item muốn mua
+     * @param _quantity Số lượng muốn mua
+     *
+     * Quy trình:
+     * 1. Validate input và kiểm tra market mở
+     * 2. Kiểm tra item có sẵn và NPC đang bán
+     * 3. Kiểm tra giới hạn mua của user
+     * 4. Tính toán giá và kiểm tra đủ currency
+     * 5. Trừ currency, thêm item vào inventory
+     * 6. Track purchase history
+     * 7. Emit event ItemPurchased
+     */
     function buyItemFromNPC(
         uint256 _npcId,
         uint256 _itemId,
@@ -150,7 +288,7 @@ contract NPCMarketLogic {
         require(marketItem.active, "Item not available in market");
         require(marketItem.isSelling, "NPC is not selling this item");
 
-        // Check user purchase limit (quantity field is now limitPerUser)
+        // Check user purchase limit
         require(
             npcMarketProxy.canUserPurchaseMore(
                 _npcId,
@@ -203,6 +341,21 @@ contract NPCMarketLogic {
         emit ItemPurchased(player, _npcId, _itemId, _quantity, totalPrice);
     }
 
+    /**
+     * @dev Bán item cho NPC (người chơi gọi)
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item muốn bán
+     * @param _quantity Số lượng muốn bán
+     *
+     * Quy trình:
+     * 1. Validate input và kiểm tra market mở
+     * 2. Kiểm tra item có sẵn và NPC đang mua
+     * 3. Kiểm tra giới hạn bán của user
+     * 4. Kiểm tra đủ item trong inventory
+     * 5. Tính toán giá và trừ item, cộng currency
+     * 6. Track sale history
+     * 7. Emit event ItemSold
+     */
     function sellItemToNPC(
         uint256 _npcId,
         uint256 _itemId,
@@ -230,7 +383,7 @@ contract NPCMarketLogic {
         require(marketItem.active, "Item not available in market");
         require(!marketItem.isSelling, "NPC is not buying this item");
 
-        // Check user sell limit (using same tracking as purchase for simplicity)
+        // Check user sell limit
         require(
             npcMarketProxy.canUserPurchaseMore(
                 _npcId,
@@ -282,8 +435,39 @@ contract NPCMarketLogic {
         emit ItemSold(player, _npcId, _itemId, _quantity, totalPrice);
     }
 
-    // ============ VIEW FUNCTIONS ============
+    /**
+     * @dev Reset lịch sử mua bán của user (chỉ admin)
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _user Địa chỉ user
+     *
+     * Quy trình:
+     * 1. Validate input parameters
+     * 2. Reset purchase history của user
+     * 3. Emit event UserPurchasesReset
+     */
+    function resetUserPurchases(
+        uint256 _npcId,
+        uint256 _itemId,
+        address _user
+    ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(_itemId > 0, "Invalid Item ID");
+        require(_user != address(0), "Invalid user address");
 
+        npcMarketProxy.resetUserPurchases(_npcId, _itemId, _user);
+
+        emit UserPurchasesReset(_npcId, _itemId, _user);
+    }
+
+    // ============ READ FUNCTIONS (EXTERNAL VIEW) ============
+
+    /**
+     * @dev Lấy thông tin item trong market
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @return Thông tin MarketItemView
+     */
     function getMarketItem(
         uint256 _npcId,
         uint256 _itemId
@@ -291,6 +475,13 @@ contract NPCMarketLogic {
         return npcMarketProxy.getMarketItem(_npcId, _itemId);
     }
 
+    /**
+     * @dev Lấy thông tin item trong market kèm chi tiết item
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @return marketItem Thông tin market item
+     * @return itemDetails Chi tiết item
+     */
     function getMarketItemWithDetails(
         uint256 _npcId,
         uint256 _itemId
@@ -307,6 +498,16 @@ contract NPCMarketLogic {
         return (marketItem, itemDetails);
     }
 
+    /**
+     * @dev Lấy thông tin item trong market kèm thông tin user
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _user Địa chỉ user
+     * @return marketItem Thông tin market item
+     * @return itemDetails Chi tiết item
+     * @return userPurchased Số lượng user đã mua
+     * @return remainingLimit Giới hạn còn lại
+     */
     function getMarketItemWithDetailsAndUserInfo(
         uint256 _npcId,
         uint256 _itemId,
@@ -337,12 +538,23 @@ contract NPCMarketLogic {
         return (marketItem, itemDetails, userPurchased, remainingLimit);
     }
 
+    /**
+     * @dev Lấy tất cả item trong market của NPC
+     * @param _npcId ID của NPC
+     * @return Mảng MarketItemView
+     */
     function getAllMarketItems(
         uint256 _npcId
     ) external view returns (MarketItemView[] memory) {
         return npcMarketProxy.getAllMarketItems(_npcId);
     }
 
+    /**
+     * @dev Lấy tất cả item trong market kèm chi tiết
+     * @param _npcId ID của NPC
+     * @return marketItems Mảng market items
+     * @return itemDetails Mảng chi tiết item
+     */
     function getAllMarketItemsWithDetails(
         uint256 _npcId
     )
@@ -363,32 +575,15 @@ contract NPCMarketLogic {
         return (marketItems, itemDetails);
     }
 
-    function getMarketItemIds(
-        uint256 _npcId
-    ) external view returns (uint256[] memory) {
-        return npcMarketProxy.getMarketItemIds(_npcId);
-    }
-
-    function getMarketItemIdsWithDetails(
-        uint256 _npcId
-    )
-        external
-        view
-        returns (
-            uint256[] memory itemIds,
-            ItemStructs.Item[] memory itemDetails
-        )
-    {
-        itemIds = npcMarketProxy.getMarketItemIds(_npcId);
-        itemDetails = new ItemStructs.Item[](itemIds.length);
-
-        for (uint256 i = 0; i < itemIds.length; i++) {
-            itemDetails[i] = itemProxy.getItem(itemIds[i]);
-        }
-
-        return (itemIds, itemDetails);
-    }
-
+    /**
+     * @dev Lấy tất cả item trong market kèm thông tin user
+     * @param _npcId ID của NPC
+     * @param _user Địa chỉ user
+     * @return marketItems Mảng market items
+     * @return itemDetails Mảng chi tiết item
+     * @return userPurchased Mảng số lượng user đã mua
+     * @return remainingLimit Mảng giới hạn còn lại
+     */
     function getAllMarketItemsWithDetailsAndUserInfo(
         uint256 _npcId,
         address _user
@@ -430,6 +625,43 @@ contract NPCMarketLogic {
         return (marketItems, itemDetails, userPurchased, remainingLimit);
     }
 
+    /**
+     * @dev Lấy ID của tất cả item trong market
+     * @param _npcId ID của NPC
+     * @return Mảng ID của các item
+     */
+    function getMarketItemIds(
+        uint256 _npcId
+    ) external view returns (uint256[] memory) {
+        return npcMarketProxy.getMarketItemIds(_npcId);
+    }
+
+    /**
+     * @dev Lấy ID của tất cả item kèm chi tiết
+     * @param _npcId ID của NPC
+     * @return itemIds Mảng ID của các item
+     * @return itemDetails Mảng chi tiết item
+     */
+    function getMarketItemIdsWithDetails(
+        uint256 _npcId
+    )
+        external
+        view
+        returns (
+            uint256[] memory itemIds,
+            ItemStructs.Item[] memory itemDetails
+        )
+    {
+        itemIds = npcMarketProxy.getMarketItemIds(_npcId);
+        itemDetails = new ItemStructs.Item[](itemIds.length);
+
+        for (uint256 i = 0; i < itemIds.length; i++) {
+            itemDetails[i] = itemProxy.getItem(itemIds[i]);
+        }
+
+        return (itemIds, itemDetails);
+    }
+
     function getNPCMarketInfo(
         uint256 _npcId
     )
@@ -445,6 +677,11 @@ contract NPCMarketLogic {
         return npcMarketProxy.getNPCMarketInfo(_npcId);
     }
 
+    /**
+     * @dev Kiểm tra market có mở không
+     * @param _npcId ID của NPC
+     * @return bool True nếu market đang mở
+     */
     function isMarketOpen(uint256 _npcId) external view returns (bool) {
         return npcMarketProxy.isMarketOpen(_npcId);
     }
@@ -477,7 +714,7 @@ contract NPCMarketLogic {
                 return (false, "NPC is not selling this item");
             }
 
-            // Check user limit instead of item quantity
+            // Check user limit
             if (
                 !npcMarketProxy.canUserPurchaseMore(
                     _npcId,
@@ -556,6 +793,13 @@ contract NPCMarketLogic {
         }
     }
 
+    /**
+     * @dev Tính giá mua item
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _quantity Số lượng
+     * @return totalPrice Tổng giá
+     */
     function calculateBuyPrice(
         uint256 _npcId,
         uint256 _itemId,
@@ -569,6 +813,13 @@ contract NPCMarketLogic {
         return marketItem.pricePerUnit * _quantity;
     }
 
+    /**
+     * @dev Tính giá bán item
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _quantity Số lượng
+     * @return totalPrice Tổng giá
+     */
     function calculateSellPrice(
         uint256 _npcId,
         uint256 _itemId,
@@ -585,8 +836,13 @@ contract NPCMarketLogic {
         return marketItem.pricePerUnit * _quantity;
     }
 
-    // ============ NEW USER TRACKING FUNCTIONS ============
-
+    /**
+     * @dev Lấy số lượng user đã mua bán
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _user Địa chỉ user
+     * @return Số lượng đã mua bán
+     */
     function getUserPurchases(
         uint256 _npcId,
         uint256 _itemId,
@@ -595,6 +851,14 @@ contract NPCMarketLogic {
         return npcMarketProxy.getUserPurchases(_npcId, _itemId, _user);
     }
 
+    /**
+     * @dev Kiểm tra user có thể mua bán thêm không
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _user Địa chỉ user
+     * @param _additionalQuantity Số lượng muốn thêm
+     * @return bool True nếu có thể mua bán thêm
+     */
     function canUserPurchaseMore(
         uint256 _npcId,
         uint256 _itemId,
@@ -610,14 +874,12 @@ contract NPCMarketLogic {
             );
     }
 
-    function resetUserPurchases(
-        uint256 _npcId,
-        uint256 _itemId,
-        address _user
-    ) external onlyAdmin {
-        npcMarketProxy.resetUserPurchases(_npcId, _itemId, _user);
-    }
-
+    /**
+     * @dev Lấy giới hạn mua bán per user của item
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @return Giới hạn per user (0 = không giới hạn)
+     */
     function getItemLimitPerUser(
         uint256 _npcId,
         uint256 _itemId
@@ -629,6 +891,13 @@ contract NPCMarketLogic {
         return marketItem.limitPerUser;
     }
 
+    /**
+     * @dev Lấy giới hạn còn lại của user
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _user Địa chỉ user
+     * @return Giới hạn còn lại (max uint256 = không giới hạn)
+     */
     function getRemainingUserLimit(
         uint256 _npcId,
         uint256 _itemId,

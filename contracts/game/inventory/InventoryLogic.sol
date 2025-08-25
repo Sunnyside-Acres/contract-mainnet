@@ -25,6 +25,17 @@ contract InventoryLogic {
         uint256 indexed itemId
     );
 
+    event AdminTrading(
+        address indexed player1,
+        address indexed player2,
+        uint256[] item1Ids,
+        uint256[] item1Amounts,
+        uint256[] item2Ids,
+        uint256[] item2Amounts,
+        uint256 player1Sunlight,
+        uint256 player2Sunlight
+    );
+
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
         _;
@@ -192,6 +203,250 @@ contract InventoryLogic {
         }
 
         emit ItemTransferred(player, to, itemId);
+    }
+
+    function adminTrading(
+        address _player1,
+        address _player2,
+        uint256[] calldata _item1Ids,
+        uint256[] calldata _item1Amounts,
+        uint256[] calldata _item2Ids,
+        uint256[] calldata _item2Amounts,
+        uint256 _player1Sunlight,
+        uint256 _player2Sunlight
+    ) external onlyAdmin {
+        // Validate input
+        require(_player1 != address(0), "Invalid player1 address");
+        require(_player2 != address(0), "Invalid player2 address");
+        require(_player1 != _player2, "Cannot trade with self");
+        require(
+            _item1Ids.length == _item1Amounts.length,
+            "Item1 arrays length mismatch"
+        );
+        require(
+            _item2Ids.length == _item2Amounts.length,
+            "Item2 arrays length mismatch"
+        );
+        require(
+            _item1Ids.length > 0 || _item2Ids.length > 0,
+            "At least one item must be traded"
+        );
+
+        // Check if both players exist
+        Player memory player1Data = playerProxy.getPlayer(_player1);
+        require(player1Data.level > 0, "Player1 not initialized");
+
+        Player memory player2Data = playerProxy.getPlayer(_player2);
+        require(player2Data.level > 0, "Player2 not initialized");
+
+        // Validate and check player1's items
+        for (uint256 i = 0; i < _item1Ids.length; i++) {
+            require(
+                _item1Amounts[i] > 0,
+                "Item1 amount must be greater than 0"
+            );
+            require(
+                _item1Amounts[i] <= MAX_QUANTITY,
+                "Item1 amount exceeds maximum limit"
+            );
+            require(
+                itemProxy.exists(_item1Ids[i]),
+                "Item1 does not exist in game"
+            );
+
+            InventoryItem memory player1Item = inventoryProxy.getItem(
+                _player1,
+                _item1Ids[i]
+            );
+            require(
+                player1Item.quantity >= _item1Amounts[i],
+                "Player1 does not have enough item"
+            );
+            require(
+                player1Item.quantity > 0,
+                "Item does not exist in player1's inventory"
+            );
+        }
+
+        // Validate and check player2's items
+        for (uint256 i = 0; i < _item2Ids.length; i++) {
+            require(
+                _item2Amounts[i] > 0,
+                "Item2 amount must be greater than 0"
+            );
+            require(
+                _item2Amounts[i] <= MAX_QUANTITY,
+                "Item2 amount exceeds maximum limit"
+            );
+            require(
+                itemProxy.exists(_item2Ids[i]),
+                "Item2 does not exist in game"
+            );
+
+            InventoryItem memory player2Item = inventoryProxy.getItem(
+                _player2,
+                _item2Ids[i]
+            );
+            require(
+                player2Item.quantity >= _item2Amounts[i],
+                "Player2 does not have enough item"
+            );
+            require(
+                player2Item.quantity > 0,
+                "Item does not exist in player2's inventory"
+            );
+        }
+
+        // Check sunlight availability
+        require(
+            player1Data.sunlight >= _player1Sunlight,
+            "Player1 does not have enough sunlight"
+        );
+        require(
+            player2Data.sunlight >= _player2Sunlight,
+            "Player2 does not have enough sunlight"
+        );
+
+        // Process player1's items (remove items being traded away)
+        for (uint256 i = 0; i < _item1Ids.length; i++) {
+            InventoryItem memory player1Item = inventoryProxy.getItem(
+                _player1,
+                _item1Ids[i]
+            );
+            uint256 newQuantity = player1Item.quantity - _item1Amounts[i];
+
+            IInventoryComponent(address(inventoryProxy)).setItem(
+                _player1,
+                _item1Ids[i],
+                newQuantity,
+                player1Item.durability,
+                player1Item.expiration
+            );
+        }
+
+        // Process player2's items (remove items being traded away)
+        for (uint256 i = 0; i < _item2Ids.length; i++) {
+            InventoryItem memory player2Item = inventoryProxy.getItem(
+                _player2,
+                _item2Ids[i]
+            );
+            uint256 newQuantity = player2Item.quantity - _item2Amounts[i];
+
+            IInventoryComponent(address(inventoryProxy)).setItem(
+                _player2,
+                _item2Ids[i],
+                newQuantity,
+                player2Item.durability,
+                player2Item.expiration
+            );
+        }
+
+        // Add player2's items to player1's inventory
+        for (uint256 i = 0; i < _item2Ids.length; i++) {
+            InventoryItem memory player1ExistingItem = inventoryProxy.getItem(
+                _player1,
+                _item2Ids[i]
+            );
+            InventoryItem memory player2Item = inventoryProxy.getItem(
+                _player2,
+                _item2Ids[i]
+            );
+
+            uint256 newQuantity = player1ExistingItem.quantity +
+                _item2Amounts[i];
+            require(
+                newQuantity >= player1ExistingItem.quantity,
+                "Player1 item quantity overflow"
+            );
+            require(
+                newQuantity <= MAX_QUANTITY,
+                "Player1 item exceeds maximum quantity"
+            );
+
+            if (player1ExistingItem.quantity > 0) {
+                // Keep player1's existing durability and expiration
+                IInventoryComponent(address(inventoryProxy)).setItem(
+                    _player1,
+                    _item2Ids[i],
+                    newQuantity,
+                    player1ExistingItem.durability,
+                    player1ExistingItem.expiration
+                );
+            } else {
+                // Use player2's durability and expiration for new item
+                IInventoryComponent(address(inventoryProxy)).setItem(
+                    _player1,
+                    _item2Ids[i],
+                    newQuantity,
+                    player2Item.durability,
+                    player2Item.expiration
+                );
+            }
+        }
+
+        // Add player1's items to player2's inventory
+        for (uint256 i = 0; i < _item1Ids.length; i++) {
+            InventoryItem memory player2ExistingItem = inventoryProxy.getItem(
+                _player2,
+                _item1Ids[i]
+            );
+            InventoryItem memory player1Item = inventoryProxy.getItem(
+                _player1,
+                _item1Ids[i]
+            );
+
+            uint256 newQuantity = player2ExistingItem.quantity +
+                _item1Amounts[i];
+            require(
+                newQuantity >= player2ExistingItem.quantity,
+                "Player2 item quantity overflow"
+            );
+            require(
+                newQuantity <= MAX_QUANTITY,
+                "Player2 item exceeds maximum quantity"
+            );
+
+            if (player2ExistingItem.quantity > 0) {
+                // Keep player2's existing durability and expiration
+                IInventoryComponent(address(inventoryProxy)).setItem(
+                    _player2,
+                    _item1Ids[i],
+                    newQuantity,
+                    player2ExistingItem.durability,
+                    player2ExistingItem.expiration
+                );
+            } else {
+                // Use player1's durability and expiration for new item
+                IInventoryComponent(address(inventoryProxy)).setItem(
+                    _player2,
+                    _item1Ids[i],
+                    newQuantity,
+                    player1Item.durability,
+                    player1Item.expiration
+                );
+            }
+        }
+
+        // Update sunlight for both players
+        if (_player1Sunlight > 0) {
+            playerProxy.subtractSunlight(_player1, _player1Sunlight);
+            playerProxy.addSunlight(_player2, _player1Sunlight);
+        }
+        if (_player2Sunlight > 0) {
+            playerProxy.subtractSunlight(_player2, _player2Sunlight);
+            playerProxy.addSunlight(_player1, _player2Sunlight);
+        }
+
+        emit AdminTrading(
+            _player1,
+            _player2,
+            _item1Ids,
+            _item1Amounts,
+            _item2Ids,
+            _item2Amounts,
+            _player1Sunlight,
+            _player2Sunlight
+        );
     }
 
     function getItem(

@@ -28,6 +28,21 @@ interface ContractAddresses {
         NPCMarketComponent: string
         NPCMarketLogic: string
         NPCMarketProxy: string
+        GachaComponent: string
+        GachaLogic: string
+        GachaProxy: string
+        TaskComponent: string
+        TaskLogic: string
+        TaskProxy: string
+        FleaMarketComponent: string
+        FleaMarketLogic: string
+        FleaMarketProxy: string
+        CraftingComponent: string
+        CraftingLogic: string
+        CraftingProxy: string
+        RaisingComponent: string
+        RaisingLogic: string
+        RaisingProxy: string
     }
     timestamp: string
     rpcUrl?: string

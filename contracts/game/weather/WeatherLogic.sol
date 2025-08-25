@@ -39,7 +39,15 @@ contract WeatherLogic {
         return weatherProxy.getCurrentWeather();
     }
 
-    function getCurrentWeatherState() external view returns (WeatherStructs.WeatherState) {
+    function getCurrentWeatherState()
+        external
+        view
+        returns (WeatherStructs.WeatherState)
+    {
         return weatherProxy.getCurrentWeatherState();
+    }
+
+    function shouldUpdateWeather() external view returns (bool) {
+        return weatherProxy.shouldUpdateWeather();
     }
 }

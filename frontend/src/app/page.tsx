@@ -148,7 +148,12 @@ export default function Home() {
     Inventory: ['InventoryComponent', 'InventoryLogic', 'InventoryProxy'],
     Plant: ['PlantComponent', 'PlantLogic', 'PlantProxy'],
     Fishing: ['FishingLogic'],
-    NPCMarket: ['NPCMarketComponent', 'NPCMarketLogic', 'NPCMarketProxy']
+    NPCMarket: ['NPCMarketComponent', 'NPCMarketLogic', 'NPCMarketProxy'],
+    Gacha: ['GachaComponent', 'GachaLogic', 'GachaProxy'],
+    Task: ['TaskComponent', 'TaskLogic', 'TaskProxy'],
+    FleaMarket: ['FleaMarketComponent', 'FleaMarketLogic', 'FleaMarketProxy'],
+    Crafting: ['CraftingComponent', 'CraftingLogic', 'CraftingProxy'],
+    Raising: ['RaisingComponent', 'RaisingLogic', 'RaisingProxy']
   }
 
   return (
@@ -287,7 +292,13 @@ export default function Home() {
                                     groupName === 'Inventory' ? 'bg-purple-100 dark:bg-purple-900' :
                                       groupName === 'Plant' ? 'bg-pink-100 dark:bg-pink-900' :
                                         groupName === 'Fishing' ? 'bg-cyan-100 dark:bg-cyan-900' :
-                                          'bg-indigo-100 dark:bg-indigo-900'
+                                          groupName === 'NPCMarket' ? 'bg-indigo-100 dark:bg-indigo-900' :
+                                            groupName === 'Gacha' ? 'bg-red-100 dark:bg-red-900' :
+                                              groupName === 'Task' ? 'bg-teal-100 dark:bg-teal-900' :
+                                                groupName === 'FleaMarket' ? 'bg-amber-100 dark:bg-amber-900' :
+                                                  groupName === 'Crafting' ? 'bg-emerald-100 dark:bg-emerald-900' :
+                                                    groupName === 'Raising' ? 'bg-rose-100 dark:bg-rose-900' :
+                                                      'bg-gray-100 dark:bg-gray-800'
                             }`}>
                             {groupName === 'Core' ? '🌍' :
                               groupName === 'Player' ? '👤' :
@@ -296,7 +307,13 @@ export default function Home() {
                                     groupName === 'Plot' ? '🏡' :
                                       groupName === 'Inventory' ? '🎒' :
                                         groupName === 'Plant' ? '🌱' :
-                                          groupName === 'Fishing' ? '🎣' : '🏪'}
+                                          groupName === 'Fishing' ? '🎣' :
+                                            groupName === 'NPCMarket' ? '🏪' :
+                                              groupName === 'Gacha' ? '🎰' :
+                                                groupName === 'Task' ? '📋' :
+                                                  groupName === 'FleaMarket' ? '🛒' :
+                                                    groupName === 'Crafting' ? '⚒️' :
+                                                      groupName === 'Raising' ? '🐾' : '🏪'}
                           </div>
                           {contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] && (
                             <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
