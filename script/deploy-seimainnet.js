@@ -375,8 +375,8 @@ async function main() {
   const fleaMarketLogic = await FleaMarketLogic.deploy(
     worldAddress,
     fleaMarketProxyAddress,
-    itemProxyAddress,
     inventoryProxyAddress,
+    itemProxyAddress,
     playerProxyAddress
   );
   await fleaMarketLogic.waitForDeployment();
@@ -600,7 +600,9 @@ async function main() {
     "✨ Bao gồm 5 hệ thống mới: Gacha, Task, FleaMarket, Crafting, Raising"
   );
   console.log("🔗 Tất cả contract đã được đăng ký trong World contract");
-  console.log("🌐 Explorer URL: https://sei.explorers.guru/address/" + worldAddress);
+  console.log(
+    "🌐 Explorer URL: https://sei.explorers.guru/address/" + worldAddress
+  );
   console.log("💰 Chi phí deploy đã được tính toán và thực hiện");
   console.log("🔒 Tất cả contract đã được verify và sẵn sàng sử dụng");
 }

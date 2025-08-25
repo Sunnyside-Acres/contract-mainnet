@@ -132,7 +132,6 @@ contract FleaMarketLogic {
         require(_quantity > 0, "Quantity must be greater than 0");
         require(_price > 0, "Price must be greater than 0");
         require(_duration > 0, "Duration must be greater than 0");
-        require(_duration <= 7 days, "Duration cannot exceed 7 days");
 
         // Check if player exists
         Player memory playerData = playerProxy.getPlayer(seller);
@@ -521,13 +520,13 @@ contract FleaMarketLogic {
     }
 
     /**
-     * @dev Mua item với giá tốt nhất (tự động chọn listing có giá thấp nhất)
+     * @dev Mua item từ tất cả listing có sẵn (không sắp xếp theo giá)
      * @param _itemId ID của item muốn mua
      * @param _quantity Tổng số lượng item muốn mua
      *
      * Quy trình:
-     * 1. Lấy tất cả listing cho item, sắp xếp theo giá
-     * 2. Mua từ listing có giá thấp nhất trước
+     * 1. Lấy tất cả listing cho item
+     * 2. Mua từ listing đầu tiên có sẵn
      * 3. Tiếp tục với listing tiếp theo nếu cần
      * 4. Tính toán tổng chi phí và trừ sunny
      * 5. Cập nhật inventory và lịch sử
@@ -542,8 +541,8 @@ contract FleaMarketLogic {
         Player memory playerData = playerProxy.getPlayer(buyer);
         require(playerData.level > 0, "Player not initialized");
 
-        // Get all listings for this item sorted by price
-        MarketListing[] memory listings = this.getListingsByItemSortedByPrice(
+        // Get all listings for this item
+        MarketListing[] memory listings = fleaMarketProxy.getListingsByItem(
             _itemId
         );
         require(listings.length > 0, "No listings available for this item");
@@ -552,7 +551,7 @@ contract FleaMarketLogic {
         uint256 totalCost = 0;
         uint256 totalPurchased = 0;
 
-        // Buy from cheapest listings first
+        // Buy from available listings in order
         for (uint256 i = 0; i < listings.length && remainingQuantity > 0; i++) {
             MarketListing memory listing = listings[i];
 
@@ -677,97 +676,6 @@ contract FleaMarketLogic {
     }
 
     /**
-     * @dev Lấy listing theo item và sắp xếp theo giá (từ thấp đến cao)
-     * @param _itemId ID của item
-     * @return Mảng các MarketListing đã sắp xếp theo giá
-     */
-    function getListingsByItemSortedByPrice(
-        uint256 _itemId
-    ) external view returns (MarketListing[] memory) {
-        MarketListing[] memory allListings = fleaMarketProxy.getListingsByItem(
-            _itemId
-        );
-
-        // Sort by price (ascending)
-        for (uint256 i = 0; i < allListings.length; i++) {
-            for (uint256 j = i + 1; j < allListings.length; j++) {
-                if (allListings[i].price > allListings[j].price) {
-                    MarketListing memory temp = allListings[i];
-                    allListings[i] = allListings[j];
-                    allListings[j] = temp;
-                }
-            }
-        }
-
-        return allListings;
-    }
-
-    /**
-     * @dev Lấy listing theo item và giá tối đa (có pagination)
-     * @param _itemId ID của item
-     * @param _maxPrice Giá tối đa
-     * @param _offset Vị trí bắt đầu (0-based)
-     * @param _limit Số lượng listing tối đa trả về
-     * @return filteredListings Mảng các MarketListing trong khoảng giá
-     * @return hasMore Còn listing khác không
-     */
-    function getListingsByItemAndMaxPricePaginated(
-        uint256 _itemId,
-        uint256 _maxPrice,
-        uint256 _offset,
-        uint256 _limit
-    )
-        external
-        view
-        returns (MarketListing[] memory filteredListings, bool hasMore)
-    {
-        require(_limit > 0 && _limit <= 50, "Limit must be between 1 and 50");
-
-        MarketListing[] memory allListings = fleaMarketProxy.getListingsByItem(
-            _itemId
-        );
-
-        // Count listings within price range
-        uint256 count = 0;
-        for (uint256 i = 0; i < allListings.length; i++) {
-            if (allListings[i].price <= _maxPrice) {
-                count++;
-            }
-        }
-
-        // Calculate pagination
-        uint256 startIndex = _offset;
-        uint256 endIndex = startIndex + _limit;
-        if (endIndex > count) {
-            endIndex = count;
-        }
-
-        uint256 resultCount = endIndex - startIndex;
-        hasMore = endIndex < count;
-
-        // Create filtered array
-        filteredListings = new MarketListing[](resultCount);
-        uint256 index = 0;
-        uint256 resultIndex = 0;
-
-        for (
-            uint256 i = 0;
-            i < allListings.length && resultIndex < resultCount;
-            i++
-        ) {
-            if (allListings[i].price <= _maxPrice) {
-                if (index >= startIndex) {
-                    filteredListings[resultIndex] = allListings[i];
-                    resultIndex++;
-                }
-                index++;
-            }
-        }
-
-        return (filteredListings, hasMore);
-    }
-
-    /**
      * @dev Lấy lịch sử giao dịch của người chơi
      * @param _player Địa chỉ người chơi
      * @return Mảng các MarketTransaction
@@ -854,83 +762,12 @@ contract FleaMarketLogic {
             _player,
             _itemId
         );
+
         if (playerItem.quantity < _quantity) {
             return (false, "Not enough items");
         }
 
         return (true, "Can list item");
-    }
-
-    /**
-     * @dev Lấy tất cả listing đang hoạt động của một người chơi cho một item cụ thể (có pagination)
-     * @param _player Địa chỉ người chơi
-     * @param _itemId ID của item
-     * @param _offset Vị trí bắt đầu (0-based)
-     * @param _limit Số lượng listing tối đa trả về
-     * @return filteredListings Mảng các MarketListing của người chơi cho item này
-     * @return hasMore Còn listing khác không
-     */
-    function getPlayerListingsForItemPaginated(
-        address _player,
-        uint256 _itemId,
-        uint256 _offset,
-        uint256 _limit
-    )
-        external
-        view
-        returns (MarketListing[] memory filteredListings, bool hasMore)
-    {
-        require(_limit > 0 && _limit <= 50, "Limit must be between 1 and 50");
-
-        MarketListing[] memory allPlayerListings = fleaMarketProxy
-            .getListingsBySeller(_player);
-
-        // Count active listings for this specific item
-        uint256 count = 0;
-        for (uint256 i = 0; i < allPlayerListings.length; i++) {
-            if (
-                allPlayerListings[i].itemId == _itemId &&
-                allPlayerListings[i].isActive &&
-                allPlayerListings[i].expirationTime > block.timestamp
-            ) {
-                count++;
-            }
-        }
-
-        // Calculate pagination
-        uint256 startIndex = _offset;
-        uint256 endIndex = startIndex + _limit;
-        if (endIndex > count) {
-            endIndex = count;
-        }
-
-        uint256 resultCount = endIndex - startIndex;
-        hasMore = endIndex < count;
-
-        // Create filtered array
-        filteredListings = new MarketListing[](resultCount);
-        uint256 index = 0;
-        uint256 resultIndex = 0;
-
-        for (
-            uint256 i = 0;
-            i < allPlayerListings.length && resultIndex < resultCount;
-            i++
-        ) {
-            if (
-                allPlayerListings[i].itemId == _itemId &&
-                allPlayerListings[i].isActive &&
-                allPlayerListings[i].expirationTime > block.timestamp
-            ) {
-                if (index >= startIndex) {
-                    filteredListings[resultIndex] = allPlayerListings[i];
-                    resultIndex++;
-                }
-                index++;
-            }
-        }
-
-        return (filteredListings, hasMore);
     }
 
     /**
@@ -983,24 +820,13 @@ contract FleaMarketLogic {
     }
 
     /**
-     * @dev Lấy thông tin chi tiết về tất cả listing của một item (bao gồm cả không hoạt động) - có pagination
+     * @dev Lấy thông tin chi tiết về tất cả listing của một item (bao gồm cả không hoạt động)
      * @param _itemId ID của item
-     * @param _offset Vị trí bắt đầu (0-based)
-     * @param _limit Số lượng listing tối đa trả về
      * @return filteredListings Mảng tất cả MarketListing cho item này
-     * @return hasMore Còn listing khác không
      */
-    function getAllListingsForItemPaginated(
-        uint256 _itemId,
-        uint256 _offset,
-        uint256 _limit
-    )
-        external
-        view
-        returns (MarketListing[] memory filteredListings, bool hasMore)
-    {
-        require(_limit > 0 && _limit <= 50, "Limit must be between 1 and 50");
-
+    function getAllListingsForItem(
+        uint256 _itemId
+    ) external view returns (MarketListing[] memory filteredListings) {
         MarketListing[] memory allListings = fleaMarketProxy.getAllListings();
 
         // Count listings for this item
@@ -1011,36 +837,24 @@ contract FleaMarketLogic {
             }
         }
 
-        // Calculate pagination
-        uint256 startIndex = _offset;
-        uint256 endIndex = startIndex + _limit;
-        if (endIndex > count) {
-            endIndex = count;
+        // Handle edge cases
+        if (count == 0) {
+            filteredListings = new MarketListing[](0);
+            return filteredListings;
         }
 
-        uint256 resultCount = endIndex - startIndex;
-        hasMore = endIndex < count;
-
         // Create filtered array
-        filteredListings = new MarketListing[](resultCount);
-        uint256 index = 0;
+        filteredListings = new MarketListing[](count);
         uint256 resultIndex = 0;
 
-        for (
-            uint256 i = 0;
-            i < allListings.length && resultIndex < resultCount;
-            i++
-        ) {
+        for (uint256 i = 0; i < allListings.length; i++) {
             if (allListings[i].itemId == _itemId) {
-                if (index >= startIndex) {
-                    filteredListings[resultIndex] = allListings[i];
-                    resultIndex++;
-                }
-                index++;
+                filteredListings[resultIndex] = allListings[i];
+                resultIndex++;
             }
         }
 
-        return (filteredListings, hasMore);
+        return filteredListings;
     }
 
     /**
@@ -1177,172 +991,6 @@ contract FleaMarketLogic {
     }
 
     /**
-     * @dev Lấy danh sách tất cả item mà người chơi đang list (có pagination)
-     * @param _player Địa chỉ người chơi
-     * @param _offset Vị trí bắt đầu (0-based)
-     * @param _limit Số lượng item tối đa trả về
-     * @return itemIds Mảng ID của các item
-     * @return quantities Mảng số lượng tương ứng
-     * @return hasMore Còn item khác không
-     */
-    function getPlayerListedItemsPaginated(
-        address _player,
-        uint256 _offset,
-        uint256 _limit
-    )
-        external
-        view
-        returns (
-            uint256[] memory itemIds,
-            uint256[] memory quantities,
-            bool hasMore
-        )
-    {
-        require(_limit > 0 && _limit <= 50, "Limit must be between 1 and 50");
-
-        MarketListing[] memory allPlayerListings = fleaMarketProxy
-            .getListingsBySeller(_player);
-
-        // Count unique items first
-        uint256 uniqueItemCount = 0;
-        uint256[] memory tempItemIds = new uint256[](allPlayerListings.length);
-        bool[] memory itemFound = new bool[](1000); // Assuming max 1000 items
-
-        for (uint256 i = 0; i < allPlayerListings.length; i++) {
-            if (
-                allPlayerListings[i].isActive &&
-                allPlayerListings[i].expirationTime > block.timestamp &&
-                !itemFound[allPlayerListings[i].itemId]
-            ) {
-                tempItemIds[uniqueItemCount] = allPlayerListings[i].itemId;
-                itemFound[allPlayerListings[i].itemId] = true;
-                uniqueItemCount++;
-            }
-        }
-
-        // Calculate pagination
-        uint256 startIndex = _offset;
-        uint256 endIndex = startIndex + _limit;
-        if (endIndex > uniqueItemCount) {
-            endIndex = uniqueItemCount;
-        }
-
-        uint256 resultCount = endIndex - startIndex;
-        hasMore = endIndex < uniqueItemCount;
-
-        // Create final arrays
-        itemIds = new uint256[](resultCount);
-        quantities = new uint256[](resultCount);
-
-        for (uint256 i = 0; i < resultCount; i++) {
-            itemIds[i] = tempItemIds[startIndex + i];
-            quantities[i] = this.getPlayerTotalListedQuantity(
-                _player,
-                tempItemIds[startIndex + i]
-            );
-        }
-    }
-
-    /**
-     * @dev Lấy danh sách item đang được list bởi player với tổng số lượng và giá trung bình (có pagination)
-     * @param _player Địa chỉ người chơi
-     * @param _offset Vị trí bắt đầu (0-based)
-     * @param _limit Số lượng item tối đa trả về
-     * @return itemIds Mảng ID của các item
-     * @return totalQuantities Mảng tổng số lượng cho mỗi item
-     * @return averagePrices Mảng giá trung bình cho mỗi item
-     * @return totalListings Mảng tổng số listing cho mỗi item
-     * @return hasMore Còn item khác không
-     */
-    function getPlayerListedItemsWithStatsPaginated(
-        address _player,
-        uint256 _offset,
-        uint256 _limit
-    )
-        external
-        view
-        returns (
-            uint256[] memory itemIds,
-            uint256[] memory totalQuantities,
-            uint256[] memory averagePrices,
-            uint256[] memory totalListings,
-            bool hasMore
-        )
-    {
-        require(_limit > 0 && _limit <= 50, "Limit must be between 1 and 50");
-
-        MarketListing[] memory allPlayerListings = fleaMarketProxy
-            .getListingsBySeller(_player);
-
-        // Count unique items first
-        uint256 uniqueItemCount = 0;
-        uint256[] memory tempItemIds = new uint256[](allPlayerListings.length);
-        bool[] memory itemFound = new bool[](1000); // Assuming max 1000 items
-
-        for (uint256 i = 0; i < allPlayerListings.length; i++) {
-            if (
-                allPlayerListings[i].isActive &&
-                allPlayerListings[i].expirationTime > block.timestamp &&
-                !itemFound[allPlayerListings[i].itemId]
-            ) {
-                tempItemIds[uniqueItemCount] = allPlayerListings[i].itemId;
-                itemFound[allPlayerListings[i].itemId] = true;
-                uniqueItemCount++;
-            }
-        }
-
-        // Calculate pagination
-        uint256 startIndex = _offset;
-        uint256 endIndex = startIndex + _limit;
-        if (endIndex > uniqueItemCount) {
-            endIndex = uniqueItemCount;
-        }
-
-        uint256 resultCount = endIndex - startIndex;
-        hasMore = endIndex < uniqueItemCount;
-
-        // Create final arrays
-        itemIds = new uint256[](resultCount);
-        totalQuantities = new uint256[](resultCount);
-        averagePrices = new uint256[](resultCount);
-        totalListings = new uint256[](resultCount);
-
-        for (uint256 i = 0; i < resultCount; i++) {
-            uint256 itemId = tempItemIds[startIndex + i];
-            itemIds[i] = itemId;
-
-            // Calculate stats for this item
-            uint256 totalQuantity = 0;
-            uint256 totalPrice = 0;
-            uint256 listingCount = 0;
-
-            for (uint256 j = 0; j < allPlayerListings.length; j++) {
-                if (
-                    allPlayerListings[j].itemId == itemId &&
-                    allPlayerListings[j].isActive &&
-                    allPlayerListings[j].expirationTime > block.timestamp
-                ) {
-                    totalQuantity += allPlayerListings[j].quantity;
-                    totalPrice +=
-                        allPlayerListings[j].price *
-                        allPlayerListings[j].quantity;
-                    listingCount++;
-                }
-            }
-
-            totalQuantities[i] = totalQuantity;
-            totalListings[i] = listingCount;
-
-            // Calculate average price (weighted by quantity)
-            if (totalQuantity > 0) {
-                averagePrices[i] = totalPrice / totalQuantity;
-            } else {
-                averagePrices[i] = 0;
-            }
-        }
-    }
-
-    /**
      * @dev Lấy tổng số item duy nhất mà player đang list
      * @param _player Địa chỉ người chơi
      * @return Tổng số item duy nhất
@@ -1368,97 +1016,6 @@ contract FleaMarketLogic {
         }
 
         return uniqueItemCount;
-    }
-
-    /**
-     * @dev Lấy danh sách item duy nhất với giá tốt nhất cho mỗi item trên flea market (có pagination)
-     * @param _offset Vị trí bắt đầu (0-based)
-     * @param _limit Số lượng item tối đa trả về
-     * @return itemIds Mảng ID của các item duy nhất
-     * @return bestPrices Mảng giá tốt nhất cho mỗi item
-     * @return totalQuantities Mảng tổng số lượng có sẵn cho mỗi item
-     * @return totalListings Mảng tổng số listing cho mỗi item
-     * @return hasMore Còn item khác không
-     */
-    function getUniqueItemsWithBestPricesPaginated(
-        uint256 _offset,
-        uint256 _limit
-    )
-        external
-        view
-        returns (
-            uint256[] memory itemIds,
-            uint256[] memory bestPrices,
-            uint256[] memory totalQuantities,
-            uint256[] memory totalListings,
-            bool hasMore
-        )
-    {
-        require(_limit > 0 && _limit <= 50, "Limit must be between 1 and 50");
-
-        MarketListing[] memory allActiveListings = fleaMarketProxy
-            .getActiveListings();
-
-        // Count unique items first
-        uint256 uniqueItemCount = 0;
-        uint256[] memory tempItemIds = new uint256[](allActiveListings.length);
-        bool[] memory itemFound = new bool[](1000); // Assuming max 1000 items
-
-        for (uint256 i = 0; i < allActiveListings.length; i++) {
-            if (
-                allActiveListings[i].isActive &&
-                allActiveListings[i].expirationTime > block.timestamp &&
-                !itemFound[allActiveListings[i].itemId]
-            ) {
-                tempItemIds[uniqueItemCount] = allActiveListings[i].itemId;
-                itemFound[allActiveListings[i].itemId] = true;
-                uniqueItemCount++;
-            }
-        }
-
-        // Calculate pagination
-        uint256 startIndex = _offset;
-        uint256 endIndex = startIndex + _limit;
-        if (endIndex > uniqueItemCount) {
-            endIndex = uniqueItemCount;
-        }
-
-        uint256 resultCount = endIndex - startIndex;
-        hasMore = endIndex < uniqueItemCount;
-
-        // Create final arrays
-        itemIds = new uint256[](resultCount);
-        bestPrices = new uint256[](resultCount);
-        totalQuantities = new uint256[](resultCount);
-        totalListings = new uint256[](resultCount);
-
-        for (uint256 i = 0; i < resultCount; i++) {
-            uint256 itemId = tempItemIds[startIndex + i];
-            itemIds[i] = itemId;
-
-            // Find best price and calculate stats for this item
-            uint256 bestPrice = type(uint256).max;
-            uint256 totalQuantity = 0;
-            uint256 listingCount = 0;
-
-            for (uint256 j = 0; j < allActiveListings.length; j++) {
-                if (
-                    allActiveListings[j].itemId == itemId &&
-                    allActiveListings[j].isActive &&
-                    allActiveListings[j].expirationTime > block.timestamp
-                ) {
-                    if (allActiveListings[j].price < bestPrice) {
-                        bestPrice = allActiveListings[j].price;
-                    }
-                    totalQuantity += allActiveListings[j].quantity;
-                    listingCount++;
-                }
-            }
-
-            bestPrices[i] = bestPrice == type(uint256).max ? 0 : bestPrice;
-            totalQuantities[i] = totalQuantity;
-            totalListings[i] = listingCount;
-        }
     }
 
     /**

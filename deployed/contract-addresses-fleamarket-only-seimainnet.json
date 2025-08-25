@@ -43,5 +43,7 @@
     "RaisingProxy": "0x018DCeF6AbA5B492c558800BB59A3E6aF83B6121"
   },
   "timestamp": "2025-08-25T03:41:46.467Z",
-  "rpcUrl": "Mainnet RPC"
+  "rpcUrl": "Mainnet RPC",
+  "lastUpdated": "2025-08-25T08:39:21.321Z",
+  "fleamarketLogicDeployed": true
 }
