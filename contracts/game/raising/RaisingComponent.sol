@@ -25,7 +25,11 @@ contract RaisingComponent {
         uint256 itemId
     );
     event RaisingFed(uint256 indexed raisingId, uint256 qualityModifier);
-    event RaisingHarvested(uint256 indexed raisingId);
+    event RaisingSlaughtered(uint256 indexed raisingId);
+    event RaisingHarvestedWithCooldown(
+        uint256 indexed raisingId,
+        uint256 harvestCount
+    );
 
     modifier onlyAuthorized() {
         require(
@@ -78,7 +82,10 @@ contract RaisingComponent {
             adjustedGrowthTime,
             block.timestamp,
             0,
-            false
+            false,
+            0, // lastHarvestTime
+            0, // harvestCount
+            false // isSlaughtered
         );
 
         ownerRaisings[_raisingOwner].push(raisingId);
@@ -127,11 +134,54 @@ contract RaisingComponent {
         emit RaisingFed(_raisingId, adjustedQuality);
     }
 
-    function harvestRaising(
+    function harvestRaisingWithCooldown(
+        uint256 _raisingId,
+        uint256 _harvestCooldown
+    ) external onlyAuthorized returns (uint256) {
+        Raising storage raising = raisings[_raisingId];
+        require(!raising.isHarvested, "[COMPONENT] Raising already harvested");
+        require(
+            !raising.isSlaughtered,
+            "[COMPONENT] Raising already slaughtered"
+        );
+        require(
+            raising.raisingTime + raising.growthTime <= block.timestamp,
+            "Raising not fully grown"
+        );
+        require(
+            raising.harvestCount < 3,
+            "[COMPONENT] Max harvest count reached"
+        );
+
+        // Kiểm tra cooldown
+        if (raising.harvestCount > 0) {
+            require(
+                block.timestamp >= raising.lastHarvestTime + _harvestCooldown,
+                "[COMPONENT] Harvest cooldown not finished"
+            );
+        }
+
+        uint256 qualityModifier = raising.qualityModifier;
+        if (raising.feedCount == 0) {
+            qualityModifier = 0;
+        }
+
+        raising.lastHarvestTime = block.timestamp;
+        raising.harvestCount++;
+
+        emit RaisingHarvestedWithCooldown(_raisingId, raising.harvestCount);
+        return qualityModifier;
+    }
+
+    function slaughterRaising(
         uint256 _raisingId
     ) external onlyAuthorized returns (uint256) {
         Raising storage raising = raisings[_raisingId];
         require(!raising.isHarvested, "[COMPONENT] Raising already harvested");
+        require(
+            !raising.isSlaughtered,
+            "[COMPONENT] Raising already slaughtered"
+        );
         require(
             raising.raisingTime + raising.growthTime <= block.timestamp,
             "Raising not fully grown"
@@ -144,12 +194,13 @@ contract RaisingComponent {
             qualityModifier = 0;
         }
 
+        raising.isSlaughtered = true;
         removeRaisingFromOwnerList(owner, _raisingId);
 
         delete raisingOwners[_raisingId];
         delete raisings[_raisingId];
 
-        emit RaisingHarvested(_raisingId);
+        emit RaisingSlaughtered(_raisingId);
         return qualityModifier;
     }
 
@@ -199,7 +250,8 @@ contract RaisingComponent {
             if (
                 raisingOwners[raisingId] == owner && // Kiểm tra quyền sở hữu
                 raisings[raisingId].id != 0 && // Kiểm tra raising còn tồn tại
-                !raisings[raisingId].isHarvested // Kiểm tra chưa thu hoạch
+                !raisings[raisingId].isHarvested && // Kiểm tra chưa thu hoạch
+                !raisings[raisingId].isSlaughtered // Kiểm tra chưa giết thịt
             ) {
                 count++;
             }
@@ -215,7 +267,8 @@ contract RaisingComponent {
             if (
                 raisingOwners[raisingId] == owner &&
                 raisings[raisingId].id != 0 &&
-                !raisings[raisingId].isHarvested
+                !raisings[raisingId].isHarvested &&
+                !raisings[raisingId].isSlaughtered
             ) {
                 Raising memory raising = raisings[raisingId];
                 result[index] = raising;
@@ -240,7 +293,10 @@ contract RaisingComponent {
             uint256 raisingId = ownerRaisingList[i - 1];
             // Kiểm tra xem raising còn tồn tại không
             if (
-                raisings[raisingId].id == 0 || raisingOwners[raisingId] != owner
+                raisings[raisingId].id == 0 ||
+                raisingOwners[raisingId] != owner ||
+                raisings[raisingId].isHarvested ||
+                raisings[raisingId].isSlaughtered
             ) {
                 // Di chuyển phần tử cuối lên vị trí hiện tại (nếu không phải phần tử cuối)
                 if (i - 1 < length - 1) {

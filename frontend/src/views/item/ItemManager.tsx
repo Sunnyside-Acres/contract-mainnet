@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search } from "@/components/Search"
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, MoreHorizontal, Eye, ChevronsUpDown, Settings, Zap, Shield, Heart, Star, Gauge, RefreshCw, X, Upload, Download } from "lucide-react"
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, MoreHorizontal, Eye, ChevronsUpDown, Settings, Zap, Shield, Heart, Star, Gauge, RefreshCw, X, Upload, Download, Clock } from "lucide-react"
 import { useItemContext } from "@/context/ItemContext"
 import { Item, ItemType, Rarity, Attribute } from "@/types/item.type"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -665,6 +665,7 @@ export function ItemManager({ contract, signer }: ItemManagerProps) {
             [Attribute.WaterUsage]: <Gauge className="h-3 w-3" />,
             [Attribute.FeedEfficiency]: <Star className="h-3 w-3" />,
             [Attribute.Quality]: <Star className="h-3 w-3" />,
+            [Attribute.HarvestCooldown]: <Clock className="h-3 w-3" />,
         }
         return iconMap[attribute] || <Settings className="h-3 w-3" />
     }
@@ -684,7 +685,8 @@ export function ItemManager({ contract, signer }: ItemManagerProps) {
             [Attribute.Fertility]: "Fertility",
             [Attribute.WaterUsage]: "Water Usage",
             [Attribute.FeedEfficiency]: "Feed Efficiency",
-            [Attribute.Quality]: "Quality"
+            [Attribute.Quality]: "Quality",
+            [Attribute.HarvestCooldown]: "Harvest Cooldown"
         }
         return nameMap[attribute] || `Attribute ${attribute}`
     }

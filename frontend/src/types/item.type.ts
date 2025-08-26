@@ -33,7 +33,8 @@ export enum Attribute {
     Fertility = 10,
     WaterUsage = 11,
     FeedEfficiency = 12,
-    Quality = 13
+    Quality = 13,
+    HarvestCooldown = 14,
 }
 
 export interface ItemDrop {

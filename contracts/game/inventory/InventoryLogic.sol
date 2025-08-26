@@ -307,6 +307,28 @@ contract InventoryLogic {
             "Player2 does not have enough sunlight"
         );
 
+        // Lưu trữ thông tin item gốc trước khi thay đổi
+        InventoryItem[] memory player1OriginalItems = new InventoryItem[](
+            _item1Ids.length
+        );
+        InventoryItem[] memory player2OriginalItems = new InventoryItem[](
+            _item2Ids.length
+        );
+
+        for (uint256 i = 0; i < _item1Ids.length; i++) {
+            player1OriginalItems[i] = inventoryProxy.getItem(
+                _player1,
+                _item1Ids[i]
+            );
+        }
+
+        for (uint256 i = 0; i < _item2Ids.length; i++) {
+            player2OriginalItems[i] = inventoryProxy.getItem(
+                _player2,
+                _item2Ids[i]
+            );
+        }
+
         // Process player1's items (remove items being traded away)
         for (uint256 i = 0; i < _item1Ids.length; i++) {
             InventoryItem memory player1Item = inventoryProxy.getItem(
@@ -347,10 +369,6 @@ contract InventoryLogic {
                 _player1,
                 _item2Ids[i]
             );
-            InventoryItem memory player2Item = inventoryProxy.getItem(
-                _player2,
-                _item2Ids[i]
-            );
 
             uint256 newQuantity = player1ExistingItem.quantity +
                 _item2Amounts[i];
@@ -373,13 +391,13 @@ contract InventoryLogic {
                     player1ExistingItem.expiration
                 );
             } else {
-                // Use player2's durability and expiration for new item
+                // Use player2's original durability and expiration for new item
                 IInventoryComponent(address(inventoryProxy)).setItem(
                     _player1,
                     _item2Ids[i],
                     newQuantity,
-                    player2Item.durability,
-                    player2Item.expiration
+                    player2OriginalItems[i].durability,
+                    player2OriginalItems[i].expiration
                 );
             }
         }
@@ -388,10 +406,6 @@ contract InventoryLogic {
         for (uint256 i = 0; i < _item1Ids.length; i++) {
             InventoryItem memory player2ExistingItem = inventoryProxy.getItem(
                 _player2,
-                _item1Ids[i]
-            );
-            InventoryItem memory player1Item = inventoryProxy.getItem(
-                _player1,
                 _item1Ids[i]
             );
 
@@ -416,13 +430,13 @@ contract InventoryLogic {
                     player2ExistingItem.expiration
                 );
             } else {
-                // Use player1's durability and expiration for new item
+                // Use player1's original durability and expiration for new item
                 IInventoryComponent(address(inventoryProxy)).setItem(
                     _player2,
                     _item1Ids[i],
                     newQuantity,
-                    player1Item.durability,
-                    player1Item.expiration
+                    player1OriginalItems[i].durability,
+                    player1OriginalItems[i].expiration
                 );
             }
         }

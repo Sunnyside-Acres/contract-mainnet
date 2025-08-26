@@ -17,7 +17,12 @@ interface IRaisingComponent {
         WeatherStructs.WeatherState _weatherState
     ) external;
 
-    function harvestRaising(uint256 _raisingId) external returns (uint256);
+    function harvestRaisingWithCooldown(
+        uint256 _raisingId,
+        uint256 _harvestCooldown
+    ) external returns (uint256);
+
+    function slaughterRaising(uint256 _raisingId) external returns (uint256);
 
     function getRaising(
         uint256 raisingId
@@ -29,5 +34,7 @@ interface IRaisingComponent {
 
     function getRaisingOwner(uint256 raisingId) external view returns (address);
 
-    function getOwnerRaisings(address owner) external view returns (uint256[] memory);
+    function getOwnerRaisings(
+        address owner
+    ) external view returns (uint256[] memory);
 }

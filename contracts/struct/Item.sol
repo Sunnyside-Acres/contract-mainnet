@@ -54,6 +54,7 @@ library ItemStructs {
         Fertility, // Độ màu mỡ
         WaterUsage, // Lượng nước tiêu thụ
         FeedEfficiency, // Hiệu quả thức ăn
-        Quality // Chất lượng
+        Quality, // Chất lượng
+        HarvestCooldown // Thời gian cooldown giữa các lần harvest
     }
 }

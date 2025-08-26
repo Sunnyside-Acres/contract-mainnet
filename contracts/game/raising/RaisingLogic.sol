@@ -8,6 +8,8 @@ import "../../interfaces/IInventory.sol";
 import "../../interfaces/IItem.sol";
 import "../../struct/Raising.sol";
 import "../../struct/Weather.sol";
+import "../../struct/Item.sol";
+import "../../struct/Inventory.sol";
 
 contract RaisingLogic {
     IWorld public world;
@@ -35,7 +37,15 @@ contract RaisingLogic {
         uint256 itemId
     );
 
-    event RaisingHarvested(
+    event RaisingHarvestedWithCooldown(
+        address indexed player,
+        uint256 indexed raisingId,
+        uint256[] itemIds,
+        uint256[] itemAmounts,
+        uint256 harvestCount
+    );
+
+    event RaisingSlaughtered(
         address indexed player,
         uint256 indexed raisingId,
         uint256[] itemIds,
@@ -124,14 +134,24 @@ contract RaisingLogic {
 
         Raising memory raising = raisingProxy.getRaising(raisingId);
         require(!raising.isHarvested, "Raising already harvested");
+        require(!raising.isSlaughtered, "Raising already slaughtered");
 
         ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
             raising.itemId
         );
+ 
+        // Lấy cooldown từ item attribute
+        uint256 harvestCooldown = itemProxy.getItemAttribute(
+            raising.itemId,
+            ItemStructs.Attribute.HarvestCooldown
+        );
 
-        uint256 qualityModifier = raisingProxy.harvestRaising(raisingId);
+        uint256 qualityModifier = raisingProxy.harvestRaisingWithCooldown(
+            raisingId,
+            harvestCooldown
+        );
 
-        require(drops.length > 0, "No item drops configured");
+        require(drops.length > 1, "No harvest drops configured"); // Cần ít nhất 2 drops (drop[0] là thịt, drop[1+] là harvest)
 
         uint256 qualityMultiplier = qualityModifier;
         if (qualityModifier == 0) {
@@ -140,12 +160,23 @@ contract RaisingLogic {
 
         uint256 qualityBonus = (qualityMultiplier - 100) * 100;
 
+        // Tính tổng tỉ lệ của các drops harvest (từ index 1 trở đi)
+        uint256 totalHarvestProbability = 0;
+        for (uint256 i = 1; i < drops.length; i++) {
+            totalHarvestProbability += drops[i].probability;
+        }
+
         uint256 totalItemAmount = 0;
-        uint256[] memory harvestedItemIds = new uint256[](drops.length);
-        uint256[] memory harvestedItemAmounts = new uint256[](drops.length);
+        uint256[] memory harvestedItemIds = new uint256[](drops.length - 1); // Trừ drop[0] (thịt)
+        uint256[] memory harvestedItemAmounts = new uint256[](drops.length - 1);
         uint256 harvestedItemCount = 0;
 
-        for (uint256 i = 0; i < drops.length; i++) {
+        // Chỉ xử lý từ drop[1] trở đi (không phải thịt)
+        for (uint256 i = 1; i < drops.length; i++) {
+            // Tính lại tỉ lệ dựa trên tổng 100% trừ đi phần thịt
+            uint256 adjustedProbability = (drops[i].probability * 10000) /
+                totalHarvestProbability;
+
             uint256 baseRoll = random(10000);
             uint256 adjustedRoll = baseRoll;
             if (baseRoll > qualityBonus) {
@@ -154,12 +185,11 @@ contract RaisingLogic {
                 adjustedRoll = 0;
             }
 
-            if (adjustedRoll < drops[i].probability) {
+            if (adjustedRoll < adjustedProbability) {
                 uint256 itemAmount;
                 if (drops[i].yield == 0) {
                     itemAmount = 1;
                 } else {
-                    // Sử dụng yield làm số lượng cơ bản, qualityModifier làm hệ số nhân
                     itemAmount = (drops[i].yield * qualityMultiplier) / 100;
                     if (itemAmount == 0) {
                         itemAmount = 1;
@@ -168,12 +198,10 @@ contract RaisingLogic {
 
                 totalItemAmount += itemAmount;
 
-                // Lưu thông tin item được thu hoạch
                 harvestedItemIds[harvestedItemCount] = drops[i].itemId;
                 harvestedItemAmounts[harvestedItemCount] = itemAmount;
                 harvestedItemCount++;
 
-                // Thêm item vào inventory
                 inventoryProxy.setItem(
                     msg.sender,
                     drops[i].itemId,
@@ -185,7 +213,102 @@ contract RaisingLogic {
         }
 
         // Đảm bảo ít nhất một vật phẩm nếu có chăm sóc
-        if (totalItemAmount == 0 && qualityModifier > 0) {
+        if (totalItemAmount == 0 && qualityModifier > 0 && drops.length > 1) {
+            harvestedItemIds[0] = drops[1].itemId;
+            harvestedItemAmounts[0] = 1;
+            harvestedItemCount = 1;
+
+            inventoryProxy.setItem(msg.sender, drops[1].itemId, 1, 100, 0);
+        }
+
+        uint256[] memory finalItemIds = new uint256[](harvestedItemCount);
+        uint256[] memory finalItemAmounts = new uint256[](harvestedItemCount);
+
+        for (uint256 i = 0; i < harvestedItemCount; i++) {
+            finalItemIds[i] = harvestedItemIds[i];
+            finalItemAmounts[i] = harvestedItemAmounts[i];
+        }
+
+        emit RaisingHarvestedWithCooldown(
+            msg.sender,
+            raisingId,
+            finalItemIds,
+            finalItemAmounts,
+            raising.harvestCount + 1
+        );
+    }
+
+    function slaughterRaising(uint256 raisingId) external {
+        require(raisingId > 0, "Invalid raising ID");
+        require(
+            raisingProxy.getRaisingOwner(raisingId) == msg.sender,
+            "Not raising owner"
+        );
+
+        Raising memory raising = raisingProxy.getRaising(raisingId);
+        require(!raising.isHarvested, "Raising already harvested");
+        require(!raising.isSlaughtered, "Raising already slaughtered");
+
+        ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
+            raising.itemId
+        );
+
+        uint256 qualityModifier = raisingProxy.slaughterRaising(raisingId);
+
+        require(drops.length > 0, "No item drops configured");
+
+        uint256 qualityMultiplier = qualityModifier;
+        if (qualityModifier == 0) {
+            return;
+        }
+
+        uint256 qualityBonus = (qualityMultiplier - 100) * 100;
+
+        uint256 totalItemAmount = 0;
+        uint256[] memory harvestedItemIds = new uint256[](1); // Chỉ lấy drop[0] (thịt)
+        uint256[] memory harvestedItemAmounts = new uint256[](1);
+        uint256 harvestedItemCount = 0;
+
+        // Chỉ xử lý drop[0] (thịt) với tỉ lệ 100%
+        if (drops.length > 0) {
+            uint256 baseRoll = random(10000);
+            uint256 adjustedRoll = baseRoll;
+            if (baseRoll > qualityBonus) {
+                adjustedRoll = baseRoll - qualityBonus;
+            } else {
+                adjustedRoll = 0;
+            }
+
+            // Tỉ lệ thịt luôn là 100% (10000)
+            if (adjustedRoll < 10000) {
+                uint256 itemAmount;
+                if (drops[0].yield == 0) {
+                    itemAmount = 1;
+                } else {
+                    itemAmount = (drops[0].yield * qualityMultiplier) / 100;
+                    if (itemAmount == 0) {
+                        itemAmount = 1;
+                    }
+                }
+
+                totalItemAmount += itemAmount;
+
+                harvestedItemIds[0] = drops[0].itemId;
+                harvestedItemAmounts[0] = itemAmount;
+                harvestedItemCount = 1;
+
+                inventoryProxy.setItem(
+                    msg.sender,
+                    drops[0].itemId,
+                    itemAmount,
+                    100,
+                    0
+                );
+            }
+        }
+
+        // Đảm bảo ít nhất một vật phẩm thịt nếu có chăm sóc
+        if (totalItemAmount == 0 && qualityModifier > 0 && drops.length > 0) {
             harvestedItemIds[0] = drops[0].itemId;
             harvestedItemAmounts[0] = 1;
             harvestedItemCount = 1;
@@ -201,11 +324,11 @@ contract RaisingLogic {
             finalItemAmounts[i] = harvestedItemAmounts[i];
         }
 
-        emit RaisingHarvested(
+        emit RaisingSlaughtered(
             msg.sender,
             raisingId,
-            harvestedItemIds,
-            harvestedItemAmounts
+            finalItemIds,
+            finalItemAmounts
         );
     }
 

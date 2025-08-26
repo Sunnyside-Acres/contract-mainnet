@@ -11,4 +11,7 @@ struct Raising {
     uint256 lastFeedTime; // Thời điểm cây được cấp thức ăn cuối cùng
     uint256 feedCount; // Số lần cấp thức ăn
     bool isHarvested; // Trạng thái đã thu hoạch hay chưa
+    uint256 lastHarvestTime; // Thời điểm harvest cuối cùng
+    uint256 harvestCount; // Số lần đã harvest (tối đa 3 lần)
+    bool isSlaughtered; // Trạng thái đã giết thịt hay chưa
 }
