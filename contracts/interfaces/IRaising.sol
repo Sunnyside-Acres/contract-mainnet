@@ -22,6 +22,17 @@ interface IRaisingComponent {
         uint256 _harvestCooldown
     ) external returns (uint256);
 
+    function updateTotalHarvestedItems(
+        uint256 _raisingId,
+        uint256 _additionalItems
+    ) external;
+
+    function getNextFeedingTime(
+        uint256 _raisingId
+    ) external view returns (uint256);
+
+    function canFeed(uint256 _raisingId) external view returns (bool);
+
     function slaughterRaising(uint256 _raisingId) external returns (uint256);
 
     function getRaising(

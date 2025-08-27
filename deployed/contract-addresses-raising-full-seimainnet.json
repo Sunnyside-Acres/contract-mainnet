@@ -38,10 +38,12 @@
     "CraftingComponent": "0x5C64096B578F88bC9E25E06841bF388EA354463f",
     "CraftingLogic": "0x290A0De2d2e1654a747b1E6dcc7D6ce3542d3631",
     "CraftingProxy": "0x9741C3B8fDB5fF61339b29D4a8202573bB484B8a",
-    "RaisingComponent": "0x522954aC7e63a5Da4704a57126D4853D255206d5",
-    "RaisingLogic": "0xB9658F2187B5F568B43b3D5B2668450b2AE70f2c",
-    "RaisingProxy": "0xc12B77fd39cC87d2EB879af429d5FB529bf97A36"
+    "RaisingComponent": "0x81ebce53844EfF89Cc4dc54f6E1dE9EE9dDaA4DB",
+    "RaisingLogic": "0x7FA1DA056dE4Ef85b88181753Cb3aF1A403584F0",
+    "RaisingProxy": "0xB55CA0c42D94d368E5268Cc0Be2e189957F60F53"
   },
   "timestamp": "2025-08-26T07:07:24.289Z",
-  "rpcUrl": "Mainnet RPC"
+  "rpcUrl": "Mainnet RPC",
+  "lastUpdated": "2025-08-27T11:50:40.746Z",
+  "raisingSystemDeployed": true
 }

@@ -57,6 +57,13 @@ contract RaisingLogic {
         WeatherStructs.WeatherState weatherState
     );
 
+    event TotalHarvestedItemsUpdated(
+        uint256 indexed raisingId,
+        uint256 totalHarvestedItems
+    );
+
+    event FeedingReset(uint256 indexed raisingId, uint256 harvestCount);
+
     constructor(
         address _world,
         address _raisingProxy,
@@ -136,10 +143,13 @@ contract RaisingLogic {
         require(!raising.isHarvested, "Raising already harvested");
         require(!raising.isSlaughtered, "Raising already slaughtered");
 
+        // Kiểm tra xem raising có được feed hay chưa
+        require(raising.feedCount > 0, "Raising must be fed before harvest");
+
         ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
             raising.itemId
         );
- 
+
         // Lấy cooldown từ item attribute
         uint256 harvestCooldown = itemProxy.getItemAttribute(
             raising.itemId,
@@ -154,9 +164,7 @@ contract RaisingLogic {
         require(drops.length > 1, "No harvest drops configured"); // Cần ít nhất 2 drops (drop[0] là thịt, drop[1+] là harvest)
 
         uint256 qualityMultiplier = qualityModifier;
-        if (qualityModifier == 0) {
-            return;
-        }
+        // Loại bỏ check qualityModifier == 0 vì đã check feedCount > 0 ở trên
 
         uint256 qualityBonus = (qualityMultiplier - 100) * 100;
 
@@ -202,10 +210,19 @@ contract RaisingLogic {
                 harvestedItemAmounts[harvestedItemCount] = itemAmount;
                 harvestedItemCount++;
 
+                // Lấy số lượng hiện tại của item
+                InventoryItem memory currentItem = inventoryProxy.getItem(
+                    msg.sender,
+                    drops[i].itemId
+                );
+
+                // Cộng thêm số lượng mới (nếu item chưa tồn tại thì quantity = 0)
+                uint256 newQuantity = currentItem.quantity + itemAmount;
+
                 inventoryProxy.setItem(
                     msg.sender,
                     drops[i].itemId,
-                    itemAmount,
+                    newQuantity,
                     100,
                     0
                 );
@@ -218,7 +235,22 @@ contract RaisingLogic {
             harvestedItemAmounts[0] = 1;
             harvestedItemCount = 1;
 
-            inventoryProxy.setItem(msg.sender, drops[1].itemId, 1, 100, 0);
+            // Lấy số lượng hiện tại của item
+            InventoryItem memory currentItem = inventoryProxy.getItem(
+                msg.sender,
+                drops[1].itemId
+            );
+
+            // Cộng thêm số lượng mới (nếu item chưa tồn tại thì quantity = 0)
+            uint256 newQuantity = currentItem.quantity + 1;
+
+            inventoryProxy.setItem(
+                msg.sender,
+                drops[1].itemId,
+                newQuantity,
+                100,
+                0
+            );
         }
 
         uint256[] memory finalItemIds = new uint256[](harvestedItemCount);
@@ -236,6 +268,16 @@ contract RaisingLogic {
             finalItemAmounts,
             raising.harvestCount + 1
         );
+
+        // Cập nhật tổng số sản phẩm đã thu hoạch được
+        raisingProxy.updateTotalHarvestedItems(raisingId, totalItemAmount);
+
+        // Emit event để theo dõi (lấy giá trị mới từ component)
+        Raising memory updatedRaising = raisingProxy.getRaising(raisingId);
+        emit TotalHarvestedItemsUpdated(
+            raisingId,
+            updatedRaising.totalHarvestedItems
+        );
     }
 
     function slaughterRaising(uint256 raisingId) external {
@@ -249,18 +291,23 @@ contract RaisingLogic {
         require(!raising.isHarvested, "Raising already harvested");
         require(!raising.isSlaughtered, "Raising already slaughtered");
 
+        // Kiểm tra xem raising có được feed hay chưa
+        require(raising.feedCount > 0, "Raising must be fed before slaughter");
+
         ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
             raising.itemId
         );
 
+        // Lấy thông tin trước khi xóa con vật
+        uint256 currentTotalHarvested = raising.totalHarvestedItems;
+
+        // Xóa con vật và lấy qualityModifier
         uint256 qualityModifier = raisingProxy.slaughterRaising(raisingId);
 
         require(drops.length > 0, "No item drops configured");
 
         uint256 qualityMultiplier = qualityModifier;
-        if (qualityModifier == 0) {
-            return;
-        }
+        // Loại bỏ check qualityModifier == 0 vì đã check feedCount > 0 ở trên
 
         uint256 qualityBonus = (qualityMultiplier - 100) * 100;
 
@@ -297,10 +344,19 @@ contract RaisingLogic {
                 harvestedItemAmounts[0] = itemAmount;
                 harvestedItemCount = 1;
 
+                // Lấy số lượng hiện tại của item
+                InventoryItem memory currentItem = inventoryProxy.getItem(
+                    msg.sender,
+                    drops[0].itemId
+                );
+
+                // Cộng thêm số lượng mới (nếu item chưa tồn tại thì quantity = 0)
+                uint256 newQuantity = currentItem.quantity + itemAmount;
+
                 inventoryProxy.setItem(
                     msg.sender,
                     drops[0].itemId,
-                    itemAmount,
+                    newQuantity,
                     100,
                     0
                 );
@@ -313,7 +369,22 @@ contract RaisingLogic {
             harvestedItemAmounts[0] = 1;
             harvestedItemCount = 1;
 
-            inventoryProxy.setItem(msg.sender, drops[0].itemId, 1, 100, 0);
+            // Lấy số lượng hiện tại của item
+            InventoryItem memory currentItem = inventoryProxy.getItem(
+                msg.sender,
+                drops[0].itemId
+            );
+
+            // Cộng thêm số lượng mới (nếu item chưa tồn tại thì quantity = 0)
+            uint256 newQuantity = currentItem.quantity + 1;
+
+            inventoryProxy.setItem(
+                msg.sender,
+                drops[0].itemId,
+                newQuantity,
+                100,
+                0
+            );
         }
 
         uint256[] memory finalItemIds = new uint256[](harvestedItemCount);
@@ -330,6 +401,9 @@ contract RaisingLogic {
             finalItemIds,
             finalItemAmounts
         );
+
+        // Lưu ý: totalHarvestedItems không được cập nhật cho slaughter
+        // vì con vật đã bị xóa. Nếu cần đếm thịt, có thể thêm logic riêng
     }
 
     function feedRaising(uint256 raisingId) external {
@@ -341,6 +415,7 @@ contract RaisingLogic {
 
         Raising memory raising = raisingProxy.getRaising(raisingId);
         require(!raising.isHarvested, "Raising already harvested");
+        require(!raising.isSlaughtered, "Raising already slaughtered");
 
         WeatherStructs.WeatherState weatherState = weatherProxy
             .getCurrentWeatherState();
@@ -373,5 +448,303 @@ contract RaisingLogic {
         uint256 raisingId
     ) external view returns (address) {
         return raisingProxy.getRaisingOwner(raisingId);
+    }
+
+    // UI helper functions
+    function getNextFeedingTime(
+        uint256 raisingId
+    ) external view returns (uint256) {
+        return raisingProxy.getNextFeedingTime(raisingId);
+    }
+
+    function canFeed(uint256 raisingId) external view returns (bool) {
+        return raisingProxy.canFeed(raisingId);
+    }
+
+    function getFeedingInfo(
+        uint256 raisingId
+    )
+        external
+        view
+        returns (
+            uint256 nextFeedingTime,
+            bool canFeedNow,
+            uint256 feedCount,
+            uint256 maxFeeds,
+            uint256 timeUntilNextFeed
+        )
+    {
+        nextFeedingTime = raisingProxy.getNextFeedingTime(raisingId);
+        canFeedNow = raisingProxy.canFeed(raisingId);
+
+        Raising memory raising = raisingProxy.getRaising(raisingId);
+        feedCount = raising.feedCount;
+        maxFeeds = 3; // Giới hạn 3 lần feed
+
+        // Tính thời gian còn lại cho đến lần feed tiếp theo
+        if (canFeedNow) {
+            timeUntilNextFeed = 0;
+        } else {
+            timeUntilNextFeed = nextFeedingTime - block.timestamp;
+        }
+    }
+
+    function getFeedingCooldownInfo(
+        uint256 raisingId
+    )
+        external
+        view
+        returns (
+            uint256 currentTime,
+            uint256 lastFeedTime,
+            uint256 cooldownDuration,
+            uint256 timeRemaining,
+            bool isReadyToFeed
+        )
+    {
+        Raising memory raising = raisingProxy.getRaising(raisingId);
+
+        currentTime = block.timestamp;
+        lastFeedTime = raising.lastFeedTime;
+        cooldownDuration = raising.growthTime / 3; // Cooldown = growthTime / 3
+
+        if (raising.feedCount == 0) {
+            // Chưa feed lần nào, có thể feed ngay
+            timeRemaining = 0;
+            isReadyToFeed = true;
+        } else {
+            uint256 nextFeedTime = lastFeedTime + cooldownDuration;
+            if (currentTime >= nextFeedTime) {
+                timeRemaining = 0;
+                isReadyToFeed = true;
+            } else {
+                timeRemaining = nextFeedTime - currentTime;
+                isReadyToFeed = false;
+            }
+        }
+    }
+
+    function getFullRaisingInfo(
+        uint256 raisingId
+    )
+        external
+        view
+        returns (
+            // Thông tin cơ bản của raising
+            uint256 id,
+            uint256 itemId,
+            uint256 raisingTime,
+            uint256 qualityModifier,
+            uint256 growthTime,
+            uint256 lastFeedTime,
+            uint256 feedCount,
+            bool isHarvested,
+            uint256 lastHarvestTime,
+            uint256 harvestCount,
+            bool isSlaughtered,
+            uint256 totalHarvestedItems,
+            // Thông tin item
+            string memory itemName,
+            ItemStructs.ItemType itemType,
+            ItemStructs.Rarity itemRarity,
+            // Thông tin thời gian
+            uint256 currentTime,
+            uint256 timeUntilFullyGrown,
+            bool isFullyGrown,
+            // Thông tin feeding
+            uint256 nextFeedingTime,
+            bool canFeedNow,
+            uint256 timeUntilNextFeed,
+            uint256 maxFeeds,
+            // Thông tin harvest
+            bool canHarvest,
+            uint256 harvestCooldown,
+            uint256 timeUntilNextHarvest,
+            uint256 maxHarvests,
+            // Thông tin drops
+            ItemStructs.ItemDrop[] memory itemDrops,
+            // Thông tin owner
+            address owner
+        )
+    {
+        // Lấy thông tin raising cơ bản
+        Raising memory raising = raisingProxy.getRaising(raisingId);
+
+        // Gán các giá trị cơ bản
+        id = raising.id;
+        itemId = raising.itemId;
+        raisingTime = raising.raisingTime;
+        qualityModifier = raising.qualityModifier;
+        growthTime = raising.growthTime;
+        lastFeedTime = raising.lastFeedTime;
+        feedCount = raising.feedCount;
+        isHarvested = raising.isHarvested;
+        lastHarvestTime = raising.lastHarvestTime;
+        harvestCount = raising.harvestCount;
+        isSlaughtered = raising.isSlaughtered;
+        totalHarvestedItems = raising.totalHarvestedItems;
+
+        // Lấy thông tin item
+        ItemStructs.Item memory item = itemProxy.getItem(itemId);
+        itemName = item.name;
+        itemType = item.itemType;
+        itemRarity = item.rarity;
+
+        // Thông tin thời gian
+        currentTime = block.timestamp;
+        timeUntilFullyGrown = 0;
+        isFullyGrown = false;
+
+        if (raisingTime + growthTime > currentTime) {
+            timeUntilFullyGrown = (raisingTime + growthTime) - currentTime;
+        } else {
+            isFullyGrown = true;
+        }
+
+        // Thông tin feeding
+        nextFeedingTime = raisingProxy.getNextFeedingTime(raisingId);
+        canFeedNow = raisingProxy.canFeed(raisingId);
+        maxFeeds = 3;
+
+        if (canFeedNow) {
+            timeUntilNextFeed = 0;
+        } else {
+            timeUntilNextFeed = nextFeedingTime - currentTime;
+        }
+
+        // Thông tin harvest
+        canHarvest = false;
+        harvestCooldown = 0;
+        timeUntilNextHarvest = 0;
+        maxHarvests = 3;
+
+        if (isFullyGrown && !isHarvested && !isSlaughtered && feedCount > 0) {
+            harvestCooldown = itemProxy.getItemAttribute(
+                itemId,
+                ItemStructs.Attribute.HarvestCooldown
+            );
+
+            if (harvestCount == 0) {
+                canHarvest = true;
+            } else if (harvestCount < maxHarvests) {
+                uint256 nextHarvestTime = lastHarvestTime + harvestCooldown;
+                if (currentTime >= nextHarvestTime) {
+                    canHarvest = true;
+                } else {
+                    timeUntilNextHarvest = nextHarvestTime - currentTime;
+                }
+            }
+        }
+
+        // Lấy thông tin drops
+        itemDrops = itemProxy.getItemDrops(itemId);
+
+        // Lấy thông tin owner
+        owner = raisingProxy.getRaisingOwner(raisingId);
+    }
+
+    // Struct để trả về thông tin đầy đủ
+    struct FullRaisingInfo {
+        // Thông tin cơ bản
+        uint256 id;
+        uint256 itemId;
+        string itemName;
+        ItemStructs.ItemType itemType;
+        ItemStructs.Rarity itemRarity;
+        address owner;
+        // Thông tin thời gian
+        uint256 raisingTime;
+        uint256 growthTime;
+        uint256 currentTime;
+        uint256 timeUntilFullyGrown;
+        bool isFullyGrown;
+        // Thông tin feeding
+        uint256 lastFeedTime;
+        uint256 feedCount;
+        uint256 maxFeeds;
+        uint256 nextFeedingTime;
+        bool canFeedNow;
+        uint256 timeUntilNextFeed;
+        // Thông tin harvest
+        uint256 lastHarvestTime;
+        uint256 harvestCount;
+        uint256 maxHarvests;
+        bool canHarvest;
+        uint256 harvestCooldown;
+        uint256 timeUntilNextHarvest;
+        uint256 totalHarvestedItems;
+        // Thông tin trạng thái
+        bool isHarvested;
+        bool isSlaughtered;
+        uint256 qualityModifier;
+        // Thông tin drops
+        ItemStructs.ItemDrop[] itemDrops;
+    }
+
+    function getFullRaisingInfoStruct(
+        uint256 raisingId
+    ) external view returns (FullRaisingInfo memory) {
+        (
+            uint256 id,
+            uint256 itemId,
+            uint256 raisingTime,
+            uint256 qualityModifier,
+            uint256 growthTime,
+            uint256 lastFeedTime,
+            uint256 feedCount,
+            bool isHarvested,
+            uint256 lastHarvestTime,
+            uint256 harvestCount,
+            bool isSlaughtered,
+            uint256 totalHarvestedItems,
+            string memory itemName,
+            ItemStructs.ItemType itemType,
+            ItemStructs.Rarity itemRarity,
+            uint256 currentTime,
+            uint256 timeUntilFullyGrown,
+            bool isFullyGrown,
+            uint256 nextFeedingTime,
+            bool canFeedNow,
+            uint256 timeUntilNextFeed,
+            uint256 maxFeeds,
+            bool canHarvest,
+            uint256 harvestCooldown,
+            uint256 timeUntilNextHarvest,
+            uint256 maxHarvests,
+            ItemStructs.ItemDrop[] memory itemDrops,
+            address owner
+        ) = this.getFullRaisingInfo(raisingId);
+
+        return
+            FullRaisingInfo({
+                id: id,
+                itemId: itemId,
+                itemName: itemName,
+                itemType: itemType,
+                itemRarity: itemRarity,
+                owner: owner,
+                raisingTime: raisingTime,
+                growthTime: growthTime,
+                currentTime: currentTime,
+                timeUntilFullyGrown: timeUntilFullyGrown,
+                isFullyGrown: isFullyGrown,
+                lastFeedTime: lastFeedTime,
+                feedCount: feedCount,
+                maxFeeds: maxFeeds,
+                nextFeedingTime: nextFeedingTime,
+                canFeedNow: canFeedNow,
+                timeUntilNextFeed: timeUntilNextFeed,
+                lastHarvestTime: lastHarvestTime,
+                harvestCount: harvestCount,
+                maxHarvests: maxHarvests,
+                canHarvest: canHarvest,
+                harvestCooldown: harvestCooldown,
+                timeUntilNextHarvest: timeUntilNextHarvest,
+                totalHarvestedItems: totalHarvestedItems,
+                isHarvested: isHarvested,
+                isSlaughtered: isSlaughtered,
+                qualityModifier: qualityModifier,
+                itemDrops: itemDrops
+            });
     }
 }

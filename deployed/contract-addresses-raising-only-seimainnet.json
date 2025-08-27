@@ -43,5 +43,7 @@
     "RaisingProxy": "0xc12B77fd39cC87d2EB879af429d5FB529bf97A36"
   },
   "timestamp": "2025-08-26T07:07:24.289Z",
-  "rpcUrl": "Mainnet RPC"
+  "rpcUrl": "Mainnet RPC",
+  "lastUpdated": "2025-08-26T09:29:14.353Z",
+  "raisingLogicDeployed": true
 }

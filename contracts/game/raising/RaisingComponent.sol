@@ -30,6 +30,11 @@ contract RaisingComponent {
         uint256 indexed raisingId,
         uint256 harvestCount
     );
+    event TotalHarvestedItemsUpdated(
+        uint256 indexed raisingId,
+        uint256 totalHarvestedItems
+    );
+    event FeedingReset(uint256 indexed raisingId, uint256 harvestCount);
 
     modifier onlyAuthorized() {
         require(
@@ -77,7 +82,6 @@ contract RaisingComponent {
             raisingId,
             _itemId,
             block.timestamp,
-            block.timestamp,
             adjustedQuality,
             adjustedGrowthTime,
             block.timestamp,
@@ -85,7 +89,8 @@ contract RaisingComponent {
             false,
             0, // lastHarvestTime
             0, // harvestCount
-            false // isSlaughtered
+            false, // isSlaughtered
+            0 // totalHarvestedItems
         );
 
         ownerRaisings[_raisingOwner].push(raisingId);
@@ -101,10 +106,10 @@ contract RaisingComponent {
         Raising storage raising = raisings[_raisingId];
         require(!raising.isHarvested, "[COMPONENT] Raising already harvested");
 
-        require(raising.feedCount <= 5, "[COMPONENT] Too many feeds");
+        require(raising.feedCount <= 3, "[COMPONENT] Too many feeds");
 
         require(
-            block.timestamp >= raising.lastFeedTime + (raising.growthTime / 5),
+            block.timestamp >= raising.lastFeedTime + (raising.growthTime / 3),
             "Too early to feed"
         );
 
@@ -162,15 +167,87 @@ contract RaisingComponent {
         }
 
         uint256 qualityModifier = raising.qualityModifier;
-        if (raising.feedCount == 0) {
-            qualityModifier = 0;
-        }
+        // Không cần check feedCount == 0 nữa vì đã check trong logic
 
         raising.lastHarvestTime = block.timestamp;
         raising.harvestCount++;
 
+        // Reset feeding sau khi harvest để có thể cho ăn lại
+        raising.feedCount = 0;
+        raising.lastFeedTime = 0;
+
         emit RaisingHarvestedWithCooldown(_raisingId, raising.harvestCount);
+        emit FeedingReset(_raisingId, raising.harvestCount);
         return qualityModifier;
+    }
+
+    function updateTotalHarvestedItems(
+        uint256 _raisingId,
+        uint256 _additionalItems
+    ) external onlyAuthorized {
+        Raising storage raising = raisings[_raisingId];
+        require(raising.id != 0, "[COMPONENT] Raising not found");
+
+        raising.totalHarvestedItems += _additionalItems;
+
+        emit TotalHarvestedItemsUpdated(
+            _raisingId,
+            raising.totalHarvestedItems
+        );
+    }
+
+    function getNextFeedingTime(
+        uint256 _raisingId
+    ) external view onlyAuthorized returns (uint256) {
+        Raising storage raising = raisings[_raisingId];
+        require(raising.id != 0, "[COMPONENT] Raising not found");
+        require(!raising.isHarvested, "[COMPONENT] Raising already harvested");
+        require(
+            !raising.isSlaughtered,
+            "[COMPONENT] Raising already slaughtered"
+        );
+
+        // Nếu chưa feed lần nào, có thể feed ngay
+        if (raising.feedCount == 0) {
+            return block.timestamp;
+        }
+
+        // Tính thời gian cho ăn tiếp theo
+        uint256 nextFeedingTime = raising.lastFeedTime +
+            (raising.growthTime / 3);
+
+        // Nếu đã đến thời gian cho ăn tiếp theo, trả về thời gian hiện tại
+        if (nextFeedingTime <= block.timestamp) {
+            return block.timestamp;
+        }
+
+        return nextFeedingTime;
+    }
+
+    function canFeed(
+        uint256 _raisingId
+    ) external view onlyAuthorized returns (bool) {
+        Raising storage raising = raisings[_raisingId];
+        require(raising.id != 0, "[COMPONENT] Raising not found");
+        require(!raising.isHarvested, "[COMPONENT] Raising already harvested");
+        require(
+            !raising.isSlaughtered,
+            "[COMPONENT] Raising already slaughtered"
+        );
+
+        // Kiểm tra số lần feed
+        if (raising.feedCount >= 3) {
+            return false;
+        }
+
+        // Nếu chưa feed lần nào, có thể feed ngay
+        if (raising.feedCount == 0) {
+            return true;
+        }
+
+        // Kiểm tra cooldown
+        return
+            block.timestamp >= raising.lastFeedTime + (raising.growthTime / 3);
     }
 
     function slaughterRaising(
@@ -189,10 +266,7 @@ contract RaisingComponent {
 
         address owner = raisingOwners[_raisingId];
         uint256 qualityModifier = raising.qualityModifier;
-
-        if (raising.feedCount == 0) {
-            qualityModifier = 0;
-        }
+        // Không cần check feedCount == 0 nữa vì đã check trong logic
 
         raising.isSlaughtered = true;
         removeRaisingFromOwnerList(owner, _raisingId);
