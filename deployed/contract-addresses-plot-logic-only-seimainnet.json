@@ -14,7 +14,7 @@
     "WeatherLogic": "0x8D6Ea237A7B65d0f95b2fB320A1BECB38546e797",
     "WeatherProxy": "0x10213F7D5057808971F77f4f928A468D0e97de07",
     "PlotComponent": "0x20b83B3381Eb38B5aaad9edC9964BeDA53Fc9ac6",
-    "PlotLogic": "0x7faac2B782F05AD4958465E280416D6F83a5314f",
+    "PlotLogic": "0x68C4d881E94803E9F67cDf1baFfa1ef52225f7dD",
     "PlotProxy": "0x6Cf1ADE26a3a9B31Ad46D7a36e406C02dc331c2e",
     "InventoryComponent": "0x955d15A47b6A25C79ADE02014B1A23f9c460fE0e",
     "InventoryLogic": "0xD2093d91959b5F3F8F17b7945fF2c7df659C9A6A",
@@ -38,12 +38,12 @@
     "CraftingComponent": "0x5C64096B578F88bC9E25E06841bF388EA354463f",
     "CraftingLogic": "0x290A0De2d2e1654a747b1E6dcc7D6ce3542d3631",
     "CraftingProxy": "0x9741C3B8fDB5fF61339b29D4a8202573bB484B8a",
-    "RaisingComponent": "0xfc4264464A6DcBfB8109B18FeAaAFa908C9a9cc8",
-    "RaisingLogic": "0xD4120eA0e37431E91784F4ebFf46bE98F9f9FFE7",
-    "RaisingProxy": "0x6e2F9ab8A3e383c24e2d356f7aa48233dA1fC0A2"
+    "RaisingComponent": "0x522954aC7e63a5Da4704a57126D4853D255206d5",
+    "RaisingLogic": "0xB9658F2187B5F568B43b3D5B2668450b2AE70f2c",
+    "RaisingProxy": "0xc12B77fd39cC87d2EB879af429d5FB529bf97A36"
   },
   "timestamp": "2025-08-26T07:07:24.289Z",
   "rpcUrl": "Mainnet RPC",
-  "lastUpdated": "2025-08-28T06:58:17.580Z",
-  "raisingSystemDeployed": true
+  "lastUpdated": "2025-08-27T18:48:43.127Z",
+  "plotLogicDeployed": true
 }

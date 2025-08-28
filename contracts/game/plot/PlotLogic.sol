@@ -17,6 +17,12 @@ contract PlotLogic {
 
     event PlayerCreated(address indexed playerAddress);
     event LastLoginUpdated(address indexed playerAddress);
+    event PlotCreated(
+        address indexed playerAddress,
+        int256 xCoordinate,
+        int256 yCoordinate,
+        uint256 plotType
+    );
 
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
@@ -52,9 +58,16 @@ contract PlotLogic {
         WeatherStructs.Weather memory currentWeather = weatherProxy
             .getCurrentWeather();
 
+        // Phương pháp 1: Deterministic randomness từ tọa độ và address
         uint256 random = uint256(
             keccak256(
-                abi.encodePacked(block.timestamp, msg.sender, block.number)
+                abi.encodePacked(
+                    block.number,
+                    msg.sender,
+                    _xCoordinate,
+                    _yCoordinate,
+                    block.chainid // Thêm chain ID để tránh replay cross-chain
+                )
             )
         ) % 100;
 
@@ -98,18 +111,12 @@ contract PlotLogic {
             }
         }
 
-        return
-            plotProxy.createPlot(
-                _xCoordinate,
-                _yCoordinate,
-                plotType,
-                msg.sender
-            );
+        plotProxy.createPlot(_xCoordinate, _yCoordinate, plotType, msg.sender);
+
+        emit PlotCreated(msg.sender, _xCoordinate, _yCoordinate, plotType);
     }
 
-    function deletePlot(
-        uint256 _plotId
-    ) external onlyInternal {
+    function deletePlot(uint256 _plotId) external onlyInternal {
         plotProxy.deletePlot(_plotId, msg.sender);
     }
 

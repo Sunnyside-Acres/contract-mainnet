@@ -101,17 +101,32 @@ contract RaisingComponent {
 
     function feedRaising(
         uint256 _raisingId,
-        WeatherStructs.WeatherState _weatherState
+        WeatherStructs.WeatherState _weatherState,
+        uint256 _harvestCooldown
     ) external onlyAuthorized {
         Raising storage raising = raisings[_raisingId];
         require(!raising.isHarvested, "[COMPONENT] Raising already harvested");
 
         require(raising.feedCount <= 3, "[COMPONENT] Too many feeds");
 
-        require(
-            block.timestamp >= raising.lastFeedTime + (raising.growthTime / 3),
-            "Too early to feed"
-        );
+        // Logic thời gian chăm sóc:
+        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/3
+        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/3
+        if (raising.harvestCount == 0) {
+            // Chưa thu hoạch lần nào, sử dụng growthTime/3
+            require(
+                block.timestamp >=
+                    raising.lastFeedTime + (raising.growthTime / 3),
+                "Too early to feed"
+            );
+        } else {
+            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/3
+            require(
+                block.timestamp >=
+                    raising.lastFeedTime + (_harvestCooldown / 3),
+                "Too early to feed"
+            );
+        }
 
         uint256 adjustedGrowthTime = raising.growthTime;
         uint256 adjustedQuality = raising.qualityModifier;
@@ -197,7 +212,8 @@ contract RaisingComponent {
     }
 
     function getNextFeedingTime(
-        uint256 _raisingId
+        uint256 _raisingId,
+        uint256 _harvestCooldown
     ) external view onlyAuthorized returns (uint256) {
         Raising storage raising = raisings[_raisingId];
         require(raising.id != 0, "[COMPONENT] Raising not found");
@@ -212,9 +228,17 @@ contract RaisingComponent {
             return block.timestamp;
         }
 
-        // Tính thời gian cho ăn tiếp theo
-        uint256 nextFeedingTime = raising.lastFeedTime +
-            (raising.growthTime / 3);
+        // Logic thời gian cho ăn tiếp theo:
+        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/3
+        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/3
+        uint256 nextFeedingTime;
+        if (raising.harvestCount == 0) {
+            // Chưa thu hoạch lần nào, sử dụng growthTime/3
+            nextFeedingTime = raising.lastFeedTime + (raising.growthTime / 3);
+        } else {
+            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/3
+            nextFeedingTime = raising.lastFeedTime + (_harvestCooldown / 3);
+        }
 
         // Nếu đã đến thời gian cho ăn tiếp theo, trả về thời gian hiện tại
         if (nextFeedingTime <= block.timestamp) {
@@ -225,7 +249,8 @@ contract RaisingComponent {
     }
 
     function canFeed(
-        uint256 _raisingId
+        uint256 _raisingId,
+        uint256 _harvestCooldown
     ) external view onlyAuthorized returns (bool) {
         Raising storage raising = raisings[_raisingId];
         require(raising.id != 0, "[COMPONENT] Raising not found");
@@ -245,9 +270,20 @@ contract RaisingComponent {
             return true;
         }
 
-        // Kiểm tra cooldown
-        return
-            block.timestamp >= raising.lastFeedTime + (raising.growthTime / 3);
+        // Logic thời gian chăm sóc:
+        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/3
+        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/3
+        if (raising.harvestCount == 0) {
+            // Chưa thu hoạch lần nào, sử dụng growthTime/3
+            return
+                block.timestamp >=
+                raising.lastFeedTime + (raising.growthTime / 3);
+        } else {
+            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/3
+            return
+                block.timestamp >=
+                raising.lastFeedTime + (_harvestCooldown / 3);
+        }
     }
 
     function slaughterRaising(

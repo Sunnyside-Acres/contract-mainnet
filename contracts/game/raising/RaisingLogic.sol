@@ -81,7 +81,7 @@ contract RaisingLogic {
     function random(uint256 max) private view returns (uint256) {
         return
             uint256(
-                keccak256(abi.encodePacked(block.timestamp, block.number))
+                keccak256(abi.encodePacked(block.number, msg.sender))
             ) % max;
     }
 
@@ -420,7 +420,13 @@ contract RaisingLogic {
         WeatherStructs.WeatherState weatherState = weatherProxy
             .getCurrentWeatherState();
 
-        raisingProxy.feedRaising(raisingId, weatherState);
+        // Lấy harvestCooldown từ item attribute
+        uint256 harvestCooldown = itemProxy.getItemAttribute(
+            raising.itemId,
+            ItemStructs.Attribute.HarvestCooldown
+        );
+
+        raisingProxy.feedRaising(raisingId, weatherState, harvestCooldown);
 
         emit RaisingFed(raisingId, weatherState);
     }
@@ -454,11 +460,21 @@ contract RaisingLogic {
     function getNextFeedingTime(
         uint256 raisingId
     ) external view returns (uint256) {
-        return raisingProxy.getNextFeedingTime(raisingId);
+        Raising memory raising = raisingProxy.getRaising(raisingId);
+        uint256 harvestCooldown = itemProxy.getItemAttribute(
+            raising.itemId,
+            ItemStructs.Attribute.HarvestCooldown
+        );
+        return raisingProxy.getNextFeedingTime(raisingId, harvestCooldown);
     }
 
     function canFeed(uint256 raisingId) external view returns (bool) {
-        return raisingProxy.canFeed(raisingId);
+        Raising memory raising = raisingProxy.getRaising(raisingId);
+        uint256 harvestCooldown = itemProxy.getItemAttribute(
+            raising.itemId,
+            ItemStructs.Attribute.HarvestCooldown
+        );
+        return raisingProxy.canFeed(raisingId, harvestCooldown);
     }
 
     function getFeedingInfo(
@@ -474,10 +490,18 @@ contract RaisingLogic {
             uint256 timeUntilNextFeed
         )
     {
-        nextFeedingTime = raisingProxy.getNextFeedingTime(raisingId);
-        canFeedNow = raisingProxy.canFeed(raisingId);
-
         Raising memory raising = raisingProxy.getRaising(raisingId);
+        uint256 harvestCooldown = itemProxy.getItemAttribute(
+            raising.itemId,
+            ItemStructs.Attribute.HarvestCooldown
+        );
+
+        nextFeedingTime = raisingProxy.getNextFeedingTime(
+            raisingId,
+            harvestCooldown
+        );
+        canFeedNow = raisingProxy.canFeed(raisingId, harvestCooldown);
+
         feedCount = raising.feedCount;
         maxFeeds = 3; // Giới hạn 3 lần feed
 
@@ -503,10 +527,22 @@ contract RaisingLogic {
         )
     {
         Raising memory raising = raisingProxy.getRaising(raisingId);
+        uint256 harvestCooldown = itemProxy.getItemAttribute(
+            raising.itemId,
+            ItemStructs.Attribute.HarvestCooldown
+        );
 
         currentTime = block.timestamp;
         lastFeedTime = raising.lastFeedTime;
-        cooldownDuration = raising.growthTime / 3; // Cooldown = growthTime / 3
+
+        // Logic thời gian chăm sóc:
+        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/3
+        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/3
+        if (raising.harvestCount == 0) {
+            cooldownDuration = raising.growthTime / 3; // Cooldown = growthTime / 3
+        } else {
+            cooldownDuration = harvestCooldown / 3; // Cooldown = harvestCooldown / 3
+        }
 
         if (raising.feedCount == 0) {
             // Chưa feed lần nào, có thể feed ngay
@@ -602,8 +638,15 @@ contract RaisingLogic {
         }
 
         // Thông tin feeding
-        nextFeedingTime = raisingProxy.getNextFeedingTime(raisingId);
-        canFeedNow = raisingProxy.canFeed(raisingId);
+        uint256 feedingHarvestCooldown = itemProxy.getItemAttribute(
+            itemId,
+            ItemStructs.Attribute.HarvestCooldown
+        );
+        nextFeedingTime = raisingProxy.getNextFeedingTime(
+            raisingId,
+            feedingHarvestCooldown
+        );
+        canFeedNow = raisingProxy.canFeed(raisingId, feedingHarvestCooldown);
         maxFeeds = 3;
 
         if (canFeedNow) {

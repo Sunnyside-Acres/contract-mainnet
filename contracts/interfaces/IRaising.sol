@@ -14,7 +14,8 @@ interface IRaisingComponent {
 
     function feedRaising(
         uint256 _raisingId,
-        WeatherStructs.WeatherState _weatherState
+        WeatherStructs.WeatherState _weatherState,
+        uint256 _harvestCooldown
     ) external;
 
     function harvestRaisingWithCooldown(
@@ -28,10 +29,14 @@ interface IRaisingComponent {
     ) external;
 
     function getNextFeedingTime(
-        uint256 _raisingId
+        uint256 _raisingId,
+        uint256 _harvestCooldown
     ) external view returns (uint256);
 
-    function canFeed(uint256 _raisingId) external view returns (bool);
+    function canFeed(
+        uint256 _raisingId,
+        uint256 _harvestCooldown
+    ) external view returns (bool);
 
     function slaughterRaising(uint256 _raisingId) external returns (uint256);
 
