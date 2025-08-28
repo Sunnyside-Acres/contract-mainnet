@@ -18,6 +18,7 @@ contract PlotLogic {
     event PlayerCreated(address indexed playerAddress);
     event LastLoginUpdated(address indexed playerAddress);
     event PlotCreated(
+        uint256 indexed plotId,
         address indexed playerAddress,
         int256 xCoordinate,
         int256 yCoordinate,
@@ -113,7 +114,17 @@ contract PlotLogic {
 
         plotProxy.createPlot(_xCoordinate, _yCoordinate, plotType, msg.sender);
 
-        emit PlotCreated(msg.sender, _xCoordinate, _yCoordinate, plotType);
+        uint256 plotId = uint256(
+            keccak256(abi.encodePacked(msg.sender, _xCoordinate, _yCoordinate))
+        );
+
+        emit PlotCreated(
+            plotId,
+            msg.sender,
+            _xCoordinate,
+            _yCoordinate,
+            plotType
+        );
     }
 
     function deletePlot(uint256 _plotId) external onlyInternal {

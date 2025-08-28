@@ -67,7 +67,7 @@ contract PlantLogic {
     function random(uint256 max) private view returns (uint256) {
         return
             uint256(
-                keccak256(abi.encodePacked(block.timestamp, block.number))
+                keccak256(abi.encodePacked(msg.sender, block.number))
             ) % max;
     }
 
