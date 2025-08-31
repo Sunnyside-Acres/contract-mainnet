@@ -16,7 +16,7 @@ import "../../struct/Player.sol";
  *
  * Tính năng chính:
  * - Tạo và quản lý công thức crafting
- * - Craft item với tỉ lệ thành công
+ * - Craft item với tỉ lệ thành công dựa trên khoảng số user chọn
  * - Quản lý nguyên liệu và chi phí (sunlight, sunny)
  * - Lịch sử crafting và thống kê
  * - Kiểm tra điều kiện crafting
@@ -35,7 +35,10 @@ contract CraftingLogic {
         uint256 indexed recipeId,
         uint256 resultItemId,
         uint256 resultQuantity,
-        bool isSuccess
+        bool isSuccess,
+        uint256 userRangeStart,
+        uint256 userRangeEnd,
+        uint256 randomNumber
     );
 
     event RecipeCreated(
@@ -94,7 +97,7 @@ contract CraftingLogic {
      * @dev Tạo công thức crafting mới (chỉ admin)
      * @param _resultItemId ID của item kết quả
      * @param _resultQuantity Số lượng item kết quả
-     * @param _successRate Tỉ lệ thành công (0-10000, 10000 = 100%)
+     * @param _successRate Tỉ lệ thành công (0-100, đại diện cho số đơn vị trong khoảng)
      * @param _sunlightCost Chi phí sunlight
      * @param _sunnyCost Chi phí sunny
      * @param _ingredients Mảng nguyên liệu cần thiết
@@ -118,6 +121,9 @@ contract CraftingLogic {
     ) external onlyAdmin returns (uint256) {
         // Validate result item exists
         require(itemProxy.exists(_resultItemId), "Result item does not exist");
+
+        // Validate success rate (0-100)
+        require(_successRate <= 100, "Success rate must be 0-100");
 
         // Validate ingredients exist
         for (uint256 i = 0; i < _ingredients.length; i++) {
@@ -152,25 +158,43 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Craft item tức thì (người chơi gọi)
+     * @dev Craft item với khoảng số user chọn (người chơi gọi)
      * @param _recipeId ID của công thức muốn craft
+     * @param _rangeStart Điểm bắt đầu khoảng số (0-100)
+     * @param _rangeEnd Điểm kết thúc khoảng số (0-100)
      *
      * Quy trình:
      * 1. Kiểm tra công thức tồn tại và đang hoạt động
      * 2. Validate level người chơi và tài nguyên
      * 3. Kiểm tra đủ nguyên liệu trong inventory
-     * 4. Trừ sunlight, sunny và nguyên liệu
-     * 5. Xác định thành công dựa trên tỉ lệ
-     * 6. Thêm item kết quả nếu thành công
-     * 7. Ghi lịch sử crafting
+     * 4. Validate khoảng số user chọn
+     * 5. Trừ sunlight, sunny và nguyên liệu
+     * 6. Random số từ 0-100 và xác định thành công
+     * 7. Thêm item kết quả nếu thành công
+     * 8. Ghi lịch sử crafting
      */
-    function craftItem(uint256 _recipeId) external {
+    function craftItem(
+        uint256 _recipeId,
+        uint256 _rangeStart,
+        uint256 _rangeEnd
+    ) external {
         address player = msg.sender;
 
         // Check if recipe exists and is active
         require(craftingProxy.exists(_recipeId), "Recipe does not exist");
         CraftingRecipe memory recipe = craftingProxy.getRecipe(_recipeId);
         require(recipe.isActive, "Recipe is not active");
+
+        // Validate range
+        require(
+            _rangeStart <= _rangeEnd,
+            "Invalid range: start must be <= end"
+        );
+        require(_rangeStart >= 0 && _rangeEnd <= 100, "Range must be 0-100");
+        require(
+            (_rangeEnd - _rangeStart + 1) == recipe.successRate,
+            "Range size must match success rate"
+        );
 
         // Check if player exists and meets level requirement
         Player memory playerData = playerProxy.getPlayer(player);
@@ -208,7 +232,7 @@ contract CraftingLogic {
             playerProxy.subtractSunny(player, recipe.sunnyCost);
         }
 
-        // Deduct ingredients
+        // Deduct ingredients (luôn trừ dù thành công hay thất bại)
         for (uint256 i = 0; i < recipe.ingredients.length; i++) {
             CraftingIngredient memory ingredient = recipe.ingredients[i];
             InventoryItem memory playerItem = inventoryProxy.getItem(
@@ -226,8 +250,9 @@ contract CraftingLogic {
             );
         }
 
-        // Determine success based on success rate
-        bool isSuccess = _determineCraftingSuccess(recipe.successRate);
+        // Generate random number and determine success
+        uint256 randomNumber = _generateRandomNumber(0, 100);
+        bool isSuccess = _isNumberInRange(randomNumber, _rangeStart, _rangeEnd);
 
         // Add to crafting history
         craftingProxy.addCraftingHistory(
@@ -266,14 +291,17 @@ contract CraftingLogic {
             _recipeId,
             recipe.resultItemId,
             isSuccess ? recipe.resultQuantity : 0,
-            isSuccess
+            isSuccess,
+            _rangeStart,
+            _rangeEnd,
+            randomNumber
         );
     }
 
     /**
      * @dev Cập nhật công thức (chỉ admin)
      * @param _recipeId ID của công thức muốn cập nhật
-     * @param _successRate Tỉ lệ thành công mới
+     * @param _successRate Tỉ lệ thành công mới (0-100)
      * @param _sunlightCost Chi phí sunlight mới
      * @param _sunnyCost Chi phí sunny mới
      * @param _ingredients Nguyên liệu mới
@@ -294,6 +322,9 @@ contract CraftingLogic {
         uint256 _minPlayerLevel
     ) external onlyAdmin {
         require(craftingProxy.exists(_recipeId), "Recipe does not exist");
+
+        // Validate success rate (0-100)
+        require(_successRate <= 100, "Success rate must be 0-100");
 
         // Validate ingredients exist
         for (uint256 i = 0; i < _ingredients.length; i++) {
@@ -358,24 +389,18 @@ contract CraftingLogic {
     // ============ INTERNAL FUNCTIONS ============
 
     /**
-     * @dev Kiểm tra xem crafting có thành công hay không dựa trên tỉ lệ
-     * @param _successRate Tỉ lệ thành công (0-10000)
-     * @return bool Kết quả thành công hay thất bại
-     *
-     * Logic:
-     * - 10000 = 100% thành công
-     * - 0 = 0% thành công
-     * - Sử dụng random number để xác định kết quả
+     * @dev Tạo số random trong khoảng min-max
+     * @param _min Giá trị tối thiểu
+     * @param _max Giá trị tối đa
+     * @return Số random trong khoảng
      */
-    function _determineCraftingSuccess(
-        uint256 _successRate
-    ) internal view returns (bool) {
-        require(_successRate <= 10000, "Invalid success rate");
+    function _generateRandomNumber(
+        uint256 _min,
+        uint256 _max
+    ) internal view returns (uint256) {
+        require(_max >= _min, "Invalid range");
 
-        if (_successRate == 10000) return true;
-        if (_successRate == 0) return false;
-
-        // Generate random number between 0 and 9999
+        uint256 range = _max - _min + 1;
         uint256 randomNumber = uint256(
             keccak256(
                 abi.encodePacked(
@@ -385,10 +410,25 @@ contract CraftingLogic {
                     gasleft()
                 )
             )
-        ) % 10000;
-        return randomNumber < _successRate;
+        ) % range;
+
+        return randomNumber + _min;
     }
 
+    /**
+     * @dev Kiểm tra xem số có nằm trong khoảng không
+     * @param _number Số cần kiểm tra
+     * @param _rangeStart Điểm bắt đầu khoảng
+     * @param _rangeEnd Điểm kết thúc khoảng
+     * @return bool True nếu số nằm trong khoảng
+     */
+    function _isNumberInRange(
+        uint256 _number,
+        uint256 _rangeStart,
+        uint256 _rangeEnd
+    ) internal pure returns (bool) {
+        return _number >= _rangeStart && _number <= _rangeEnd;
+    }
 
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============
 

@@ -14,6 +14,12 @@ interface ICraftingComponent {
         uint256 _minPlayerLevel
     ) external returns (uint256);
 
+    function craftItem(
+        uint256 _recipeId,
+        uint256 _rangeStart,
+        uint256 _rangeEnd
+    ) external;
+
     function getRecipe(
         uint256 _recipeId
     ) external view returns (CraftingRecipe memory);

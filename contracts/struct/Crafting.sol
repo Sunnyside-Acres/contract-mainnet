@@ -10,7 +10,7 @@ struct CraftingRecipe {
     uint256 id; // ID của công thức
     uint256 resultItemId; // ID của item được craft
     uint256 resultQuantity; // Số lượng item được craft
-    uint256 successRate; // Tỉ lệ thành công (0-10000, 10000 = 100%)
+    uint256 successRate; // Tỉ lệ thành công (0-100, đại diện cho số đơn vị trong khoảng)
     uint256 sunlightCost; // Chi phí sunlight
     uint256 sunnyCost; // Chi phí sunny
     CraftingIngredient[] ingredients; // Danh sách nguyên liệu
