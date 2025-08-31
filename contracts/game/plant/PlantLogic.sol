@@ -170,8 +170,6 @@ contract PlantLogic {
             plant.itemId
         );
 
-        plantProxy.plantHarvest(plantId);
-
         require(drops.length > 0, "No item drops configured");
 
         uint256 qualityMultiplier = plant.qualityModifier;
@@ -215,10 +213,15 @@ contract PlantLogic {
                 harvestedItemCount++;
 
                 // Thêm item vào inventory
+                InventoryItem memory currentItem = inventoryProxy.getItem(
+                    msg.sender,
+                    drops[i].itemId
+                );
+                uint256 newQuantity = currentItem.quantity + itemAmount;
                 inventoryProxy.setItem(
                     msg.sender,
                     drops[i].itemId,
-                    itemAmount,
+                    newQuantity,
                     100,
                     0
                 );
@@ -231,7 +234,18 @@ contract PlantLogic {
             harvestedItemAmounts[0] = 1;
             harvestedItemCount = 1;
 
-            inventoryProxy.setItem(msg.sender, drops[0].itemId, 1, 100, 0);
+            InventoryItem memory currentItem = inventoryProxy.getItem(
+                msg.sender,
+                drops[0].itemId
+            );
+            uint256 newQuantity = currentItem.quantity + 1;
+            inventoryProxy.setItem(
+                msg.sender,
+                drops[0].itemId,
+                newQuantity,
+                100,
+                0
+            );
         }
 
         uint256[] memory finalItemIds = new uint256[](harvestedItemCount);
@@ -241,6 +255,9 @@ contract PlantLogic {
             finalItemIds[i] = harvestedItemIds[i];
             finalItemAmounts[i] = harvestedItemAmounts[i];
         }
+
+        // Gọi plantHarvest để xóa plant sau khi đã xử lý xong logic
+        plantProxy.plantHarvest(plantId);
 
         plotProxy.deletePlot(plant.plotId, msg.sender);
 
