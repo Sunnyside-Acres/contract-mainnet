@@ -80,9 +80,8 @@ contract RaisingLogic {
 
     function random(uint256 max) private view returns (uint256) {
         return
-            uint256(
-                keccak256(abi.encodePacked(block.number, msg.sender))
-            ) % max;
+            uint256(keccak256(abi.encodePacked(block.number, msg.sender))) %
+            max;
     }
 
     function startRaising(uint256 _itemId) external {
@@ -291,8 +290,7 @@ contract RaisingLogic {
         require(!raising.isHarvested, "Raising already harvested");
         require(!raising.isSlaughtered, "Raising already slaughtered");
 
-        // Kiểm tra xem raising có được feed hay chưa
-        require(raising.feedCount > 0, "Raising must be fed before slaughter");
+        // Cho phép giết ngay cả khi chưa chăm sóc, nhưng sẽ không có vật phẩm
 
         ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
             raising.itemId
@@ -300,6 +298,7 @@ contract RaisingLogic {
 
         // Lấy thông tin trước khi xóa con vật
         uint256 currentTotalHarvested = raising.totalHarvestedItems;
+        uint256 feedCount = raising.feedCount;
 
         // Xóa con vật và lấy qualityModifier
         uint256 qualityModifier = raisingProxy.slaughterRaising(raisingId);
@@ -307,7 +306,11 @@ contract RaisingLogic {
         require(drops.length > 0, "No item drops configured");
 
         uint256 qualityMultiplier = qualityModifier;
-        // Loại bỏ check qualityModifier == 0 vì đã check feedCount > 0 ở trên
+
+        // Nếu chưa chăm sóc (feedCount = 0), không có vật phẩm
+        if (feedCount == 0) {
+            qualityMultiplier = 0;
+        }
 
         uint256 qualityBonus = (qualityMultiplier - 100) * 100;
 

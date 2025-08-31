@@ -17,14 +17,14 @@ export function ContractFunctions({ contract }: Props) {
 
     // Xóa tất cả results khi contract thay đổi
     useEffect(() => {
-        if (Object.keys(results).length > 0) {
+        if (contract && Object.keys(results).length > 0) {
             setResults({})
             setIsLoading({})
             setShowClearNotification(true)
             // Ẩn thông báo sau 3 giây
             setTimeout(() => setShowClearNotification(false), 3000)
         }
-    }, [contract])
+    }, [contract, results])
 
     const formatResult = (result: any): string => {
         if (result === null || result === undefined) {
@@ -142,13 +142,12 @@ export function ContractFunctions({ contract }: Props) {
         // Bạn có thể customize tên field tùy theo struct type
         // Ví dụ cho Plant struct:
         const plantFields = ['id', 'plantType', 'plantedTime', 'lastWateredTime', 'lastFertilizedTime', 'growth', 'isAlive']
-        // Ví dụ cho Plot struct:
-        const plotFields = ['id', 'owner', 'plantId', 'soil', 'water', 'fertilizer', 'lastUpdatedTime', 'isLocked']
+        
 
         // Thêm các mapping khác cho các struct khác
         const fieldMappings: Record<number, string> = {
             ...Object.fromEntries(plantFields.map((field, i) => [i, field])),
-            ...Object.fromEntries(plotFields.map((field, i) => [i, field])),
+    
         }
 
         return fieldMappings[index] || `field${index + 1}`

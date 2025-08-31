@@ -80,7 +80,7 @@ export function DataTable<TData, TValue>({
     })
 
     React.useEffect(() => {
-        if (onRowSelectionChange) {
+        if (onRowSelectionChange && data.length > 0) {
             const selectedRowIds = Object.keys(rowSelection)
             const selectedItems = data.filter((_, index) => selectedRowIds.includes(index.toString()))
             onRowSelectionChange(selectedItems)

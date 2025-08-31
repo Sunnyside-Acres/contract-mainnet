@@ -11,9 +11,10 @@ import { DeploymentLogs } from "@/components/DeploymentLogs";
 import { useState, useEffect } from "react";
 import { DeployService } from "@/services/DeployService";
 import { useMetaMask } from "@/hooks/useMetaMask";
+import React from "react";
 
 
-type ContractFeature = 'World' | 'Player' | 'Item' | 'Weather' | 'Plot' | 'Inventory' | 'Plant';
+type ContractFeature = 'World' | 'Player' | 'Item' | 'Weather' | 'Inventory' | 'Plant';
 
 type ContractType = {
     [key in ContractFeature]: string | string[];
@@ -30,7 +31,7 @@ const CONTRACTS: ContractType = {
     Player: ["PlayerComponent", "PlayerLogic", "PlayerProxy"],
     Item: ["ItemComponent", "ItemLogic", "ItemProxy"],
     Weather: ["WeatherComponent", "WeatherLogic", "WeatherProxy"],
-    Plot: ["PlotComponent", "PlotLogic", "PlotProxy"],
+
     Inventory: ["InventoryComponent", "InventoryLogic", "InventoryProxy"],
     Plant: ["PlantComponent", "PlantLogic", "PlantProxy"]
 };
@@ -42,6 +43,15 @@ const generateRandomAddress = () => {
     return '0x' + Array.from({ length: 40 }, () =>
         Math.floor(Math.random() * 16).toString(16)
     ).join('');
+};
+
+// Hook để tạo địa chỉ ngẫu nhiên tránh hydration mismatch
+const useRandomAddress = () => {
+    return React.useMemo(() => {
+        return '0x' + Array.from({ length: 40 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+        ).join('');
+    }, []);
 };
 
 export default function DeployPage() {
@@ -59,9 +69,12 @@ export default function DeployPage() {
 
     const { isConnected, isInstalled, account, chainId, connect, switchNetwork } = useMetaMask();
 
+    // Sử dụng hook để tạo địa chỉ ngẫu nhiên tránh hydration mismatch
+    const randomDeployerAddress = useRandomAddress();
+
     // Load dependencies when selectedContract changes
     useEffect(() => {
-        if (selectedContract && deployMode === 'single') {
+        if (selectedContract && deployMode === 'single' && network) {
             if (selectedContract.includes('Logic') || selectedContract.includes('Proxy')) {
                 loadContractDependencies(selectedContract);
             } else {
@@ -101,14 +114,10 @@ export default function DeployPage() {
                 }
 
                 // Add specific dependencies based on contract type
-                if (contractName === 'PlotLogic') {
-                    if (addresses.WeatherProxy) dependencies['WeatherProxy'] = addresses.WeatherProxy;
-                    if (addresses.PlayerProxy) dependencies['PlayerProxy'] = addresses.PlayerProxy;
-                } else if (contractName === 'InventoryLogic') {
+                if (contractName === 'InventoryLogic') {
                     if (addresses.ItemProxy) dependencies['ItemProxy'] = addresses.ItemProxy;
                     if (addresses.PlayerProxy) dependencies['PlayerProxy'] = addresses.PlayerProxy;
                 } else if (contractName === 'PlantLogic') {
-                    if (addresses.PlotProxy) dependencies['PlotProxy'] = addresses.PlotProxy;
                     if (addresses.InventoryProxy) dependencies['InventoryProxy'] = addresses.InventoryProxy;
                     if (addresses.WeatherProxy) dependencies['WeatherProxy'] = addresses.WeatherProxy;
                     if (addresses.ItemProxy) dependencies['ItemProxy'] = addresses.ItemProxy;
@@ -281,7 +290,7 @@ export default function DeployPage() {
                     const summary = {
                         network: network,
                         chainId: network === "local" ? 31337 : 1329,
-                        deployer: allContracts.deployer || "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+                        deployer: allContracts.deployer || randomDeployerAddress,
                         contracts: allContracts.contracts || {},
                         timestamp: new Date().toISOString(),
                         rpcUrl: network === "local" ? "http://127.0.0.1:8545" : "https://evm-rpc.sei-apis.com"
@@ -309,7 +318,7 @@ export default function DeployPage() {
                     const summary = {
                         network: network,
                         chainId: network === "local" ? 31337 : 1329,
-                        deployer: "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+                        deployer: randomDeployerAddress,
                         contracts: newDeployedContracts.reduce((acc, contract) => {
                             acc[contract.name] = contract.address;
                             return acc;
@@ -331,7 +340,7 @@ export default function DeployPage() {
                 const summary = {
                     network: network,
                     chainId: network === "local" ? 31337 : 1329,
-                    deployer: "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+                    deployer: randomDeployerAddress,
                     contracts: newDeployedContracts.reduce((acc, contract) => {
                         acc[contract.name] = contract.address;
                         return acc;
@@ -358,7 +367,7 @@ export default function DeployPage() {
                     const summary = {
                         network: network,
                         chainId: network === "local" ? 31337 : 1329,
-                        deployer: "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+                        deployer: randomDeployerAddress,
                         contracts: newDeployedContracts.reduce((acc, contract) => {
                             acc[contract.name] = contract.address;
                             return acc;
@@ -591,7 +600,7 @@ export default function DeployPage() {
                         <div className="space-y-2">
                             <div className="text-xs font-medium text-green-800 dark:text-green-200">Deployment order:</div>
                             <div className="grid grid-cols-1 gap-1">
-                                {['World', 'Player', 'Item', 'Weather', 'Plot', 'Inventory', 'Plant'].map((item, idx) => (
+                                {['World', 'Player', 'Item', 'Weather', 'Inventory', 'Plant'].map((item, idx) => (
                                     <div key={item} className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Badge variant="outline" className="w-5 h-5 p-0 flex items-center justify-center text-xs">
                                             {idx + 1}

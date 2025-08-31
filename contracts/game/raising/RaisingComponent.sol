@@ -104,6 +104,8 @@ contract RaisingComponent {
         WeatherStructs.WeatherState _weatherState,
         uint256 _harvestCooldown
     ) external onlyAuthorized {
+        // _weatherState and _harvestCooldown are kept for interface compatibility
+        // but no longer used after fixing the growthTime and qualityModifier logic
         Raising storage raising = raisings[_raisingId];
         require(!raising.isHarvested, "[COMPONENT] Raising already harvested");
 
@@ -128,30 +130,12 @@ contract RaisingComponent {
             );
         }
 
-        uint256 adjustedGrowthTime = raising.growthTime;
-        uint256 adjustedQuality = raising.qualityModifier;
-
-        // Điều chỉnh thời gian và chất lượng dựa trên thời tiết
-        if (_weatherState == WeatherStructs.WeatherState.Cloudy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 90) / 100; // Giảm 10%
-            adjustedQuality += 10;
-        } else if (_weatherState == WeatherStructs.WeatherState.Rainy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 85) / 100; // Giảm 15%
-            adjustedQuality += 15;
-        } else if (_weatherState == WeatherStructs.WeatherState.Stormy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 80) / 100; // Giảm 20%
-            adjustedQuality += 20;
-        } else {
-            adjustedGrowthTime = (adjustedGrowthTime * 95) / 100; // Giảm 5%
-            adjustedQuality += 5;
-        }
-
-        raising.qualityModifier = adjustedQuality;
-        raising.growthTime = adjustedGrowthTime;
+        // Cố định growthTime và qualityModifier - không thay đổi khi cho ăn
+        // Chỉ cập nhật thời gian cho ăn và số lần cho ăn
         raising.lastFeedTime = block.timestamp;
         raising.feedCount++;
 
-        emit RaisingFed(_raisingId, adjustedQuality);
+        emit RaisingFed(_raisingId, raising.qualityModifier);
     }
 
     function harvestRaisingWithCooldown(
@@ -188,8 +172,9 @@ contract RaisingComponent {
         raising.harvestCount++;
 
         // Reset feeding sau khi harvest để có thể cho ăn lại
+        // lastFeedTime được reset thành thời gian thu hoạch (giống như bắt đầu raising lại)
         raising.feedCount = 0;
-        raising.lastFeedTime = 0;
+        raising.lastFeedTime = block.timestamp;
 
         emit RaisingHarvestedWithCooldown(_raisingId, raising.harvestCount);
         emit FeedingReset(_raisingId, raising.harvestCount);

@@ -23,7 +23,8 @@ interface ItemProviderProps {
 }
 
 export function ItemProvider({ children, contract }: ItemProviderProps) {
-    const [items, setItems] = useState<Item[]>([])
+    const [allItems, setAllItems] = useState<Item[]>([])
+    const [filteredItems, setFilteredItems] = useState<Item[]>([])
     const [pagination, setPagination] = useState<ItemPagination>({
         currentPage: 1,
         totalPages: 1,
@@ -47,7 +48,8 @@ export function ItemProvider({ children, contract }: ItemProviderProps) {
         if (!contract) {
             console.log('Contract not available, wallet not connected')
             // Không hiển thị mock data khi chưa connect ví
-            setItems([])
+            setAllItems([])
+            setFilteredItems([])
             setPagination({
                 currentPage: 1,
                 totalPages: 1,
@@ -62,12 +64,30 @@ export function ItemProvider({ children, contract }: ItemProviderProps) {
             setIsLoading(true)
             setError(null)
 
+            console.log('ItemContext: Starting loadItemsFromContract...')
+            console.log('ItemContext: Contract provided:', contract)
+            console.log('ItemContext: Contract address:', contract.address)
+
+            // Kiểm tra xem contract có phương thức getAllItems không
+            console.log('ItemContext: Available methods:', Object.keys(contract.interface.functions))
+
+            // Kiểm tra xem có thể gọi phương thức đơn giản trước không
+            try {
+                console.log('ItemContext: Testing world() call...')
+                const worldAddress = await contract.world()
+                console.log('ItemContext: World address:', worldAddress)
+            } catch (worldError) {
+                console.error('ItemContext: Error calling world():', worldError)
+            }
+
             // Get all item IDs from contract
+            console.log('ItemContext: Calling getAllItems()...')
             const itemIds = await contract.getAllItems()
             console.log('Item IDs from contract:', itemIds)
 
             if (!itemIds || itemIds.length === 0) {
-                setItems([])
+                setAllItems([])
+                setFilteredItems([])
                 setPagination({
                     currentPage: 1,
                     totalPages: 1,
@@ -129,19 +149,80 @@ export function ItemProvider({ children, contract }: ItemProviderProps) {
             }
 
             console.log('Loaded items from contract:', itemsData)
-            setItems(itemsData)
-            setPagination({
-                currentPage: 1,
-                totalPages: Math.ceil(itemsData.length / filters.limit),
-                totalItems: itemsData.length,
-                limit: filters.limit
-            })
-        } catch (error) {
+            setAllItems(itemsData)
+        } catch (error: any) {
             console.error('Error loading items from contract:', error)
+            console.error('Error details:', {
+                message: error?.message,
+                code: error?.code,
+                data: error?.data,
+                errorArgs: error?.errorArgs,
+                errorName: error?.errorName,
+                errorSignature: error?.errorSignature,
+                reason: error?.reason
+            })
             setError('Lỗi tải dữ liệu từ contract')
         } finally {
             setIsLoading(false)
         }
+    }
+
+    // Apply filters and pagination to items
+    const applyFiltersAndPagination = () => {
+        console.log('ItemContext: applyFiltersAndPagination called with filters:', filters)
+        let filteredItems = [...allItems]
+
+        // Apply search filter
+        if (filters.search) {
+            const searchLower = filters.search.toLowerCase()
+            filteredItems = filteredItems.filter(item =>
+                item.name.toLowerCase().includes(searchLower) ||
+                item.id.toString().includes(searchLower)
+            )
+        }
+
+        // Apply item type filter
+        if (filters.itemType !== undefined) {
+            filteredItems = filteredItems.filter(item => item.itemType === filters.itemType)
+        }
+
+        // Apply rarity filter
+        if (filters.rarity !== undefined) {
+            filteredItems = filteredItems.filter(item => item.rarity === filters.rarity)
+        }
+
+        // Apply tradable filter
+        if (filters.isTradable !== undefined) {
+            filteredItems = filteredItems.filter(item => item.isTradable === filters.isTradable)
+        }
+
+        // Apply banned filter
+        if (filters.isBanned !== undefined) {
+            filteredItems = filteredItems.filter(item => item.isBanned === filters.isBanned)
+        }
+
+        // Calculate pagination
+        const totalItems = filteredItems.length
+        const totalPages = Math.ceil(totalItems / filters.limit)
+        const startIndex = (filters.page - 1) * filters.limit
+        const endIndex = startIndex + filters.limit
+        const paginatedItems = filteredItems.slice(startIndex, endIndex)
+
+        // Update pagination state
+        const newPagination = {
+            currentPage: filters.page,
+            totalPages: Math.max(1, totalPages),
+            totalItems,
+            limit: filters.limit
+        }
+        console.log('ItemContext: Setting pagination to:', newPagination)
+        setPagination(newPagination)
+
+        // Update filtered items
+        console.log('ItemContext: Setting filtered items:', paginatedItems.length, 'items')
+        setFilteredItems(paginatedItems)
+
+        return paginatedItems
     }
 
     // Refresh items function
@@ -151,15 +232,27 @@ export function ItemProvider({ children, contract }: ItemProviderProps) {
 
     // Load items when contract changes
     useEffect(() => {
-        loadItemsFromContract()
+        if (contract) {
+            loadItemsFromContract()
+        }
     }, [contract])
 
+    // Apply filters and pagination when items or filters change
+    useEffect(() => {
+        if (allItems.length > 0) {
+            applyFiltersAndPagination()
+        }
+    }, [allItems, filters.page, filters.limit, filters.search, filters.itemType, filters.rarity, filters.isTradable, filters.isBanned])
+
     const value = {
-        items,
+        items: filteredItems,
         pagination,
         filters,
         setPagination,
-        setFilters,
+        setFilters: (newFilters: ItemFilters) => {
+            console.log('ItemContext: setFilters called with:', newFilters)
+            setFilters(newFilters)
+        },
         isLoading,
         error,
         refreshItems

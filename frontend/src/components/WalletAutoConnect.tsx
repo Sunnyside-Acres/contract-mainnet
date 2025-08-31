@@ -1,13 +1,21 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { ethers } from 'ethers'
 import { useWallet } from '@/context/WalletContext'
 
 export function WalletAutoConnect() {
     const { provider, signer, setProvider, setSigner } = useWallet()
+    const [isClient, setIsClient] = useState(false)
+
+    // Set isClient to true after mount to avoid hydration mismatch
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     useEffect(() => {
+        if (!isClient) return
+
         const connectWallet = async () => {
             // Nếu đã có provider và signer, không cần kết nối lại
             if (provider && signer) {
@@ -15,7 +23,7 @@ export function WalletAutoConnect() {
             }
 
             // Kiểm tra xem có MetaMask không
-            if (typeof window !== 'undefined' && window.ethereum) {
+            if (window.ethereum) {
                 try {
                     console.log('Attempting to connect to MetaMask...')
 
@@ -64,7 +72,7 @@ export function WalletAutoConnect() {
         }
 
         connectWallet()
-    }, [provider, signer, setProvider, setSigner])
+    }, [isClient, provider, signer, setProvider, setSigner])
 
     return null // Component này không render gì
 }

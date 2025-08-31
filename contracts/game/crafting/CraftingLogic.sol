@@ -64,7 +64,6 @@ contract CraftingLogic {
         _;
     }
 
-
     modifier onlyInternal() {
         require(
             IWorld(world).isLogicRegistered(msg.sender),
@@ -380,16 +379,16 @@ contract CraftingLogic {
         uint256 randomNumber = uint256(
             keccak256(
                 abi.encodePacked(
-                    block.timestamp,
-                    block.prevrandao,
                     msg.sender,
-                    block.number
+                    block.number,
+                    blockhash(block.number - 1),
+                    gasleft()
                 )
             )
         ) % 10000;
-
         return randomNumber < _successRate;
     }
+
 
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============
 

@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
+import { Wallet, HardDrive, LogOut, User } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { useWallet } from '@/context/WalletContext'
-import { Button } from './ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
-import { Wallet, HardDrive, ExternalLink, CheckCircle, XCircle } from 'lucide-react'
+import { formatShortAddress } from '@/utils/address'
 
 interface WalletOption {
     id: string
@@ -21,9 +22,15 @@ export function WalletSelector() {
     const { provider, signer, setProvider, setSigner } = useWallet()
     const [isConnecting, setIsConnecting] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [isClient, setIsClient] = useState(false)
+
+    // Set isClient to true after mount to avoid hydration mismatch
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     const connectMetaMask = async () => {
-        if (typeof window === 'undefined' || !window.ethereum) {
+        if (!isClient || !window.ethereum) {
             throw new Error('MetaMask không được cài đặt')
         }
 
@@ -83,7 +90,7 @@ export function WalletSelector() {
             name: 'MetaMask',
             icon: <Wallet className="w-6 h-6" />,
             description: 'Kết nối với MetaMask extension',
-            isAvailable: typeof window !== 'undefined' && !!window.ethereum,
+            isAvailable: isClient && !!window.ethereum,
             connect: connectMetaMask
         },
         {
@@ -170,8 +177,8 @@ export function WalletSelector() {
                         <div
                             key={wallet.id}
                             className={`p-4 border rounded-lg ${wallet.isAvailable
-                                    ? 'border-gray-200 hover:border-gray-300'
-                                    : 'border-gray-100 bg-gray-50'
+                                ? 'border-gray-200 hover:border-gray-300'
+                                : 'border-gray-100 bg-gray-50'
                                 }`}
                         >
                             <div className="flex items-center justify-between">

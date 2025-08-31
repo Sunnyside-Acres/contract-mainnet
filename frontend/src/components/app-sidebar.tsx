@@ -14,10 +14,10 @@ import {
   Wallet,
   Server,
   Upload,
-  Tractor,
   Map,
   Store,
-  Hammer
+  Hammer,
+  Clock
 } from "lucide-react"
 
 import {
@@ -74,11 +74,6 @@ const navigationData = {
           icon: Users,
         },
         {
-          title: "Farmer",
-          url: "/plots",
-          icon: Tractor,
-        },
-        {
           title: "NPC Market",
           url: "/npcmarket",
           icon: Store,
@@ -89,15 +84,12 @@ const navigationData = {
           icon: Package,
         },
         {
-          title: "Flea Market",
-          url: "/fleamarket",
-          icon: Store,
-        },
-        {
           title: "Crafting",
           url: "/crafting",
           icon: Hammer,
         },
+
+
       ],
     },
   ],
@@ -172,7 +164,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       setIsConnecting(true)
 
       if (networkType === 'metamask') {
-        if (typeof window.ethereum === 'undefined') {
+        if (!window.ethereum) {
           alert('Vui lòng cài đặt MetaMask!')
           return
         }

@@ -30,7 +30,7 @@ export function PlayerInventoryDialog({ isOpen, onOpenChange, player }: PlayerIn
 
     React.useEffect(() => {
         const loadInventory = async () => {
-            if (!player || !contract) return
+            if (!player || !contract || !isOpen) return
 
             setIsLoading(true)
             try {
@@ -53,9 +53,7 @@ export function PlayerInventoryDialog({ isOpen, onOpenChange, player }: PlayerIn
             }
         }
 
-        if (isOpen) {
-            loadInventory()
-        }
+        loadInventory()
     }, [isOpen, player, contract])
 
     return (

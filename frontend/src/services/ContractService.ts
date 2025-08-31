@@ -83,9 +83,7 @@ export class ContractService {
         if (!address && this.contractAddresses) {
             // Map contract names to addresses
             const addressMap: Record<string, string> = {
-                'PlotLogic': this.contractAddresses.contracts.PlotLogic,
                 'PlantLogic': this.contractAddresses.contracts.PlantLogic,
-                'PlotComponent': this.contractAddresses.contracts.PlotComponent,
                 'PlantComponent': this.contractAddresses.contracts.PlantComponent,
                 'InventoryComponent': this.contractAddresses.contracts.InventoryComponent,
                 'ItemComponent': this.contractAddresses.contracts.ItemComponent,
@@ -100,21 +98,7 @@ export class ContractService {
         return new ethers.Contract(address, this.artifacts[contractName].abi, this.signer);
     }
 
-    // Plot methods
-    async createPlot(xCoordinate: number, yCoordinate: number) {
-        const plotLogic = this.getContract('PlotLogic');
-        return await plotLogic.createPlot(xCoordinate, yCoordinate);
-    }
 
-    async getPlots() {
-        const plotLogic = this.getContract('PlotLogic');
-        return await plotLogic.getPlots();
-    }
-
-    async getPlot(plotId: string) {
-        const plotComponent = this.getContract('PlotComponent');
-        return await plotComponent.getPlot(plotId);
-    }
 
     // Plant methods
     async plantCrop(plotId: string, itemId: string) {

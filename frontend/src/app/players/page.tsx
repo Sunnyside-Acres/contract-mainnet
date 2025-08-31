@@ -25,6 +25,9 @@ export default function PlayersPage() {
 
         if (!signer || !contractAddresses?.contracts.PlayerLogic || !contractAddresses?.contracts.InventoryLogic) {
             console.log('Missing signer or contract addresses')
+            console.log('Signer exists:', !!signer)
+            console.log('PlayerLogic address exists:', !!contractAddresses?.contracts.PlayerLogic)
+            console.log('InventoryLogic address exists:', !!contractAddresses?.contracts.InventoryLogic)
             return
         }
 
@@ -33,14 +36,21 @@ export default function PlayersPage() {
             const response = await fetch('/api/artifacts')
             if (!response.ok) {
                 console.error('Failed to fetch artifacts')
+                console.error('Response status:', response.status)
+                console.error('Response text:', await response.text())
                 return
             }
 
             const artifacts = await response.json()
-            console.log('Artifacts:', artifacts)
+            console.log('Artifacts loaded successfully')
+            console.log('Available artifacts:', Object.keys(artifacts))
+            console.log('PlayerLogic artifact exists:', !!artifacts.PlayerLogic)
+            console.log('InventoryLogic artifact exists:', !!artifacts.InventoryLogic)
 
             if (artifacts.PlayerLogic?.abi && artifacts.InventoryLogic?.abi) {
                 console.log('Creating contracts...')
+                console.log('PlayerLogic ABI length:', artifacts.PlayerLogic.abi.length)
+                console.log('InventoryLogic ABI length:', artifacts.InventoryLogic.abi.length)
 
                 const playerContract = new ethers.Contract(
                     contractAddresses.contracts.PlayerLogic,
@@ -49,6 +59,8 @@ export default function PlayersPage() {
                 )
                 setPlayerLogicContract(playerContract)
                 console.log('PlayerLogic contract created successfully')
+                console.log('PlayerLogic contract address:', playerContract.address)
+                console.log('PlayerLogic contract methods:', Object.keys(playerContract.interface.functions))
 
                 const inventoryContract = new ethers.Contract(
                     contractAddresses.contracts.InventoryLogic,
@@ -57,8 +69,11 @@ export default function PlayersPage() {
                 )
                 setInventoryLogicContract(inventoryContract)
                 console.log('InventoryLogic contract created successfully')
+                console.log('InventoryLogic contract address:', inventoryContract.address)
             } else {
                 console.error('Contract ABIs not found in artifacts')
+                console.error('PlayerLogic ABI:', artifacts.PlayerLogic?.abi ? 'exists' : 'missing')
+                console.error('InventoryLogic ABI:', artifacts.InventoryLogic?.abi ? 'exists' : 'missing')
             }
         } catch (error) {
             console.error('Lỗi tải PlayerLogic contract:', error)
@@ -67,7 +82,9 @@ export default function PlayersPage() {
 
     // Load contracts khi signer hoặc contractAddresses thay đổi
     useEffect(() => {
-        loadContracts()
+        if (signer && contractAddresses) {
+            loadContracts()
+        }
     }, [signer, contractAddresses])
 
     return (

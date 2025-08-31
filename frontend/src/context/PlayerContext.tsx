@@ -61,8 +61,24 @@ export function PlayerProvider({ children, contract }: PlayerProviderProps) {
 
             console.log('PlayerContext: Starting loadPlayersFromContract...')
             console.log('PlayerContext: Contract provided:', contract)
+            console.log('PlayerContext: Contract address:', contract.address)
+            console.log('PlayerContext: Contract provider:', contract.provider)
+            console.log('PlayerContext: Contract signer:', contract.signer)
+
+            // Kiểm tra xem contract có phương thức getPlayerList không
+            console.log('PlayerContext: Available methods:', Object.keys(contract.interface.functions))
+            
+            // Kiểm tra xem có thể gọi phương thức đơn giản trước không
+            try {
+                console.log('PlayerContext: Testing world() call...')
+                const worldAddress = await contract.world()
+                console.log('PlayerContext: World address:', worldAddress)
+            } catch (worldError) {
+                console.error('PlayerContext: Error calling world():', worldError)
+            }
 
             // Get all player addresses from contract
+            console.log('PlayerContext: Calling getPlayerList()...')
             const playerAddresses = await contract.getPlayerList()
             console.log('PlayerContext: Player addresses:', playerAddresses)
 
@@ -104,10 +120,10 @@ export function PlayerProvider({ children, contract }: PlayerProviderProps) {
                 }
             }
 
-            console.log('PlayerContext: Loaded players from contract:', playersData)
+            console.log('PlayerContext: All players data loaded:', playersData)
 
             // Apply filters
-            let filteredPlayers = playersData
+            let filteredPlayers = [...playersData]
 
             if (filters.search) {
                 const searchLower = filters.search.toLowerCase()
@@ -164,8 +180,17 @@ export function PlayerProvider({ children, contract }: PlayerProviderProps) {
                 limit: filters.limit
             })
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error loading players from contract:', error)
+            console.error('Error details:', {
+                message: error?.message,
+                code: error?.code,
+                data: error?.data,
+                errorArgs: error?.errorArgs,
+                errorName: error?.errorName,
+                errorSignature: error?.errorSignature,
+                reason: error?.reason
+            })
             setError('Lỗi tải dữ liệu từ contract')
         } finally {
             setIsLoading(false)
@@ -179,7 +204,9 @@ export function PlayerProvider({ children, contract }: PlayerProviderProps) {
 
     // Load players when contract changes
     useEffect(() => {
-        loadPlayersFromContract()
+        if (contract) {
+            loadPlayersFromContract()
+        }
     }, [contract, filters])
 
     const value: PlayerContextType = {

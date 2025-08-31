@@ -18,10 +18,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const [provider, setProvider] = useState<ethers.providers.Provider | null>(null)
     const [signer, setSigner] = useState<ethers.Signer | null>(null)
     const [selectedNetwork, setSelectedNetwork] = useState('hardhat')
+    const [isClient, setIsClient] = useState(false)
+
+    // Set isClient to true after mount to avoid hydration mismatch
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     // Listen for account changes
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.ethereum) {
+        if (isClient && window.ethereum) {
             const ethereum = window.ethereum as any
 
             const handleAccountsChanged = async (accounts: string[]) => {
@@ -61,7 +67,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                 }
             }
         }
-    }, [])
+    }, [isClient])
 
     return (
         <WalletContext.Provider value={{

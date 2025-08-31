@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -57,6 +59,12 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
     const [hardhatAccounts, setHardhatAccounts] = useState<string[]>([])
     const [selectedNetwork, setSelectedNetwork] = useState('hardhat')
     const [isLoading, setIsLoading] = useState(false)
+    const [isClient, setIsClient] = useState(false)
+
+    // Set isClient to true after mount to avoid hydration mismatch
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     // Load contract addresses dựa trên network
     const { addresses, loading: addressesLoading, error: addressesError } = useContractAddresses(selectedNetwork)
@@ -74,7 +82,7 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
 
     // Theo dõi thay đổi network trong MetaMask
     useEffect(() => {
-        if (typeof window.ethereum !== 'undefined') {
+        if (isClient && window.ethereum) {
             const handleChainChanged = (chainId: string) => {
                 console.log('Chain changed:', chainId)
                 // Chain ID từ MetaMask là hex string, cần convert sang decimal
@@ -119,7 +127,7 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
                 window.ethereum?.removeListener('accountsChanged', handleAccountsChanged)
             }
         }
-    }, [walletInfo?.type])
+    }, [isClient, walletInfo?.type])
 
     const loadHardhatAccounts = async () => {
         try {
@@ -152,7 +160,7 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
     const connectMetamask = async () => {
         try {
             setIsLoading(true)
-            if (typeof window.ethereum !== 'undefined') {
+            if (isClient && window.ethereum) {
                 const provider = new ethers.providers.Web3Provider(window.ethereum)
                 await provider.send("eth_requestAccounts", [])
                 const signer = provider.getSigner()
@@ -230,7 +238,7 @@ export default function WalletConnect({ onNetworkChange, onProviderChange, onSig
                 return
             }
 
-            if (typeof window.ethereum !== 'undefined') {
+            if (isClient && window.ethereum) {
                 const config = networkConfigs[network]
                 const chainId = `0x${config.chainId.toString(16)}`
 

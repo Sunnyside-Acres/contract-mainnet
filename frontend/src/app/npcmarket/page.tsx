@@ -57,7 +57,9 @@ export default function NPCMarketPage() {
 
     // Load contracts khi signer hoặc contractAddresses thay đổi
     useEffect(() => {
-        loadContracts()
+        if (signer && contractAddresses) {
+            loadContracts()
+        }
     }, [signer, contractAddresses])
 
     return (
