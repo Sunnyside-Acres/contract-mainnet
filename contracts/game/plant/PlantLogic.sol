@@ -33,7 +33,13 @@ contract PlantLogic {
         uint256 indexed plantId,
         address indexed player,
         uint256 plotId,
-        uint256 itemId
+        uint256 itemId,
+        uint256 plantedTime,
+        uint256 lastTendedTime,
+        uint256 qualityModifier,
+        uint256 growthTime,
+        uint256 tendCount,
+        bool isHarvested
     );
 
     event PlantHarvested(
@@ -66,9 +72,8 @@ contract PlantLogic {
 
     function random(uint256 max) private view returns (uint256) {
         return
-            uint256(
-                keccak256(abi.encodePacked(msg.sender, block.number))
-            ) % max;
+            uint256(keccak256(abi.encodePacked(msg.sender, block.number))) %
+            max;
     }
 
     function plantCrop(uint256 _plotId, uint256 _itemId) external {
@@ -81,7 +86,7 @@ contract PlantLogic {
             plotProxy.getPlotOwner(_plotId) == msg.sender,
             "Plot not owned"
         );
-        
+
         require(plotProxy.getPlot(_plotId).isActive, "Plot is not active");
 
         ItemStructs.Item memory item = itemProxy.getItem(_itemId);
@@ -119,15 +124,36 @@ contract PlantLogic {
             inventoryItem.expiration
         );
 
-        return
-            plantProxy.plantCrop(
-                _plotId,
-                _itemId,
-                msg.sender,
-                plot.plotType,
-                growthTime,
-                weatherState
-            );
+        plantProxy.plantCrop(
+            _plotId,
+            _itemId,
+            msg.sender,
+            plot.plotType,
+            growthTime,
+            weatherState
+        );
+
+        // Lấy thông tin plant vừa tạo để emit event
+        uint256 plantId = uint256(
+            keccak256(
+                abi.encodePacked(msg.sender, _plotId, _itemId, block.timestamp)
+            )
+        );
+
+        Plant memory plant = plantProxy.getPlantedCrop(plantId);
+
+        emit PlantCreated(
+            plant.id,
+            msg.sender,
+            plant.plotId,
+            plant.itemId,
+            plant.plantedTime,
+            plant.lastTendedTime,
+            plant.qualityModifier,
+            plant.growthTime,
+            plant.tendCount,
+            plant.isHarvested
+        );
     }
 
     function plantHarvest(uint256 plantId) external {
