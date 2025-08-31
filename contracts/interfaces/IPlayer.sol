@@ -4,11 +4,14 @@ pragma solidity ^0.8.28;
 import "../struct/Player.sol";
 
 interface IPlayerComponent {
-    function createPlayer(address _playerAddress, string memory _name) external;
+    function createPlayer(
+        address _playerAddress,
+        string memory _name
+    ) external returns (Player memory);
 
     function getPlayer(
         address _playerAddress
-    ) external view returns (Player memory);
+    ) external view returns (Player memory player);
 
     function addSunlight(address _playerAddress, uint256 _amount) external;
 
@@ -18,7 +21,9 @@ interface IPlayerComponent {
 
     function subtractSunlight(address _playerAddress, uint256 _amount) external;
 
-    function getSunlight(address _playerAddress) external view returns (uint256);
+    function getSunlight(
+        address _playerAddress
+    ) external view returns (uint256);
 
     function getPlayerAddresses() external view returns (address[] memory);
 }

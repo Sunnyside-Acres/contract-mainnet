@@ -9,7 +9,17 @@ contract PlayerLogic {
     IWorld public world;
     IPlayerComponent public playerProxy;
 
-    event PlayerCreated(address indexed playerAddress);
+    event PlayerCreated(
+        address indexed playerAddress,
+        string name,
+        uint16 level,
+        uint256 xp,
+        uint16 mana,
+        uint16 maxMana,
+        uint256 sunlight,
+        uint256 sunny,
+        uint256 lastLogin
+    );
     event LastLoginUpdated(address indexed playerAddress);
 
     modifier onlyAdmin() {
@@ -35,8 +45,18 @@ contract PlayerLogic {
         require(bytes(_name).length > 0, "[LOGIC] Name cannot be empty");
         require(bytes(_name).length <= 32, "[LOGIC]Name too long");
 
-        playerProxy.createPlayer(msg.sender, _name);
-        emit PlayerCreated(msg.sender);
+        Player memory player = playerProxy.createPlayer(msg.sender, _name);
+        emit PlayerCreated(
+            msg.sender,
+            player.name,
+            player.level,
+            player.xp,
+            player.mana,
+            player.maxMana,
+            player.sunlight,
+            player.sunny,
+            player.lastLogin
+        );
     }
 
     function addSunny(

@@ -30,7 +30,7 @@ contract PlayerComponent {
     function createPlayer(
         address _playerAddress,
         string memory _name
-    ) external onlyAuthorized {
+    ) external onlyAuthorized returns (Player memory) {
         require(
             !playerExists[_playerAddress],
             "[COMPONENT] Player already initialized"
@@ -50,7 +50,7 @@ contract PlayerComponent {
         playerAddresses.push(_playerAddress);
         playerExists[_playerAddress] = true;
 
-        emit PlayerCreated(_playerAddress, _name);
+        return player;
     }
 
     function addSunlight(
