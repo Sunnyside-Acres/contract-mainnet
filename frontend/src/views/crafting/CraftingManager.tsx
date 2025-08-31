@@ -223,9 +223,9 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
                 return
             }
 
-            if (isNaN(successRate) || successRate < 0 || successRate > 10000) {
+            if (isNaN(successRate) || successRate < 0 || successRate > 100) {
                 console.log('❌ Invalid Success Rate:', createFormData.successRate)
-                alert('Success Rate must be between 0 and 10000 (0-100%)')
+                alert('Success Rate must be between 0 and 100')
                 return
             }
 
@@ -459,8 +459,8 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
             const sunnyCost = parseInt(editFormData.sunnyCost)
             const minPlayerLevel = parseInt(editFormData.minPlayerLevel)
 
-            if (isNaN(successRate) || successRate < 0 || successRate > 10000) {
-                alert('Success Rate must be between 0 and 10000 (0-100%)')
+            if (isNaN(successRate) || successRate < 0 || successRate > 100) {
+                alert('Success Rate must be between 0 and 100')
                 return
             }
 
@@ -601,15 +601,15 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
     // 3. Helper Functions
     // =======================
     const getSuccessRateColor = (successRate: number) => {
-        if (successRate >= 8000) return "bg-green-100 text-green-800 border-green-200"
-        if (successRate >= 6000) return "bg-blue-100 text-blue-800 border-blue-200"
-        if (successRate >= 4000) return "bg-yellow-100 text-yellow-800 border-yellow-200"
-        if (successRate >= 2000) return "bg-orange-100 text-orange-800 border-orange-200"
+        if (successRate >= 80) return "bg-green-100 text-green-800 border-green-200"
+        if (successRate >= 60) return "bg-blue-100 text-blue-800 border-blue-200"
+        if (successRate >= 40) return "bg-yellow-100 text-yellow-800 border-yellow-200"
+        if (successRate >= 20) return "bg-orange-100 text-orange-800 border-orange-200"
         return "bg-red-100 text-red-800 border-red-200"
     }
 
     const getSuccessRateText = (successRate: number) => {
-        return `${(successRate / 100).toFixed(1)}%`
+        return `${successRate}%`
     }
 
     const getLevelColor = (level: number) => {
@@ -1113,25 +1113,23 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
 
                         {/* Success Rate */}
                         <div>
-                            <Label htmlFor="successRate" className="text-sm font-medium">Success Rate (%)</Label>
+                            <Label htmlFor="successRate" className="text-sm font-medium">Success Rate</Label>
                             <Input
                                 id="successRate"
                                 type="number"
                                 min="0"
                                 max="100"
-                                step="0.01"
-                                value={createFormData.successRate ? (parseInt(createFormData.successRate) / 100).toString() : ''}
+                                value={createFormData.successRate}
                                 onChange={(e) => {
-                                    const percentage = parseFloat(e.target.value)
-                                    const rate = Math.round(percentage * 100)
-                                    console.log('📝 Success Rate changed:', { percentage, rate })
-                                    setCreateFormData({ ...createFormData, successRate: rate.toString() })
+                                    const rate = parseInt(e.target.value)
+                                    console.log('📝 Success Rate changed:', { rate })
+                                    setCreateFormData({ ...createFormData, successRate: e.target.value })
                                 }}
-                                placeholder="Enter success rate (0-100%)"
+                                placeholder="Enter success rate (0-100)"
                                 className="mt-1"
                             />
                             <p className="text-xs text-muted-foreground mt-1">
-                                Success rate from 0% to 100% (will be converted to 0-10000)
+                                Success rate from 0 to 100
                             </p>
                         </div>
 
@@ -1321,24 +1319,22 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
 
                         {/* Success Rate */}
                         <div>
-                            <Label htmlFor="edit-successRate" className="text-sm font-medium">Success Rate (%)</Label>
+                            <Label htmlFor="edit-successRate" className="text-sm font-medium">Success Rate</Label>
                             <Input
                                 id="edit-successRate"
                                 type="number"
                                 min="0"
                                 max="100"
-                                step="0.01"
-                                value={editFormData.successRate ? (parseInt(editFormData.successRate) / 100).toString() : ''}
+                                value={editFormData.successRate}
                                 onChange={(e) => {
-                                    const percentage = parseFloat(e.target.value)
-                                    const rate = Math.round(percentage * 100)
-                                    setEditFormData({ ...editFormData, successRate: rate.toString() })
+                                    const rate = parseInt(e.target.value)
+                                    setEditFormData({ ...editFormData, successRate: e.target.value })
                                 }}
-                                placeholder="Enter success rate (0-100%)"
+                                placeholder="Enter success rate (0-100)"
                                 className="mt-1"
                             />
                             <p className="text-xs text-muted-foreground mt-1">
-                                Success rate from 0% to 100% (will be converted to 0-10000)
+                                Success rate from 0 to 100
                             </p>
                         </div>
 
