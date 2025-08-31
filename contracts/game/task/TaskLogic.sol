@@ -61,14 +61,6 @@ contract TaskLogic {
         _;
     }
 
-    modifier onlyInternal() {
-        require(
-            world.isLogicRegistered(msg.sender),
-            "Only registered logic can call this function"
-        );
-        _;
-    }
-
     // ============ CONSTRUCTOR ============
 
     constructor(
@@ -226,13 +218,6 @@ contract TaskLogic {
         Player memory playerData = playerProxy.getPlayer(player);
         require(playerData.level > 0, "Player not initialized");
 
-        // Check if proof exists and can be claimed
-        (bool canClaim, string memory message) = taskProxy.canClaimProof(
-            player,
-            _proofId
-        );
-        require(canClaim, message);
-
         // Get proof details
         TaskProof memory proof = taskProxy.getTaskProof(_proofId);
 
@@ -351,23 +336,6 @@ contract TaskLogic {
     }
 
     /**
-     * @dev Kiểm tra xem có thể claim proof không
-     *
-     * Chức năng:
-     * - Kiểm tra xem proof có thể claim được không (active, chưa claim, chưa hết hạn)
-     * - Trả về tuple (bool, string) - kết quả kiểm tra và thông báo lỗi nếu có
-     *
-     * @param _proofId ID của proof cần kiểm tra
-     * @return bool True nếu có thể claim, False nếu không thể
-     * @return string Thông báo lỗi nếu không thể claim
-     */
-    function canClaimProof(
-        bytes32 _proofId
-    ) external view returns (bool, string memory) {
-        return taskProxy.canClaimProof(msg.sender, _proofId);
-    }
-
-    /**
      * @dev Lấy tổng quan proof của người chơi
      *
      * Chức năng:
@@ -412,53 +380,5 @@ contract TaskLogic {
             totalSunnyEarned += claimedProofsArray[i].rewardSunny;
             totalExpEarned += claimedProofsArray[i].rewardExp;
         }
-    }
-
-    /**
-     * @dev Lấy danh sách proof có thể claim cho người chơi
-     *
-     * Chức năng:
-     * - Lọc ra các proof active có thể claim được (chưa hết hạn, chưa claim)
-     * - Trả về mảng TaskProof[] chứa các proof có thể claim ngay
-     * - Hữu ích cho UI để hiển thị danh sách proof có thể claim
-     *
-     * @param _player Địa chỉ người chơi cần xem proof có thể claim
-     * @return TaskProof[] Mảng chứa các proof có thể claim
-     */
-    function getClaimableProofs(
-        address _player
-    ) external view returns (TaskProof[] memory) {
-        TaskProof[] memory activeProofs = taskProxy.getPlayerActiveProofs(
-            _player
-        );
-
-        // Count claimable proofs
-        uint256 claimableCount = 0;
-        for (uint256 i = 0; i < activeProofs.length; i++) {
-            (bool canClaim, ) = taskProxy.canClaimProof(
-                _player,
-                activeProofs[i].proofId
-            );
-            if (canClaim) {
-                claimableCount++;
-            }
-        }
-
-        // Create filtered array
-        TaskProof[] memory claimableProofs = new TaskProof[](claimableCount);
-        uint256 currentIndex = 0;
-
-        for (uint256 i = 0; i < activeProofs.length; i++) {
-            (bool canClaim, ) = taskProxy.canClaimProof(
-                _player,
-                activeProofs[i].proofId
-            );
-            if (canClaim) {
-                claimableProofs[currentIndex] = activeProofs[i];
-                currentIndex++;
-            }
-        }
-
-        return claimableProofs;
     }
 }

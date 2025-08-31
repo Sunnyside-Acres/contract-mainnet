@@ -81,6 +81,7 @@ contract PlantLogic {
             plotProxy.getPlotOwner(_plotId) == msg.sender,
             "Plot not owned"
         );
+        
         require(plotProxy.getPlot(_plotId).isActive, "Plot is not active");
 
         ItemStructs.Item memory item = itemProxy.getItem(_itemId);

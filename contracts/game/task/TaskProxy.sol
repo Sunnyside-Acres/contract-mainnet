@@ -23,7 +23,10 @@ contract TaskProxy {
     }
 
     modifier onlyAuthorized() {
-        require(IWorld(world).isLogicRegistered(msg.sender), "Unauthorized");
+        require(
+            IWorld(world).isLogicRegistered(msg.sender),
+            "[Task] - Unauthorized"
+        );
         _;
     }
 

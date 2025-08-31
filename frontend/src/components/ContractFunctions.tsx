@@ -237,10 +237,98 @@ export function ContractFunctions({ contract }: Props) {
         }
     }
 
+    const getInputPlaceholder = (type: string): string => {
+        if (type.includes('[]')) {
+            const baseType = type.replace('[]', '')
+            if (baseType === 'uint256' || baseType === 'uint' || baseType === 'int256' || baseType === 'int') {
+                return '[1,2,3]'
+            } else if (baseType === 'bool') {
+                return '[true,false]'
+            } else if (baseType === 'address') {
+                return '[0x123...,0x456...]'
+            } else if (baseType === 'string') {
+                return '["item1","item2"]'
+            }
+            return '[item1,item2]'
+        }
+
+        if (type === 'uint256' || type === 'uint' || type === 'int256' || type === 'int') {
+            return '123'
+        } else if (type === 'bool') {
+            return 'true/false'
+        } else if (type === 'address') {
+            return '0x1234567890123456789012345678901234567890'
+        } else if (type === 'string') {
+            return 'text'
+        }
+
+        return type
+    }
+
+    const parseInput = (input: string, type: string): any => {
+        // Xử lý các kiểu dữ liệu cơ bản
+        if (type.includes('[]')) {
+            // Xử lý array types
+            try {
+                // Thử parse JSON trước
+                const parsed = JSON.parse(input)
+                if (Array.isArray(parsed)) {
+                    return parsed
+                }
+            } catch {
+                // Nếu không phải JSON, thử parse theo format khác
+                if (input.trim() === '[]') return []
+                if (input.trim() === '') return []
+
+                // Xử lý format [1,2,3] hoặc "1,2,3"
+                const cleanInput = input.replace(/[\[\]]/g, '').trim()
+                if (cleanInput === '') return []
+
+                const items = cleanInput.split(',').map(item => item.trim())
+                const baseType = type.replace('[]', '')
+
+                return items.map(item => {
+                    if (baseType === 'uint256' || baseType === 'uint' || baseType === 'int256' || baseType === 'int') {
+                        return ethers.BigNumber.from(item)
+                    } else if (baseType === 'bool') {
+                        return item.toLowerCase() === 'true'
+                    } else if (baseType === 'address') {
+                        return item
+                    } else {
+                        return item.replace(/"/g, '') // Remove quotes for strings
+                    }
+                })
+            }
+        }
+
+        // Xử lý các kiểu dữ liệu đơn lẻ
+        if (type === 'uint256' || type === 'uint' || type === 'int256' || type === 'int') {
+            return ethers.BigNumber.from(input)
+        } else if (type === 'bool') {
+            return input.toLowerCase() === 'true'
+        } else if (type === 'address') {
+            return input
+        } else if (type === 'string') {
+            return input.replace(/"/g, '') // Remove quotes
+        }
+
+        return input
+    }
+
     const callFunction = async (functionName: string, inputs: any[]) => {
         try {
             setIsLoading(prev => ({ ...prev, [functionName]: true }))
-            const result = await contract?.[functionName](...inputs)
+
+            // Parse inputs theo đúng kiểu dữ liệu
+            const parsedInputs = inputs.map((input, index) => {
+                const func = contract?.interface.fragments.find((f: any) => f.name === functionName)
+                if (func && func.inputs[index]) {
+                    return parseInput(input, func.inputs[index].type)
+                }
+                return input
+            })
+
+            const result = await contract?.[functionName](...parsedInputs)
 
             if (result.wait) {
                 // Nếu là transaction
@@ -401,10 +489,15 @@ export function ContractFunctions({ contract }: Props) {
                                         newInputs[index] = e.target.value
                                         setInputs(newInputs)
                                     }}
-                                    placeholder={`${input.type}`}
+                                    placeholder={getInputPlaceholder(input.type)}
                                     disabled={isLoading[func.name]}
                                     className="text-xs"
                                 />
+                                {input.type.includes('[]') && (
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                        Format: [1,2,3] hoặc JSON array
+                                    </div>
+                                )}
                             </div>
                         ))}
 

@@ -9,7 +9,6 @@ contract TaskComponent {
     address public admin;
     address public implementation;
 
-
     // Mapping từ proof ID đến TaskProof
     mapping(bytes32 => TaskProof) public taskProofs;
 
@@ -22,15 +21,6 @@ contract TaskComponent {
     // Thống kê task
     TaskStats public taskStats;
 
-    modifier onlyAuthorized() {
-        require(
-            IWorld(world).isLogicRegistered(msg.sender),
-            "[COMPONENT] Unauthorized"
-        );
-        _;
-    }
-
-
     // ============ ADMIN FUNCTIONS ============
 
     function createTaskProof(
@@ -41,7 +31,7 @@ contract TaskComponent {
         uint256[] memory _rewardItems,
         uint256[] memory _rewardItemQuantities,
         uint256 _expiresIn
-    ) external onlyAuthorized returns (bytes32) {
+    ) external returns (bytes32) {
         require(_player != address(0), "Invalid player address");
         require(_expiresIn > 0, "Expiration time must be greater than 0");
         require(
@@ -87,7 +77,7 @@ contract TaskComponent {
         return proofId;
     }
 
-    function revokeTaskProof(bytes32 _proofId) external onlyAuthorized {
+    function revokeTaskProof(bytes32 _proofId) external {
         require(taskProofs[_proofId].proofId != 0, "Proof does not exist");
         require(taskProofs[_proofId].isActive, "Proof is already inactive");
         require(!taskProofs[_proofId].isClaimed, "Cannot revoke claimed proof");
@@ -98,7 +88,7 @@ contract TaskComponent {
     function extendTaskProof(
         bytes32 _proofId,
         uint256 _additionalTime
-    ) external onlyAuthorized {
+    ) external {
         require(taskProofs[_proofId].proofId != 0, "Proof does not exist");
         require(taskProofs[_proofId].isActive, "Proof is not active");
         require(!taskProofs[_proofId].isClaimed, "Cannot extend claimed proof");
@@ -109,7 +99,7 @@ contract TaskComponent {
 
     // ============ PLAYER FUNCTIONS ============
 
-    function claimTaskReward(bytes32 _proofId) external onlyAuthorized {
+    function claimTaskReward(bytes32 _proofId) external {
         require(taskProofs[_proofId].proofId != 0, "Proof does not exist");
         require(taskProofs[_proofId].isActive, "Proof is not active");
         require(!taskProofs[_proofId].isClaimed, "Proof already claimed");
@@ -232,34 +222,5 @@ contract TaskComponent {
 
     function isProofClaimed(bytes32 _proofId) external view returns (bool) {
         return taskProofs[_proofId].isClaimed;
-    }
-
-    function canClaimProof(
-        address _player,
-        bytes32 _proofId
-    ) external view returns (bool, string memory) {
-        if (!this.proofExists(_proofId)) {
-            return (false, "Proof does not exist");
-        }
-
-        TaskProof memory proof = taskProofs[_proofId];
-
-        if (proof.player != _player) {
-            return (false, "Proof does not belong to this player");
-        }
-
-        if (!proof.isActive) {
-            return (false, "Proof is not active");
-        }
-
-        if (proof.isClaimed) {
-            return (false, "Proof already claimed");
-        }
-
-        if (proof.expiresAt <= block.timestamp) {
-            return (false, "Proof has expired");
-        }
-
-        return (true, "Can claim proof");
     }
 }
