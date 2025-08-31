@@ -55,8 +55,13 @@ export function useContractAddresses(network: string) {
 
     useEffect(() => {
         const loadAddresses = async () => {
-            if (!network) return
+            if (!network) {
+                console.log('❌ No network provided to useContractAddresses')
+                return
+            }
 
+            console.log('=== LOADING CONTRACT ADDRESSES DEBUG ===')
+            console.log('Network provided:', network)
             setLoading(true)
             setError(null)
 
@@ -67,8 +72,8 @@ export function useContractAddresses(network: string) {
                 const networkKey = network.toLowerCase()
                 console.log('Loading contract addresses for network:', networkKey)
 
-                if (networkKey === 'hardhat' || networkKey === '31337' || networkKey === 'chain-31337') {
-                    fileName = 'contract-addresses-local.json'
+                if (networkKey === 'hardhat' || networkKey === '31337' || networkKey === 'chain-31337' || networkKey === 'localhost') {
+                    fileName = 'contract-addresses-localhost.json'
                 } else if (networkKey === 'seimainnet' || networkKey === '1329' || networkKey === 'chain-1329') {
                     fileName = 'contract-addresses-seimainnet.json'
                 } else if (networkKey === 'seitestnet' || networkKey === '1328' || networkKey === 'chain-1328') {
@@ -85,10 +90,15 @@ export function useContractAddresses(network: string) {
                 }
 
                 const data: ContractAddresses = await response.json()
-                console.log('Loaded contract addresses:', data)
+                console.log('✅ Loaded contract addresses:', data)
+                console.log('Available contracts:', Object.keys(data.contracts))
+                console.log('Crafting contracts check:')
+                console.log('- CraftingComponent:', data.contracts.CraftingComponent)
+                console.log('- CraftingLogic:', data.contracts.CraftingLogic)
+                console.log('- CraftingProxy:', data.contracts.CraftingProxy)
                 setAddresses(data)
             } catch (err) {
-                console.error('Lỗi load contract addresses:', err)
+                console.error('❌ Lỗi load contract addresses:', err)
                 setError(err instanceof Error ? err.message : 'Lỗi không xác định')
                 setAddresses(null)
             } finally {

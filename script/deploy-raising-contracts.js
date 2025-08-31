@@ -29,9 +29,9 @@ async function main() {
 
   // Lấy địa chỉ các contracts cần thiết
   const worldAddress = deploymentInfo.contracts.World;
-  const inventoryComponentAddress = deploymentInfo.contracts.InventoryComponent;
-  const weatherComponentAddress = deploymentInfo.contracts.WeatherComponent;
-  const itemComponentAddress = deploymentInfo.contracts.ItemComponent;
+  const inventoryProxyAddress = deploymentInfo.contracts.InventoryProxy;
+  const weatherProxyAddress = deploymentInfo.contracts.WeatherProxy;
+  const itemProxyAddress = deploymentInfo.contracts.ItemProxy;
 
   // Lấy địa chỉ Raising contracts cũ (nếu có)
   const oldRaisingComponentAddress =
@@ -46,9 +46,9 @@ async function main() {
 
   console.log("\n📋 Existing contract addresses:");
   console.log("   • World:", worldAddress);
-  console.log("   • InventoryComponent:", inventoryComponentAddress);
-  console.log("   • WeatherComponent:", weatherComponentAddress);
-  console.log("   • ItemComponent:", itemComponentAddress);
+  console.log("   • InventoryProxy:", inventoryProxyAddress);
+  console.log("   • WeatherProxy:", weatherProxyAddress);
+  console.log("   • ItemProxy:", itemProxyAddress);
   console.log("   • Old RaisingComponent:", oldRaisingComponentAddress);
   console.log("   • Old RaisingProxy:", oldRaisingProxyAddress);
   console.log("   • Old RaisingLogic:", oldRaisingLogicAddress);
@@ -82,9 +82,9 @@ async function main() {
   const raisingLogic = await RaisingLogic.deploy(
     worldAddress,
     newRaisingProxyAddress,
-    inventoryComponentAddress,
-    weatherComponentAddress,
-    itemComponentAddress
+    inventoryProxyAddress,
+    weatherProxyAddress,
+    itemProxyAddress
   );
   await raisingLogic.waitForDeployment();
   const newRaisingLogicAddress = await raisingLogic.getAddress();
@@ -140,9 +140,9 @@ async function main() {
   console.log(`   • RaisingProxy: ${newRaisingProxyAddress}`);
   console.log(`   • RaisingLogic: ${newRaisingLogicAddress}`);
   console.log("\n📋 Dependencies:");
-  console.log(`   • InventoryComponent: ${inventoryComponentAddress}`);
-  console.log(`   • WeatherComponent: ${weatherComponentAddress}`);
-  console.log(`   • ItemComponent: ${itemComponentAddress}`);
+  console.log(`   • InventoryProxy: ${inventoryProxyAddress}`);
+  console.log(`   • WeatherProxy: ${weatherProxyAddress}`);
+  console.log(`   • ItemProxy: ${itemProxyAddress}`);
   console.log("\n✅ All Raising contracts deployed successfully!");
   console.log("\n📝 Deployment file updated with new Raising contracts!");
   console.log("\n🔗 Next Steps:");

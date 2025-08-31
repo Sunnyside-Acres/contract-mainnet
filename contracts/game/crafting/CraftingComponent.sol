@@ -20,14 +20,6 @@ contract CraftingComponent {
     // Danh sách tất cả recipe IDs
     uint256[] public allRecipeIds;
 
-    modifier onlyAuthorized() {
-        require(
-            IWorld(world).isLogicRegistered(msg.sender),
-            "[COMPONENT] Unauthorized"
-        );
-        _;
-    }
-
     function createRecipe(
         uint256 _resultItemId,
         uint256 _resultQuantity,
@@ -36,7 +28,7 @@ contract CraftingComponent {
         uint256 _sunnyCost,
         CraftingIngredient[] calldata _ingredients,
         uint256 _minPlayerLevel
-    ) external onlyAuthorized returns (uint256) {
+    ) external returns (uint256) {
         require(_successRate <= 10000, "Success rate cannot exceed 100%");
         require(_resultQuantity > 0, "Result quantity must be greater than 0");
         require(_ingredients.length > 0, "Must have at least one ingredient");
@@ -119,7 +111,7 @@ contract CraftingComponent {
         uint256 _sunnyCost,
         CraftingIngredient[] calldata _ingredients,
         uint256 _minPlayerLevel
-    ) external onlyAuthorized {
+    ) external {
         require(recipes[_recipeId].id != 0, "Recipe does not exist");
         require(_successRate <= 10000, "Success rate cannot exceed 100%");
         require(_ingredients.length > 0, "Must have at least one ingredient");
@@ -140,12 +132,12 @@ contract CraftingComponent {
     function setRecipeActive(
         uint256 _recipeId,
         bool _isActive
-    ) external onlyAuthorized {
+    ) external {
         require(recipes[_recipeId].id != 0, "Recipe does not exist");
         recipes[_recipeId].isActive = _isActive;
     }
 
-    function deleteRecipe(uint256 _recipeId) external onlyAuthorized {
+    function deleteRecipe(uint256 _recipeId) external {
         require(recipes[_recipeId].id != 0, "Recipe does not exist");
         delete recipes[_recipeId];
 
@@ -167,7 +159,7 @@ contract CraftingComponent {
         bool _isSuccess,
         uint256 _sunlightSpent,
         uint256 _sunnySpent
-    ) external onlyAuthorized {
+    ) external {
         craftingHistories[_player].push(
             CraftingHistory({
                 player: _player,

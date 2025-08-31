@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
@@ -14,7 +15,18 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const fileName = `contract-addresses-${network}.json`;
+        let fileName: string;
+
+        // Map network names to file names
+        if (network === 'hardhat' || network === '31337' || network === 'chain-31337' || network === 'localhost') {
+            fileName = 'contract-addresses-localhost.json';
+        } else if (network === 'seimainnet' || network === '1329' || network === 'chain-1329') {
+            fileName = 'contract-addresses-seimainnet.json';
+        } else if (network === 'seitestnet' || network === '1328' || network === 'chain-1328') {
+            fileName = 'contract-addresses-seitestnet.json';
+        } else {
+            fileName = `contract-addresses-${network}.json`;
+        }
         const filePath = path.join(process.cwd(), 'deployed', fileName);
 
         // Ensure directory exists
@@ -77,8 +89,8 @@ export async function GET(request: NextRequest) {
         let fileName: string;
 
         // Map network names to file names
-        if (network === 'hardhat' || network === '31337' || network === 'chain-31337') {
-            fileName = 'contract-addresses-local.json';
+        if (network === 'hardhat' || network === '31337' || network === 'chain-31337' || network === 'localhost') {
+            fileName = 'contract-addresses-localhost.json';
         } else if (network === 'seimainnet' || network === '1329' || network === 'chain-1329') {
             fileName = 'contract-addresses-seimainnet.json';
         } else if (network === 'seitestnet' || network === '1328' || network === 'chain-1328') {

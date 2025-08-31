@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ethers } from 'ethers'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
@@ -14,17 +14,49 @@ export function ContractFunctions({ contract }: Props) {
     const [results, setResults] = useState<Record<string, any>>({})
     const [isLoading, setIsLoading] = useState<Record<string, boolean>>({})
     const [showClearNotification, setShowClearNotification] = useState(false)
+    const [lastContractAddress, setLastContractAddress] = useState<string>('')
+
+    // Memoize contract để tránh re-render không cần thiết
+    const memoizedContract = useMemo(() => {
+        if (!contract) return null
+        return contract
+    }, [contract?.address, contract?.interface])
 
     // Xóa tất cả results khi contract thay đổi
     useEffect(() => {
-        if (contract && Object.keys(results).length > 0) {
+        const currentAddress = memoizedContract?.address || ''
+
+        // Chỉ xóa results khi contract address thực sự thay đổi
+        if (currentAddress && currentAddress !== lastContractAddress) {
+            console.log('Contract address changed, clearing results')
+            console.log('Previous address:', lastContractAddress)
+            console.log('New address:', currentAddress)
+
             setResults({})
             setIsLoading({})
             setShowClearNotification(true)
             // Ẩn thông báo sau 3 giây
             setTimeout(() => setShowClearNotification(false), 3000)
         }
-    }, [contract, results])
+
+        setLastContractAddress(currentAddress)
+    }, [memoizedContract?.address, lastContractAddress]) // Bỏ results khỏi dependency
+
+    // Debug contract information khi contract thay đổi
+    useEffect(() => {
+        if (memoizedContract) {
+            console.log('Contract loaded in ContractFunctions:')
+            console.log('Contract address:', memoizedContract.address)
+            console.log('Contract interface:', memoizedContract.interface)
+            console.log('Available functions:', Object.keys(memoizedContract.interface.functions))
+            console.log('Function fragments:', memoizedContract.interface.fragments.map((f: any) => f.name))
+
+            // Kiểm tra xem contract có ổn định không
+            const functionNames = Object.keys(memoizedContract.interface.functions)
+            console.log('Function count:', functionNames.length)
+            console.log('First few functions:', functionNames.slice(0, 5))
+        }
+    }, [memoizedContract?.address]) // Chỉ trigger khi address thay đổi
 
     const formatResult = (result: any): string => {
         if (result === null || result === undefined) {
@@ -142,12 +174,12 @@ export function ContractFunctions({ contract }: Props) {
         // Bạn có thể customize tên field tùy theo struct type
         // Ví dụ cho Plant struct:
         const plantFields = ['id', 'plantType', 'plantedTime', 'lastWateredTime', 'lastFertilizedTime', 'growth', 'isAlive']
-        
+
 
         // Thêm các mapping khác cho các struct khác
         const fieldMappings: Record<number, string> = {
             ...Object.fromEntries(plantFields.map((field, i) => [i, field])),
-    
+
         }
 
         return fieldMappings[index] || `field${index + 1}`
@@ -318,16 +350,38 @@ export function ContractFunctions({ contract }: Props) {
         try {
             setIsLoading(prev => ({ ...prev, [functionName]: true }))
 
+            // Kiểm tra contract có tồn tại không
+            if (!memoizedContract) {
+                throw new Error('Contract không tồn tại')
+            }
+
+            // Log contract info trước khi gọi function
+            console.log('Contract info before function call:')
+            console.log('- Address:', memoizedContract.address)
+            console.log('- Interface:', memoizedContract.interface)
+            console.log('- Function exists:', !!memoizedContract[functionName])
+
+            // Kiểm tra function có tồn tại trong contract không
+            if (!memoizedContract[functionName]) {
+                throw new Error(`Function ${functionName} không tồn tại trong contract`)
+            }
+
             // Parse inputs theo đúng kiểu dữ liệu
             const parsedInputs = inputs.map((input, index) => {
-                const func = contract?.interface.fragments.find((f: any) => f.name === functionName)
+                const func = memoizedContract.interface.fragments.find((f: any) => f.name === functionName)
                 if (func && func.inputs[index]) {
                     return parseInput(input, func.inputs[index].type)
                 }
                 return input
             })
 
-            const result = await contract?.[functionName](...parsedInputs)
+            console.log(`Gọi function ${functionName} với inputs:`, parsedInputs)
+            const result = await memoizedContract[functionName](...parsedInputs)
+
+            // Log contract info sau khi gọi function
+            console.log('Contract info after function call:')
+            console.log('- Address:', memoizedContract.address)
+            console.log('- Interface:', memoizedContract.interface)
 
             if (result.wait) {
                 // Nếu là transaction
@@ -359,6 +413,10 @@ export function ContractFunctions({ contract }: Props) {
             }
         } catch (error) {
             console.error(`Lỗi gọi hàm ${functionName}:`, error)
+            console.error('Contract address:', memoizedContract?.address)
+            console.error('Contract interface:', memoizedContract?.interface)
+            console.error('Available functions:', Object.keys(memoizedContract?.interface?.functions || {}))
+
             const errorMessage = (error as Error).message
             const parsedError = parseErrorMessage(errorMessage)
 
@@ -366,7 +424,11 @@ export function ContractFunctions({ contract }: Props) {
                 ...prev,
                 [functionName]: {
                     value: null,
-                    error: parsedError,
+                    error: {
+                        ...parsedError,
+                        contractAddress: memoizedContract?.address,
+                        availableFunctions: Object.keys(memoizedContract?.interface?.functions || {})
+                    },
                     timestamp: new Date().toISOString(),
                     type: 'error'
                 }
@@ -391,7 +453,7 @@ export function ContractFunctions({ contract }: Props) {
         return new Date(Math.max(...timestamps.map((ts: string) => new Date(ts).getTime())))
     }
 
-    if (!contract) {
+    if (!memoizedContract) {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="rounded-full bg-muted p-4 mb-4">
@@ -419,13 +481,13 @@ export function ContractFunctions({ contract }: Props) {
         )
     }
 
-    const readFunctions = contract.interface.fragments.filter(
+    const readFunctions = memoizedContract.interface.fragments.filter(
         (fragment: any) =>
             fragment.type === 'function' &&
             (fragment.stateMutability === 'view' || fragment.stateMutability === 'pure')
     )
 
-    const writeFunctions = contract.interface.fragments.filter(
+    const writeFunctions = memoizedContract.interface.fragments.filter(
         (fragment: any) =>
             fragment.type === 'function' &&
             fragment.stateMutability !== 'view' &&
@@ -599,6 +661,23 @@ export function ContractFunctions({ contract }: Props) {
                                                     </span>
                                                 </div>
                                             )}
+                                            {results[func.name].error.contractAddress && (
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-xs font-medium text-muted-foreground">Contract:</span>
+                                                    <span className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                                                        {results[func.name].error.contractAddress}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {results[func.name].error.availableFunctions && (
+                                                <div className="flex items-start space-x-2">
+                                                    <span className="text-xs font-medium text-muted-foreground">Available Functions:</span>
+                                                    <div className="text-xs bg-muted px-2 py-1 rounded font-mono max-w-xs overflow-x-auto">
+                                                        {results[func.name].error.availableFunctions.slice(0, 10).join(', ')}
+                                                        {results[func.name].error.availableFunctions.length > 10 && '...'}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Full error message (collapsible) */}
@@ -716,11 +795,11 @@ export function ContractFunctions({ contract }: Props) {
                             {getResultsCount()} function{getResultsCount() !== 1 ? 's' : ''}
                         </span>
                     </div>
-                    {contract && (
+                    {memoizedContract && (
                         <div className="flex items-center space-x-2">
                             <span className="text-xs text-muted-foreground">Contract:</span>
                             <span className="text-xs font-mono text-muted-foreground">
-                                {contract.address.slice(0, 6)}...{contract.address.slice(-4)}
+                                {memoizedContract.address.slice(0, 6)}...{memoizedContract.address.slice(-4)}
                             </span>
                         </div>
                     )}

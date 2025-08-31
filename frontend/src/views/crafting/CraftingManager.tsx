@@ -184,10 +184,17 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
     }
 
     const handleCreateRecipe = async () => {
-        if (!contract) return
+        if (!contract) {
+            console.log('❌ Contract not available for creating recipe')
+            return
+        }
+
+        console.log('🚀 Starting recipe creation process...')
+        console.log('📋 Form data:', createFormData)
 
         try {
             // Validate form data
+            console.log('🔍 Validating form data...')
             const resultItemId = parseInt(createFormData.resultItemId)
             const resultQuantity = parseInt(createFormData.resultQuantity)
             const successRate = parseInt(createFormData.successRate)
@@ -195,49 +202,85 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
             const sunnyCost = parseInt(createFormData.sunnyCost)
             const minPlayerLevel = parseInt(createFormData.minPlayerLevel)
 
+            console.log('📊 Parsed values:', {
+                resultItemId,
+                resultQuantity,
+                successRate,
+                sunlightCost,
+                sunnyCost,
+                minPlayerLevel
+            })
+
             if (isNaN(resultItemId) || resultItemId <= 0) {
+                console.log('❌ Invalid Result Item ID:', createFormData.resultItemId)
                 alert('Result Item ID must be a positive integer')
                 return
             }
 
             if (isNaN(resultQuantity) || resultQuantity <= 0) {
+                console.log('❌ Invalid Result Quantity:', createFormData.resultQuantity)
                 alert('Result Quantity must be a positive integer')
                 return
             }
 
             if (isNaN(successRate) || successRate < 0 || successRate > 10000) {
+                console.log('❌ Invalid Success Rate:', createFormData.successRate)
                 alert('Success Rate must be between 0 and 10000 (0-100%)')
                 return
             }
 
             if (isNaN(sunlightCost) || sunlightCost < 0) {
+                console.log('❌ Invalid Sunlight Cost:', createFormData.sunlightCost)
                 alert('Sunlight Cost must be non-negative')
                 return
             }
 
             if (isNaN(sunnyCost) || sunnyCost < 0) {
+                console.log('❌ Invalid Sunny Cost:', createFormData.sunnyCost)
                 alert('Sunny Cost must be non-negative')
                 return
             }
 
             if (isNaN(minPlayerLevel) || minPlayerLevel < 1) {
+                console.log('❌ Invalid Min Player Level:', createFormData.minPlayerLevel)
                 alert('Min Player Level must be at least 1')
                 return
             }
 
             if (createFormData.ingredients.length === 0) {
+                console.log('❌ No ingredients provided')
                 alert('At least one ingredient is required')
                 return
             }
 
+            console.log('✅ All validations passed')
+
             // Convert ingredients to contract format
+            console.log('🔄 Converting ingredients to contract format...')
             const ingredients = createFormData.ingredients.map(ing => ({
                 itemId: parseInt(ing.itemId),
                 quantity: parseInt(ing.quantity)
             }))
 
+            console.log('📦 Ingredients for contract:', ingredients)
+
+            // Prepare contract call parameters
+            const contractParams = [
+                resultItemId,
+                resultQuantity,
+                successRate,
+                sunlightCost,
+                sunnyCost,
+                ingredients,
+                minPlayerLevel
+            ]
+
+            console.log('📞 Calling contract.createRecipe with parameters:', contractParams)
+            console.log('🏗️ Contract address:', contract.address)
+            console.log('👤 Signer address:', await signer?.getAddress())
+
             // Call contract to create recipe
-            await contract.createRecipe(
+            const tx = await contract.createRecipe(
                 resultItemId,
                 resultQuantity,
                 successRate,
@@ -247,7 +290,21 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
                 minPlayerLevel
             )
 
+            console.log('📝 Transaction sent:', tx.hash)
+            console.log('⏳ Waiting for transaction confirmation...')
+
+            // Wait for transaction confirmation
+            const receipt = await tx.wait()
+            console.log('✅ Transaction confirmed!')
+            console.log('📋 Transaction receipt:', {
+                hash: receipt.hash,
+                blockNumber: receipt.blockNumber,
+                gasUsed: receipt.gasUsed?.toString(),
+                effectiveGasPrice: receipt.effectiveGasPrice?.toString()
+            })
+
             // Reset form
+            console.log('🔄 Resetting form data...')
             setCreateFormData({
                 resultItemId: '',
                 resultQuantity: '',
@@ -260,16 +317,40 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
             setIsCreateDialogOpen(false)
 
             // Reload data
+            console.log('🔄 Reloading recipes data...')
             await refreshRecipes()
+
+            console.log('🎉 Recipe creation completed successfully!')
             alert('Recipe created successfully!')
         } catch (error: any) {
-            console.error('Error creating recipe:', error)
-            alert('Error creating recipe: ' + (error?.reason || error?.message || 'Unknown error'))
+            console.error('❌ Error creating recipe:', error)
+            console.error('🔍 Error details:', {
+                message: error?.message,
+                reason: error?.reason,
+                code: error?.code,
+                stack: error?.stack
+            })
+
+            let errorMessage = 'Unknown error'
+            if (error?.reason) {
+                errorMessage = error.reason
+            } else if (error?.message) {
+                errorMessage = error.message
+            } else if (typeof error === 'string') {
+                errorMessage = error
+            }
+
+            console.log('🚨 Displaying error to user:', errorMessage)
+            alert('Error creating recipe: ' + errorMessage)
         }
     }
 
     const handleAddIngredient = () => {
+        console.log('➕ Adding ingredient to recipe...')
+        console.log('📝 New ingredient data:', newIngredient)
+
         if (!newIngredient.itemId || !newIngredient.quantity) {
+            console.log('❌ Missing ingredient data:', { itemId: newIngredient.itemId, quantity: newIngredient.quantity })
             alert('Please fill in both Item ID and Quantity')
             return
         }
@@ -277,47 +358,79 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
         const itemId = parseInt(newIngredient.itemId)
         const quantity = parseInt(newIngredient.quantity)
 
+        console.log('🔢 Parsed ingredient values:', { itemId, quantity })
+
         if (isNaN(itemId) || itemId <= 0) {
+            console.log('❌ Invalid Item ID:', newIngredient.itemId)
             alert('Item ID must be a positive integer')
             return
         }
 
         if (isNaN(quantity) || quantity <= 0) {
+            console.log('❌ Invalid Quantity:', newIngredient.quantity)
             alert('Quantity must be a positive integer')
             return
         }
 
         // Check if ingredient already exists
+        console.log('🔍 Checking for existing ingredients...')
+        console.log('📦 Current ingredients:', createFormData.ingredients)
+
         const existingIngredient = createFormData.ingredients.find(
             ing => parseInt(ing.itemId) === itemId
         )
+
         if (existingIngredient) {
+            console.log('❌ Ingredient already exists:', existingIngredient)
             alert('This ingredient already exists in the recipe')
             return
         }
 
+        console.log('✅ Ingredient validation passed')
+
         // Add new ingredient
+        const updatedIngredients = [...createFormData.ingredients, { ...newIngredient }]
+        console.log('📦 Updated ingredients list:', updatedIngredients)
+
         setCreateFormData({
             ...createFormData,
-            ingredients: [...createFormData.ingredients, { ...newIngredient }]
+            ingredients: updatedIngredients
         })
+
+        console.log('✅ Ingredient added successfully')
 
         // Reset form
         setNewIngredient({ itemId: '', quantity: '' })
+        console.log('🔄 Form reset for next ingredient')
     }
 
     const handleRemoveIngredient = (index: number) => {
+        console.log('🗑️ Removing ingredient at index:', index)
+        console.log('📦 Ingredient to remove:', createFormData.ingredients[index])
+        console.log('📋 Current ingredients count:', createFormData.ingredients.length)
+
+        const updatedIngredients = createFormData.ingredients.filter((_, i) => i !== index)
+        console.log('📦 Updated ingredients list:', updatedIngredients)
+
         setCreateFormData({
             ...createFormData,
-            ingredients: createFormData.ingredients.filter((_, i) => i !== index)
+            ingredients: updatedIngredients
         })
+
+        console.log('✅ Ingredient removed successfully')
     }
 
     const handleClearIngredients = () => {
+        console.log('🧹 Clearing all ingredients...')
+        console.log('📦 Current ingredients count:', createFormData.ingredients.length)
+        console.log('📋 Current ingredients:', createFormData.ingredients)
+
         setCreateFormData({
             ...createFormData,
             ingredients: []
         })
+
+        console.log('✅ All ingredients cleared')
     }
 
     const handleEditRecipe = (recipe: CraftingRecipe) => {
@@ -898,7 +1011,12 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
                             )}
                             {contract && (
                                 <div className="flex gap-2">
-                                    <Button onClick={() => setIsCreateDialogOpen(true)}>
+                                    <Button onClick={() => {
+                                        console.log('📝 Opening create recipe dialog...')
+                                        console.log('🏗️ Contract available:', !!contract)
+                                        console.log('👤 Signer available:', !!signer)
+                                        setIsCreateDialogOpen(true)
+                                    }}>
                                         <Plus className="mr-2 h-4 w-4" />
                                         Create Recipe
                                     </Button>
@@ -971,7 +1089,10 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
                                     type="number"
                                     min="1"
                                     value={createFormData.resultItemId}
-                                    onChange={(e) => setCreateFormData({ ...createFormData, resultItemId: e.target.value })}
+                                    onChange={(e) => {
+                                        console.log('📝 Result Item ID changed:', e.target.value)
+                                        setCreateFormData({ ...createFormData, resultItemId: e.target.value })
+                                    }}
                                     placeholder="Enter result item ID"
                                     className="mt-1"
                                 />
@@ -1003,6 +1124,7 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
                                 onChange={(e) => {
                                     const percentage = parseFloat(e.target.value)
                                     const rate = Math.round(percentage * 100)
+                                    console.log('📝 Success Rate changed:', { percentage, rate })
                                     setCreateFormData({ ...createFormData, successRate: rate.toString() })
                                 }}
                                 placeholder="Enter success rate (0-100%)"
@@ -1139,7 +1261,11 @@ export function CraftingManager({ contract, signer }: CraftingManagerProps) {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                        <Button variant="outline" onClick={() => {
+                            console.log('❌ Canceling recipe creation...')
+                            console.log('📋 Current form data:', createFormData)
+                            setIsCreateDialogOpen(false)
+                        }}>
                             Cancel
                         </Button>
                         <Button

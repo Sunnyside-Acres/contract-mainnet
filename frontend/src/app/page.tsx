@@ -20,6 +20,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [account, setAccount] = useState<string>('')
   const [copyingABI, setCopyingABI] = useState<string | null>(null)
+  const [contractCache, setContractCache] = useState<Record<string, ethers.Contract>>({})
   const { signer, selectedNetwork, setSelectedNetwork } = useWallet()
 
   // Load contract addresses dựa trên network được chọn
@@ -32,6 +33,16 @@ export default function Home() {
     console.log('Addresses loading:', addressesLoading)
     console.log('Addresses error:', addressesError)
   }, [selectedNetwork, contractAddresses, addressesLoading, addressesError])
+
+  // Xóa cache khi signer thay đổi
+  useEffect(() => {
+    if (signer) {
+      console.log('Signer changed, clearing contract cache')
+      setContractCache({})
+      setContract(null)
+      setSelectedContractName('')
+    }
+  }, [signer])
 
   // Load artifacts on mount
   useEffect(() => {
@@ -58,16 +69,22 @@ export default function Home() {
 
   const loadArtifacts = async () => {
     try {
+      console.log('=== LOADING ARTIFACTS DEBUG ===')
       console.log('Loading artifacts...')
       const response = await fetch('/api/artifacts')
       if (!response.ok) {
         throw new Error('Lỗi tải artifacts')
       }
       const artifactsData = await response.json()
-      console.log('Loaded artifacts:', Object.keys(artifactsData))
+      console.log('✅ Loaded artifacts:', Object.keys(artifactsData))
+      console.log('Crafting artifacts check:')
+      console.log('- CraftingComponent:', !!artifactsData.CraftingComponent?.abi)
+      console.log('- CraftingLogic:', !!artifactsData.CraftingLogic?.abi)
+      console.log('- CraftingProxy:', !!artifactsData.CraftingProxy?.abi)
+      console.log('- ICraftingComponent:', !!artifactsData.ICraftingComponent?.abi)
       setArtifacts(artifactsData)
     } catch (error) {
-      console.error('Lỗi tải artifacts:', error)
+      console.error('❌ Lỗi tải artifacts:', error)
     }
   }
 
@@ -77,39 +94,78 @@ export default function Home() {
   }
 
   const loadContract = async (contractName: string) => {
+    console.log('=== LOADING CONTRACT DEBUG ===')
     console.log('Loading contract:', contractName)
     console.log('Signer:', signer)
+    console.log('Selected network:', selectedNetwork)
     console.log('Contract addresses:', contractAddresses)
     console.log('Available artifacts:', Object.keys(artifacts))
 
     if (!signer) {
-      console.error('Vui lòng kết nối ví trước')
+      console.error('❌ Vui lòng kết nối ví trước')
       return
     }
 
     const contractAddress = contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts]
     console.log('Contract address for', contractName, ':', contractAddress)
+    console.log('Contract address type:', typeof contractAddress)
+    console.log('Contract address valid:', contractAddress && contractAddress !== 'undefined')
 
     if (!contractAddress) {
-      console.error('Không tìm thấy địa chỉ contract:', contractName)
+      console.error('❌ Không tìm thấy địa chỉ contract:', contractName)
+      console.log('Available contract addresses:', Object.keys(contractAddresses?.contracts || {}))
       return
     }
 
     if (!artifacts[contractName]?.abi) {
-      console.error('Không tìm thấy ABI cho contract:', contractName)
+      console.error('❌ Không tìm thấy ABI cho contract:', contractName)
       console.log('Available artifacts:', Object.keys(artifacts))
       console.log('Looking for:', contractName)
       return
     }
 
+    // Kiểm tra cache trước
+    if (contractCache[contractName]) {
+      console.log('✅ Using cached contract for:', contractName)
+      setContract(contractCache[contractName])
+      setSelectedContractName(contractName)
+      return
+    }
+
     try {
       setIsLoading(true)
+      console.log('Creating contract with:')
+      console.log('- Address:', contractAddress)
+      console.log('- ABI length:', artifacts[contractName].abi.length)
+      console.log('- Signer:', signer)
+      console.log('- Signer address:', await signer.getAddress())
+
       const contract = new ethers.Contract(contractAddress, artifacts[contractName].abi, signer)
+
+      console.log('✅ Contract created successfully:')
+      console.log('- Contract address:', contract.address)
+      console.log('- Contract interface:', contract.interface)
+      console.log('- Available functions:', Object.keys(contract.interface.functions))
+
+      // Đảm bảo contract được tạo ổn định
+      const contractId = `${contractName}-${contractAddress}`
+      console.log('Contract ID:', contractId)
+
+      // Cache contract
+      setContractCache(prev => ({ ...prev, [contractName]: contract }))
       setContract(contract)
       setSelectedContractName(contractName)
-      console.log('Contract loaded:', contractName)
+      console.log('✅ Contract loaded and cached:', contractName)
     } catch (error) {
-      console.error('Lỗi tải contract:', error)
+      console.error('❌ Lỗi tải contract:', error)
+      console.error('Error details:', {
+        contractName,
+        contractAddress,
+        hasABI: !!artifacts[contractName]?.abi,
+        abiLength: artifacts[contractName]?.abi?.length,
+        signer: !!signer,
+        signerAddress: signer ? await signer.getAddress() : 'N/A'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -144,15 +200,15 @@ export default function Home() {
     Player: ['PlayerComponent', 'PlayerLogic', 'PlayerProxy'],
     Item: ['ItemComponent', 'ItemLogic', 'ItemProxy'],
     Weather: ['WeatherComponent', 'WeatherLogic', 'WeatherProxy'],
-    
+    Plot: ['PlotComponent', 'PlotLogic', 'PlotProxy'],
     Inventory: ['InventoryComponent', 'InventoryLogic', 'InventoryProxy'],
     Plant: ['PlantComponent', 'PlantLogic', 'PlantProxy'],
     Fishing: ['FishingLogic'],
     NPCMarket: ['NPCMarketComponent', 'NPCMarketLogic', 'NPCMarketProxy'],
     Gacha: ['GachaComponent', 'GachaLogic', 'GachaProxy'],
     Task: ['TaskComponent', 'TaskLogic', 'TaskProxy'],
-
-
+    FleaMarket: ['FleaMarketComponent', 'FleaMarketLogic', 'FleaMarketProxy'],
+    Crafting: ['CraftingComponent', 'CraftingLogic', 'CraftingProxy'],
     Raising: ['RaisingComponent', 'RaisingLogic', 'RaisingProxy']
   }
 
@@ -288,32 +344,32 @@ export default function Home() {
                             groupName === 'Player' ? 'bg-blue-100 dark:bg-blue-900' :
                               groupName === 'Item' ? 'bg-green-100 dark:bg-green-900' :
                                 groupName === 'Weather' ? 'bg-yellow-100 dark:bg-yellow-900' :
-                          
+                                  groupName === 'Plot' ? 'bg-orange-100 dark:bg-orange-900' :
                                     groupName === 'Inventory' ? 'bg-purple-100 dark:bg-purple-900' :
                                       groupName === 'Plant' ? 'bg-pink-100 dark:bg-pink-900' :
                                         groupName === 'Fishing' ? 'bg-cyan-100 dark:bg-cyan-900' :
                                           groupName === 'NPCMarket' ? 'bg-indigo-100 dark:bg-indigo-900' :
                                             groupName === 'Gacha' ? 'bg-red-100 dark:bg-red-900' :
                                               groupName === 'Task' ? 'bg-teal-100 dark:bg-teal-900' :
-
-
-                                                groupName === 'Raising' ? 'bg-rose-100 dark:bg-rose-900' :
-                                                  'bg-gray-100 dark:bg-gray-800'
+                                                groupName === 'FleaMarket' ? 'bg-lime-100 dark:bg-lime-900' :
+                                                  groupName === 'Crafting' ? 'bg-amber-100 dark:bg-amber-900' :
+                                                    groupName === 'Raising' ? 'bg-rose-100 dark:bg-rose-900' :
+                                                      'bg-gray-100 dark:bg-gray-800'
                             }`}>
                             {groupName === 'Core' ? '🌍' :
                               groupName === 'Player' ? '👤' :
                                 groupName === 'Item' ? '📦' :
                                   groupName === 'Weather' ? '🌤️' :
-                            
+                                    groupName === 'Plot' ? '🏞️' :
                                       groupName === 'Inventory' ? '🎒' :
                                         groupName === 'Plant' ? '🌱' :
                                           groupName === 'Fishing' ? '🎣' :
                                             groupName === 'NPCMarket' ? '🏪' :
                                               groupName === 'Gacha' ? '🎰' :
                                                 groupName === 'Task' ? '📋' :
-
-
-                                                  groupName === 'Raising' ? '🐾' : '🏪'}
+                                                  groupName === 'FleaMarket' ? '🛒' :
+                                                    groupName === 'Crafting' ? '🔨' :
+                                                      groupName === 'Raising' ? '🐾' : '🏪'}
                           </div>
                           {contractAddresses?.contracts[contractName as keyof typeof contractAddresses.contracts] && (
                             <span className="text-xs text-muted-foreground font-mono flex-shrink-0">

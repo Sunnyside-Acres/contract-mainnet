@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sync-contracts": "node scripts/sync-contract-addresses.js",
+    "test-contracts": "node scripts/test-contract-addresses.js"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
