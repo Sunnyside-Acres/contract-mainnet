@@ -165,7 +165,10 @@ contract RaisingLogic {
         uint256 qualityMultiplier = qualityModifier;
         // Loại bỏ check qualityModifier == 0 vì đã check feedCount > 0 ở trên
 
-        uint256 qualityBonus = (qualityMultiplier - 100) * 100;
+        uint256 qualityBonus = 0;
+        if (qualityMultiplier > 100) {
+            qualityBonus = (qualityMultiplier - 100) * 100;
+        }
 
         // Tính tổng tỉ lệ của các drops harvest (từ index 1 trở đi)
         uint256 totalHarvestProbability = 0;
@@ -312,7 +315,10 @@ contract RaisingLogic {
             qualityMultiplier = 0;
         }
 
-        uint256 qualityBonus = (qualityMultiplier - 100) * 100;
+        uint256 qualityBonus = 0;
+        if (qualityMultiplier > 100) {
+            qualityBonus = (qualityMultiplier - 100) * 100;
+        }
 
         uint256 totalItemAmount = 0;
         uint256[] memory harvestedItemIds = new uint256[](1); // Chỉ lấy drop[0] (thịt)

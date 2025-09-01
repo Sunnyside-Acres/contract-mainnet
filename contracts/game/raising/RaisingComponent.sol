@@ -130,8 +130,12 @@ contract RaisingComponent {
             );
         }
 
-        // Cố định growthTime và qualityModifier - không thay đổi khi cho ăn
-        // Chỉ cập nhật thời gian cho ăn và số lần cho ăn
+        // Tăng qualityModifier 10% mỗi lần cho ăn
+        if (raising.feedCount > 0) {
+            raising.qualityModifier = (raising.qualityModifier * 110) / 100;
+        }
+
+        // Cập nhật thời gian cho ăn và số lần cho ăn
         raising.lastFeedTime = block.timestamp;
         raising.feedCount++;
 
