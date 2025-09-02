@@ -9,6 +9,7 @@ interface ITaskComponent {
         uint256 _taskId,
         address _player,
         uint256 _rewardSunny,
+        uint256 _rewardSunlight,
         uint256 _rewardExp,
         uint256[] memory _rewardItems,
         uint256[] memory _rewardItemQuantities,

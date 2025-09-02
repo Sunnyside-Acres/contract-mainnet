@@ -34,6 +34,7 @@ contract TaskLogic {
         uint256 indexed taskId,
         address indexed player,
         uint256 rewardSunny,
+        uint256 rewardSunlight,
         uint256 rewardExp,
         uint256 expiresAt
     );
@@ -50,6 +51,7 @@ contract TaskLogic {
         address indexed player,
         bytes32 indexed proofId,
         uint256 rewardSunny,
+        uint256 rewardSunlight,
         uint256 rewardExp,
         uint256[] rewardItems
     );
@@ -102,6 +104,7 @@ contract TaskLogic {
         uint256 _taskId,
         address _player,
         uint256 _rewardSunny,
+        uint256 _rewardSunlight,
         uint256 _rewardExp,
         uint256[] memory _rewardItems,
         uint256[] memory _rewardItemQuantities,
@@ -127,6 +130,7 @@ contract TaskLogic {
             _taskId,
             _player,
             _rewardSunny,
+            _rewardSunlight,
             _rewardExp,
             _rewardItems,
             _rewardItemQuantities,
@@ -138,6 +142,7 @@ contract TaskLogic {
             _taskId,
             _player,
             _rewardSunny,
+            _rewardSunlight,
             _rewardExp,
             block.timestamp + _expiresIn
         );
@@ -229,6 +234,10 @@ contract TaskLogic {
             playerProxy.addSunny(player, proof.rewardSunny);
         }
 
+        if (proof.rewardSunlight > 0) {
+            playerProxy.addSunlight(player, proof.rewardSunlight);
+        }
+
         if (proof.rewardExp > 0) {
             playerProxy.addXP(player, proof.rewardExp);
         }
@@ -258,6 +267,7 @@ contract TaskLogic {
             player,
             _proofId,
             proof.rewardSunny,
+            proof.rewardSunlight,
             proof.rewardExp,
             proof.rewardItems
         );
@@ -326,7 +336,7 @@ contract TaskLogic {
      * Chức năng:
      * - Lấy thống kê tổng quan về proof của một người chơi cụ thể
      * - Tính toán số lượng proof theo từng trạng thái (tổng, active, claimed)
-     * - Tính tổng reward đã nhận (sunny và exp)
+     * - Tính tổng reward đã nhận (sunny, sunlight và exp)
      * - Trả về tuple chứa các thông số thống kê
      *
      * @param _player Địa chỉ người chơi cần xem thống kê
@@ -334,6 +344,7 @@ contract TaskLogic {
      * @return activeProofs Số proof đang hoạt động
      * @return claimedProofs Số proof đã claim
      * @return totalSunnyEarned Tổng sunny đã nhận từ task
+     * @return totalSunlightEarned Tổng sunlight đã nhận từ task
      * @return totalExpEarned Tổng exp đã nhận từ task
      */
     function getPlayerProofOverview(
@@ -346,6 +357,7 @@ contract TaskLogic {
             uint256 activeProofs,
             uint256 claimedProofs,
             uint256 totalSunnyEarned,
+            uint256 totalSunlightEarned,
             uint256 totalExpEarned
         )
     {
@@ -363,7 +375,17 @@ contract TaskLogic {
         // Calculate total rewards earned
         for (uint256 i = 0; i < claimedProofsArray.length; i++) {
             totalSunnyEarned += claimedProofsArray[i].rewardSunny;
+            totalSunlightEarned += claimedProofsArray[i].rewardSunlight;
             totalExpEarned += claimedProofsArray[i].rewardExp;
         }
+
+        return (
+            totalProofs,
+            activeProofs,
+            claimedProofs,
+            totalSunnyEarned,
+            totalSunlightEarned,
+            totalExpEarned
+        );
     }
 }

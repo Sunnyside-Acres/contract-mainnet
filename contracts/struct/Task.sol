@@ -6,6 +6,7 @@ struct TaskProof {
     uint256 taskId; // ID của task
     address player; // Địa chỉ người chơi
     uint256 rewardSunny; // Phần thưởng sunny
+    uint256 rewardSunlight; // Phần thưởng sunlight
     uint256 rewardExp; // Phần thưởng kinh nghiệm
     uint256[] rewardItems; // Danh sách item thưởng
     uint256[] rewardItemQuantities; // Số lượng item thưởng
@@ -19,5 +20,6 @@ struct TaskStats {
     uint256 totalProofsCreated; // Tổng số proof đã tạo
     uint256 totalRewardsClaimed; // Tổng số reward đã claim
     uint256 totalSunnyRewarded; // Tổng sunny đã thưởng
+    uint256 totalSunlightRewarded; // Tổng sunlight đã thưởng
     uint256 totalExpRewarded; // Tổng exp đã thưởng
 }

@@ -27,6 +27,7 @@ contract TaskComponent {
         uint256 _taskId,
         address _player,
         uint256 _rewardSunny,
+        uint256 _rewardSunlight,
         uint256 _rewardExp,
         uint256[] memory _rewardItems,
         uint256[] memory _rewardItemQuantities,
@@ -57,6 +58,7 @@ contract TaskComponent {
         proof.taskId = _taskId;
         proof.player = _player;
         proof.rewardSunny = _rewardSunny;
+        proof.rewardSunlight = _rewardSunlight;
         proof.rewardExp = _rewardExp;
         proof.rewardItems = _rewardItems;
         proof.rewardItemQuantities = _rewardItemQuantities;
@@ -111,6 +113,7 @@ contract TaskComponent {
         taskProofs[_proofId].isClaimed = true;
         taskStats.totalRewardsClaimed++;
         taskStats.totalSunnyRewarded += taskProofs[_proofId].rewardSunny;
+        taskStats.totalSunlightRewarded += taskProofs[_proofId].rewardSunlight;
         taskStats.totalExpRewarded += taskProofs[_proofId].rewardExp;
     }
 

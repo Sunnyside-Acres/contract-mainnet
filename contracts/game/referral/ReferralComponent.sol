@@ -16,7 +16,6 @@ contract ReferralComponent {
     event ComponentUpdated(address newComponent);
     event ReferralUpdated(address indexed user, address indexed referrer);
 
-
     function setReferral(
         address user,
         ReferralData calldata data
