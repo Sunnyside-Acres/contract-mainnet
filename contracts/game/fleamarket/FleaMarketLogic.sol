@@ -109,7 +109,7 @@ contract FleaMarketLogic {
      * @dev Đăng bán item lên flea market - cho phép nhiều lệnh cho cùng một item
      * @param _itemId ID của item muốn bán
      * @param _quantity Số lượng item muốn bán trong lệnh này
-     * @param _price Giá bán cho mỗi item (sunny)
+     * @param _price Giá bán cho mỗi item (sunlight)
      * @param _duration Thời gian hiệu lực của lệnh (giây)
      *
      * Quy trình:
@@ -191,8 +191,8 @@ contract FleaMarketLogic {
      * 1. Validate input và kiểm tra người mua
      * 2. Kiểm tra listing còn hoạt động và chưa hết hạn
      * 3. Kiểm tra đủ số lượng và không mua của chính mình
-     * 4. Tính toán chi phí và kiểm tra đủ sunny
-     * 5. Trừ sunny từ người mua, cộng cho người bán
+     * 4. Tính toán chi phí và kiểm tra đủ sunlight
+     * 5. Trừ sunlight từ người mua, cộng cho người bán
      * 6. Xử lý giao dịch và cập nhật inventory
      * 7. Thêm vào lịch sử giao dịch
      */
@@ -222,14 +222,17 @@ contract FleaMarketLogic {
         // Calculate total cost for this specific listing
         uint256 totalCost = listing.price * _quantity;
 
-        // Check if buyer has enough sunny
-        require(playerData.sunny >= totalCost, "Not enough sunny to purchase");
+        // Check if buyer has enough sunlight
+        require(
+            playerData.sunlight >= totalCost,
+            "Not enough sunlight to purchase"
+        );
 
-        // Deduct sunny from buyer
-        playerProxy.subtractSunny(buyer, totalCost);
+        // Deduct sunlight from buyer
+        playerProxy.subtractSunlight(buyer, totalCost);
 
-        // Add sunny to seller
-        playerProxy.addSunny(listing.seller, totalCost);
+        // Add sunlight to seller
+        playerProxy.addSunlight(listing.seller, totalCost);
 
         // Process the purchase from this specific listing
         bool success = fleaMarketProxy.purchaseItem(
@@ -411,7 +414,7 @@ contract FleaMarketLogic {
      * Quy trình:
      * 1. Validate input arrays
      * 2. Kiểm tra tất cả listing và tính tổng chi phí
-     * 3. Kiểm tra đủ sunny
+     * 3. Kiểm tra đủ sunlight
      * 4. Xử lý từng giao dịch mua
      * 5. Cập nhật inventory và lịch sử
      */
@@ -453,11 +456,14 @@ contract FleaMarketLogic {
             totalCost += listing.price * _quantities[i];
         }
 
-        // Check if buyer has enough sunny
-        require(playerData.sunny >= totalCost, "Not enough sunny to purchase");
+        // Check if buyer has enough sunlight
+        require(
+            playerData.sunlight >= totalCost,
+            "Not enough sunlight to purchase"
+        );
 
-        // Deduct sunny from buyer
-        playerProxy.subtractSunny(buyer, totalCost);
+        // Deduct sunlight from buyer
+        playerProxy.subtractSunlight(buyer, totalCost);
 
         // Process each purchase
         for (uint256 i = 0; i < _listingIds.length; i++) {
@@ -465,8 +471,8 @@ contract FleaMarketLogic {
                 _listingIds[i]
             );
 
-            // Add sunny to seller
-            playerProxy.addSunny(
+            // Add sunlight to seller
+            playerProxy.addSunlight(
                 listing.seller,
                 listing.price * _quantities[i]
             );
@@ -528,7 +534,7 @@ contract FleaMarketLogic {
      * 1. Lấy tất cả listing cho item
      * 2. Mua từ listing đầu tiên có sẵn
      * 3. Tiếp tục với listing tiếp theo nếu cần
-     * 4. Tính toán tổng chi phí và trừ sunny
+     * 4. Tính toán tổng chi phí và trừ sunlight
      * 5. Cập nhật inventory và lịch sử
      */
     function purchaseBestPrice(uint256 _itemId, uint256 _quantity) external {
@@ -579,8 +585,8 @@ contract FleaMarketLogic {
             );
             require(success, "Purchase failed");
 
-            // Add sunny to seller
-            playerProxy.addSunny(listing.seller, cost);
+            // Add sunlight to seller
+            playerProxy.addSunlight(listing.seller, cost);
 
             // Add items to buyer's inventory
             InventoryItem memory buyerItem = inventoryProxy.getItem(
@@ -621,8 +627,8 @@ contract FleaMarketLogic {
 
         require(totalPurchased > 0, "No items were purchased");
 
-        // Deduct total sunny from buyer
-        playerProxy.subtractSunny(buyer, totalCost);
+        // Deduct total sunlight from buyer
+        playerProxy.subtractSunlight(buyer, totalCost);
 
         // If we couldn't buy all requested quantity, emit a warning
         if (remainingQuantity > 0) {
@@ -730,8 +736,8 @@ contract FleaMarketLogic {
         }
 
         uint256 totalCost = listing.price * _quantity;
-        if (playerData.sunny < totalCost) {
-            return (false, "Not enough sunny");
+        if (playerData.sunlight < totalCost) {
+            return (false, "Not enough sunlight");
         }
 
         return (true, "Can purchase");

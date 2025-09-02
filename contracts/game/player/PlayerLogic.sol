@@ -43,7 +43,7 @@ contract PlayerLogic {
     function createPlayer(string memory _name) external {
         // Validate name
         require(bytes(_name).length > 0, "[LOGIC] Name cannot be empty");
-        require(bytes(_name).length <= 32, "[LOGIC]Name too long");
+        require(bytes(_name).length <= 32, "[LOGIC] Name too long");
 
         Player memory player = playerProxy.createPlayer(msg.sender, _name);
         emit PlayerCreated(
@@ -95,5 +95,22 @@ contract PlayerLogic {
         address _playerAddress
     ) external view returns (Player memory) {
         return playerProxy.getPlayer(_playerAddress);
+    }
+
+    // Experience functions
+    function addXP(address _playerAddress, uint256 _amount) external onlyAdmin {
+        playerProxy.addXP(_playerAddress, _amount);
+    }
+
+    function getXP(address _playerAddress) external view returns (uint256) {
+        return playerProxy.getXP(_playerAddress);
+    }
+
+    function levelUp(address _playerAddress) external onlyAdmin {
+        playerProxy.levelUp(_playerAddress);
+    }
+
+    function getLevel(address _playerAddress) external view returns (uint16) {
+        return playerProxy.getLevel(_playerAddress);
     }
 }

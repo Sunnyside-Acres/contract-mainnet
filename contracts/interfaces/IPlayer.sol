@@ -26,4 +26,13 @@ interface IPlayerComponent {
     ) external view returns (uint256);
 
     function getPlayerAddresses() external view returns (address[] memory);
+
+    // Experience functions
+    function addXP(address _playerAddress, uint256 _amount) external;
+
+    function getXP(address _playerAddress) external view returns (uint256);
+
+    function levelUp(address _playerAddress) external;
+
+    function getLevel(address _playerAddress) external view returns (uint16);
 }

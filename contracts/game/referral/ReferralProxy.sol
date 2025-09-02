@@ -1,26 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "../../struct/Player.sol";
 import "../../interfaces/IWorld.sol";
+import "../../interfaces/IReferral.sol";
+import "../../struct/Referral.sol";
 
-contract PlayerProxy {
+contract ReferralProxy {
     address public world;
     address public admin;
     address public implementation;
 
-    mapping(address => Player) public players;
-    address[] public playerAddresses;
-    mapping(address => bool) public playerExists;
+    mapping(address => ReferralData) private referrals;
+    address[] private users;
 
-    event PlayerCreated(address indexed playerAddress, string name);
-    event AddSunlight(address indexed playerAddress, uint256 amount);
-    event AddSunny(address indexed playerAddress, uint256 amount);
-    event AddPoint(address indexed playerAddress, uint256 amount);
-    event SubtractSunny(address indexed playerAddress, uint256 amount);
-    event SubtractSunlight(address indexed playerAddress, uint256 amount);
-    event SubtractPoint(address indexed playerAddress, uint256 amount);
-    event ComponentUpdated(address indexed newImplementation);
+    event ComponentUpdated(address newComponent);
+    event ReferralUpdated(address indexed user, address indexed referrer);
 
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
@@ -43,10 +37,11 @@ contract PlayerProxy {
         emit ComponentUpdated(newImplementation);
     }
 
+    // Delegate calls to implementation
     fallback() external onlyAuthorized {
         address impl = implementation;
         require(impl != address(0), "No implementation set");
-        assembly ("memory-safe") {
+        assembly {
             let ptr := mload(0x40)
             calldatacopy(ptr, 0, calldatasize())
             let result := delegatecall(gas(), impl, ptr, calldatasize(), 0, 0)

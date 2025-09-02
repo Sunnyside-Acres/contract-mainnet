@@ -137,6 +137,16 @@ async function main() {
   const raisingComponentAddress = await raisingComponent.getAddress();
   console.log("✅ RaisingComponent deployed to:", raisingComponentAddress);
 
+  // 14. Deploy ReferralComponent
+  console.log("\n1️⃣4️⃣ Deploying ReferralComponent...");
+  const ReferralComponent = await ethers.getContractFactory(
+    "ReferralComponent"
+  );
+  const referralComponent = await ReferralComponent.deploy();
+  await referralComponent.waitForDeployment();
+  const referralComponentAddress = await referralComponent.getAddress();
+  console.log("✅ ReferralComponent deployed to:", referralComponentAddress);
+
   // === PHASE 3: DEPLOY PROXIES (PHỤ THUỘC WORLD + COMPONENTS) ===
   console.log("\n📦 PHASE 3: Deploying Proxies...");
 
@@ -283,6 +293,18 @@ async function main() {
   await raisingProxy.waitForDeployment();
   const raisingProxyAddress = await raisingProxy.getAddress();
   console.log("✅ RaisingProxy deployed to:", raisingProxyAddress);
+
+  // 26. Deploy ReferralProxy
+  console.log("\n2️⃣6️⃣ Deploying ReferralProxy...");
+  const ReferralProxy = await ethers.getContractFactory("ReferralProxy");
+  const referralProxy = await ReferralProxy.deploy(
+    worldAddress,
+    deployer.address,
+    referralComponentAddress
+  );
+  await referralProxy.waitForDeployment();
+  const referralProxyAddress = await referralProxy.getAddress();
+  console.log("✅ ReferralProxy deployed to:", referralProxyAddress);
 
   // === PHASE 4: DEPLOY LOGIC CONTRACTS (PHỤ THUỘC WORLD + PROXIES) ===
   console.log("\n📦 PHASE 4: Deploying Logic Contracts...");
@@ -457,6 +479,18 @@ async function main() {
   const raisingLogicAddress = await raisingLogic.getAddress();
   console.log("✅ RaisingLogic deployed to:", raisingLogicAddress);
 
+  // 39. Deploy ReferralLogic (world, referralComponent, playerComponent)
+  console.log("\n3️⃣9️⃣ Deploying ReferralLogic...");
+  const ReferralLogic = await ethers.getContractFactory("ReferralLogic");
+  const referralLogic = await ReferralLogic.deploy(
+    worldAddress,
+    referralComponentAddress,
+    playerComponentAddress
+  );
+  await referralLogic.waitForDeployment();
+  const referralLogicAddress = await referralLogic.getAddress();
+  console.log("✅ ReferralLogic deployed to:", referralLogicAddress);
+
   // === PHASE 5: CONFIGURE WORLD CONTRACT ===
   console.log("\n⚙️ PHASE 5: Configuring World Contract...");
 
@@ -475,6 +509,7 @@ async function main() {
     { name: "FleaMarketLogic", address: fleaMarketLogicAddress },
     { name: "CraftingLogic", address: craftingLogicAddress },
     { name: "RaisingLogic", address: raisingLogicAddress },
+    { name: "ReferralLogic", address: referralLogicAddress },
   ];
 
   for (const logic of logicContracts) {
@@ -509,6 +544,7 @@ async function main() {
       FleaMarketComponent: fleaMarketComponentAddress,
       CraftingComponent: craftingComponentAddress,
       RaisingComponent: raisingComponentAddress,
+      ReferralComponent: referralComponentAddress,
 
       // Proxies
       PlayerProxy: playerProxyAddress,
@@ -523,6 +559,7 @@ async function main() {
       FleaMarketProxy: fleaMarketProxyAddress,
       CraftingProxy: craftingProxyAddress,
       RaisingProxy: raisingProxyAddress,
+      ReferralProxy: referralProxyAddress,
 
       // Logic Contracts
       PlayerLogic: playerLogicAddress,
@@ -538,6 +575,7 @@ async function main() {
       FleaMarketLogic: fleaMarketLogicAddress,
       CraftingLogic: craftingLogicAddress,
       RaisingLogic: raisingLogicAddress,
+      ReferralLogic: referralLogicAddress,
     },
     deploymentOrder: [
       "World",

@@ -230,8 +230,7 @@ contract TaskLogic {
         }
 
         if (proof.rewardExp > 0) {
-            // Note: Using addSunny for exp reward since addExp doesn't exist
-            playerProxy.addSunny(player, proof.rewardExp);
+            playerProxy.addXP(player, proof.rewardExp);
         }
 
         // Give item rewards
@@ -265,20 +264,6 @@ contract TaskLogic {
     }
 
     // ============ VIEW FUNCTIONS (READ) ============
-
-    /**
-     * @dev Người chơi xem tất cả proof của mình
-     *
-     * Chức năng:
-     * - Lấy toàn bộ proof (active, expired, claimed) của người chơi hiện tại
-     * - Trả về mảng TaskProof[] chứa tất cả proof
-     *
-     * @return TaskProof[] Mảng chứa tất cả proof của người chơi
-     */
-    function getMyProofs() external view returns (TaskProof[] memory) {
-        return taskProxy.getPlayerProofs(msg.sender);
-    }
-
     /**
      * @dev Người chơi xem proof đang hoạt động
      *
