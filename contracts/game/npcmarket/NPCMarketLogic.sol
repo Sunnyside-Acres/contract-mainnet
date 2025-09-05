@@ -383,17 +383,6 @@ contract NPCMarketLogic {
         require(marketItem.active, "Item not available in market");
         require(!marketItem.isSelling, "NPC is not buying this item");
 
-        // Check user sell limit
-        require(
-            npcMarketProxy.canUserPurchaseMore(
-                _npcId,
-                _itemId,
-                player,
-                _quantity
-            ),
-            "Sell limit exceeded for this user"
-        );
-
         // Check if player exists and has enough items
         Player memory playerData = playerProxy.getPlayer(player);
         require(playerData.level > 0, "Player not initialized");
