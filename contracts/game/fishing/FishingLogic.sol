@@ -221,12 +221,38 @@ contract FishingLogic {
         uint256[] memory amounts = new uint256[](rewardCount);
 
         for (uint256 i = 0; i < rewardCount; i++) {
+            // Kiểm tra xem item đã tồn tại trong inventory chưa
+            InventoryItem memory existingItem = inventoryComponent.getItem(
+                msg.sender,
+                rewards[i].itemId
+            );
+
+            uint256 newQuantity;
+            uint256 durability;
+            uint256 expiration;
+
+            if (existingItem.quantity > 0) {
+                // Item đã tồn tại, cộng dồn quantity với kiểm tra overflow
+                newQuantity = existingItem.quantity + rewards[i].amount;
+                require(
+                    newQuantity >= existingItem.quantity,
+                    "Quantity overflow"
+                );
+                durability = existingItem.durability;
+                expiration = existingItem.expiration;
+            } else {
+                // Item chưa tồn tại, tạo mới
+                newQuantity = rewards[i].amount;
+                durability = 100;
+                expiration = 0;
+            }
+
             inventoryComponent.setItem(
                 msg.sender,
                 rewards[i].itemId,
-                rewards[i].amount,
-                100,
-                0
+                newQuantity,
+                durability,
+                expiration
             );
             itemIds[i] = rewards[i].itemId;
             amounts[i] = rewards[i].amount;

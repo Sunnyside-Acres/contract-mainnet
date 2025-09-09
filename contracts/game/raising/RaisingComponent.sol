@@ -49,7 +49,7 @@ contract RaisingComponent {
         address _raisingOwner,
         uint256 _growthTime,
         WeatherStructs.WeatherState _weatherState
-    ) external onlyAuthorized {
+    ) external onlyAuthorized returns (uint256) {
         uint256 raisingId = uint256(
             keccak256(abi.encodePacked(_raisingOwner, _itemId, block.timestamp))
         );
@@ -97,11 +97,12 @@ contract RaisingComponent {
         raisingOwners[raisingId] = _raisingOwner;
 
         emit RaisingStarted(raisingId, _raisingOwner, _itemId);
+
+        return raisingId;
     }
 
     function feedRaising(
         uint256 _raisingId,
-        WeatherStructs.WeatherState _weatherState,
         uint256 _harvestCooldown
     ) external onlyAuthorized {
         // _weatherState and _harvestCooldown are kept for interface compatibility

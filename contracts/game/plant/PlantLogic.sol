@@ -89,6 +89,12 @@ contract PlantLogic {
 
         require(plotProxy.getPlot(_plotId).isActive, "Plot is not active");
 
+        // Kiểm tra xem plot đã có cây hay chưa
+        require(
+            plantProxy.getPlotPlants(_plotId) == 0,
+            "Plot already has a plant"
+        );
+
         ItemStructs.Item memory item = itemProxy.getItem(_itemId);
         require(
             item.itemType == ItemStructs.ItemType.Seed,

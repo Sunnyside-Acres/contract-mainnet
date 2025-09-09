@@ -40,6 +40,7 @@ contract PlayerComponent {
 
         Player storage player = players[_playerAddress];
 
+        player.playerAddress = _playerAddress;
         player.name = _name;
         player.level = 1;
         player.xp = 0;

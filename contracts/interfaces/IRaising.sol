@@ -10,7 +10,7 @@ interface IRaisingComponent {
         address _raisingOwner,
         uint256 _growthTime,
         WeatherStructs.WeatherState _weatherState
-    ) external;
+    ) external returns (uint256);
 
     function feedRaising(
         uint256 _raisingId,

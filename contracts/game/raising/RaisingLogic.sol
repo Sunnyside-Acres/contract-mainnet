@@ -34,7 +34,8 @@ contract RaisingLogic {
     event RaisingStarted(
         uint256 indexed raisingId,
         address indexed player,
-        uint256 itemId
+        uint256 itemId,
+        Raising raising
     );
 
     event RaisingHarvestedWithCooldown(
@@ -42,27 +43,35 @@ contract RaisingLogic {
         uint256 indexed raisingId,
         uint256[] itemIds,
         uint256[] itemAmounts,
-        uint256 harvestCount
+        uint256 harvestCount,
+        Raising raising
     );
 
     event RaisingSlaughtered(
         address indexed player,
         uint256 indexed raisingId,
         uint256[] itemIds,
-        uint256[] itemAmounts
+        uint256[] itemAmounts,
+        Raising raising
     );
 
     event RaisingFed(
         uint256 indexed raisingId,
-        WeatherStructs.WeatherState weatherState
+        WeatherStructs.WeatherState weatherState,
+        Raising raising
     );
 
     event TotalHarvestedItemsUpdated(
         uint256 indexed raisingId,
-        uint256 totalHarvestedItems
+        uint256 totalHarvestedItems,
+        Raising raising
     );
 
-    event FeedingReset(uint256 indexed raisingId, uint256 harvestCount);
+    event FeedingReset(
+        uint256 indexed raisingId,
+        uint256 harvestCount,
+        Raising raising
+    );
 
     constructor(
         address _world,
@@ -122,13 +131,17 @@ contract RaisingLogic {
             inventoryItem.expiration
         );
 
-        return
-            raisingProxy.startRaising(
-                _itemId,
-                msg.sender,
-                growthTime,
-                weatherState
-            );
+        uint256 raisingId = raisingProxy.startRaising(
+            _itemId,
+            msg.sender,
+            growthTime,
+            weatherState
+        );
+
+        // Lấy thông tin raising sau khi tạo để emit
+        Raising memory raising = raisingProxy.getRaising(raisingId);
+
+        emit RaisingStarted(raisingId, msg.sender, _itemId, raising);
     }
 
     function harvestRaising(uint256 raisingId) external {
@@ -263,22 +276,27 @@ contract RaisingLogic {
             finalItemAmounts[i] = harvestedItemAmounts[i];
         }
 
+        // Lấy thông tin raising sau khi harvest để emit
+        Raising memory updatedRaising = raisingProxy.getRaising(raisingId);
+
         emit RaisingHarvestedWithCooldown(
             msg.sender,
             raisingId,
             finalItemIds,
             finalItemAmounts,
-            raising.harvestCount + 1
+            raising.harvestCount + 1,
+            updatedRaising
         );
 
         // Cập nhật tổng số sản phẩm đã thu hoạch được
         raisingProxy.updateTotalHarvestedItems(raisingId, totalItemAmount);
 
         // Emit event để theo dõi (lấy giá trị mới từ component)
-        Raising memory updatedRaising = raisingProxy.getRaising(raisingId);
+        Raising memory finalRaising = raisingProxy.getRaising(raisingId);
         emit TotalHarvestedItemsUpdated(
             raisingId,
-            updatedRaising.totalHarvestedItems
+            finalRaising.totalHarvestedItems,
+            finalRaising
         );
     }
 
@@ -300,8 +318,10 @@ contract RaisingLogic {
         );
 
         // Lấy thông tin trước khi xóa con vật
-        uint256 currentTotalHarvested = raising.totalHarvestedItems;
         uint256 feedCount = raising.feedCount;
+
+        // Lưu thông tin raising trước khi xóa để emit
+        Raising memory raisingBeforeSlaughter = raising;
 
         // Xóa con vật và lấy qualityModifier
         uint256 qualityModifier = raisingProxy.slaughterRaising(raisingId);
@@ -408,7 +428,8 @@ contract RaisingLogic {
             msg.sender,
             raisingId,
             finalItemIds,
-            finalItemAmounts
+            finalItemAmounts,
+            raisingBeforeSlaughter
         );
 
         // Lưu ý: totalHarvestedItems không được cập nhật cho slaughter
@@ -426,6 +447,13 @@ contract RaisingLogic {
         require(!raising.isHarvested, "Raising already harvested");
         require(!raising.isSlaughtered, "Raising already slaughtered");
 
+        // Kiểm tra có thức ăn (item id 91) trong inventory không
+        InventoryItem memory foodItem = inventoryProxy.getItem(msg.sender, 91);
+        require(
+            foodItem.quantity > 0,
+            "Not enough food (item id 91) in inventory"
+        );
+
         WeatherStructs.WeatherState weatherState = weatherProxy
             .getCurrentWeatherState();
 
@@ -437,7 +465,19 @@ contract RaisingLogic {
 
         raisingProxy.feedRaising(raisingId, weatherState, harvestCooldown);
 
-        emit RaisingFed(raisingId, weatherState);
+        // Trừ 1 thức ăn khỏi inventory sau khi cho ăn thành công
+        inventoryProxy.setItem(
+            msg.sender,
+            91,
+            foodItem.quantity - 1,
+            foodItem.durability,
+            foodItem.expiration
+        );
+
+        // Lấy thông tin raising sau khi feed để emit
+        Raising memory updatedRaising = raisingProxy.getRaising(raisingId);
+
+        emit RaisingFed(raisingId, weatherState, updatedRaising);
     }
 
     // View functions

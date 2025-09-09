@@ -30,4 +30,8 @@ contract World is Ownable {
     function registerLogic(address _logicAddress) external onlyOwner {
         registeredLogics[_logicAddress] = true;
     }
+
+    function unregisterLogic(address _logicAddress) external onlyOwner {
+        registeredLogics[_logicAddress] = false;
+    }
 }
