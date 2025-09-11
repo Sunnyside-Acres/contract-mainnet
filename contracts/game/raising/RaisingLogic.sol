@@ -463,7 +463,7 @@ contract RaisingLogic {
             ItemStructs.Attribute.HarvestCooldown
         );
 
-        raisingProxy.feedRaising(raisingId, weatherState, harvestCooldown);
+        raisingProxy.feedRaising(raisingId, harvestCooldown);
 
         // Trừ 1 thức ăn khỏi inventory sau khi cho ăn thành công
         inventoryProxy.setItem(
@@ -585,12 +585,12 @@ contract RaisingLogic {
         lastFeedTime = raising.lastFeedTime;
 
         // Logic thời gian chăm sóc:
-        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/3
-        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/3
+        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/4
+        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/4
         if (raising.harvestCount == 0) {
-            cooldownDuration = raising.growthTime / 3; // Cooldown = growthTime / 3
+            cooldownDuration = raising.growthTime / 4; // Cooldown = growthTime / 4
         } else {
-            cooldownDuration = harvestCooldown / 3; // Cooldown = harvestCooldown / 3
+            cooldownDuration = harvestCooldown / 4; // Cooldown = harvestCooldown / 4
         }
 
         if (raising.feedCount == 0) {

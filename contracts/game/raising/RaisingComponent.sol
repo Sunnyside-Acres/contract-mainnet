@@ -113,20 +113,20 @@ contract RaisingComponent {
         require(raising.feedCount <= 3, "[COMPONENT] Too many feeds");
 
         // Logic thời gian chăm sóc:
-        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/3
-        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/3
+        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/4
+        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/4
         if (raising.harvestCount == 0) {
-            // Chưa thu hoạch lần nào, sử dụng growthTime/3
+            // Chưa thu hoạch lần nào, sử dụng growthTime/4
             require(
                 block.timestamp >=
-                    raising.lastFeedTime + (raising.growthTime / 3),
+                    raising.lastFeedTime + (raising.growthTime / 4),
                 "Too early to feed"
             );
         } else {
-            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/3
+            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/4
             require(
                 block.timestamp >=
-                    raising.lastFeedTime + (_harvestCooldown / 3),
+                    raising.lastFeedTime + (_harvestCooldown / 4),
                 "Too early to feed"
             );
         }
@@ -219,15 +219,15 @@ contract RaisingComponent {
         }
 
         // Logic thời gian cho ăn tiếp theo:
-        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/3
-        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/3
+        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/4
+        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/4
         uint256 nextFeedingTime;
         if (raising.harvestCount == 0) {
-            // Chưa thu hoạch lần nào, sử dụng growthTime/3
-            nextFeedingTime = raising.lastFeedTime + (raising.growthTime / 3);
+            // Chưa thu hoạch lần nào, sử dụng growthTime/4
+            nextFeedingTime = raising.lastFeedTime + (raising.growthTime / 4);
         } else {
-            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/3
-            nextFeedingTime = raising.lastFeedTime + (_harvestCooldown / 3);
+            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/4
+            nextFeedingTime = raising.lastFeedTime + (_harvestCooldown / 4);
         }
 
         // Nếu đã đến thời gian cho ăn tiếp theo, trả về thời gian hiện tại
@@ -261,18 +261,18 @@ contract RaisingComponent {
         }
 
         // Logic thời gian chăm sóc:
-        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/3
-        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/3
+        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/4
+        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/4
         if (raising.harvestCount == 0) {
-            // Chưa thu hoạch lần nào, sử dụng growthTime/3
+            // Chưa thu hoạch lần nào, sử dụng growthTime/4
             return
                 block.timestamp >=
-                raising.lastFeedTime + (raising.growthTime / 3);
+                raising.lastFeedTime + (raising.growthTime / 4);
         } else {
-            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/3
+            // Đã thu hoạch ít nhất 1 lần, sử dụng harvestCooldown/4
             return
                 block.timestamp >=
-                raising.lastFeedTime + (_harvestCooldown / 3);
+                raising.lastFeedTime + (_harvestCooldown / 4);
         }
     }
 

@@ -14,7 +14,6 @@ interface IRaisingComponent {
 
     function feedRaising(
         uint256 _raisingId,
-        WeatherStructs.WeatherState _weatherState,
         uint256 _harvestCooldown
     ) external;
 
