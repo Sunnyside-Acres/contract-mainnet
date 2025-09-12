@@ -102,11 +102,19 @@ contract GachaLogic {
 
         // Nếu có item được drop, thêm vào inventory
         if (foundDrop) {
-            // Thêm item vào inventory
+            // Lấy số lượng hiện tại của item trong inventory
+            InventoryItem memory existingItem = inventoryProxy.getItem(
+                msg.sender,
+                selectedItemId
+            );
+            uint256 currentQuantity = existingItem.quantity;
+            uint256 newQuantity1 = currentQuantity + selectedQuantity;
+
+            // Thêm item vào inventory (cộng thêm vào số lượng đã có)
             inventoryProxy.setItem(
                 msg.sender,
                 selectedItemId,
-                selectedQuantity,
+                newQuantity1,
                 100, // 100% durability
                 0 // Không expiration
             );

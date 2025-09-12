@@ -38,6 +38,10 @@ contract NPCMarketLogic {
     // Reentrancy guard
     bool private _locked;
 
+    // Daily reset tracking
+    mapping(uint256 => uint256) public lastResetDay; // npcId => last reset day
+    uint256 public constant SECONDS_PER_DAY = 86400;
+
     // ============ EVENTS ============
 
     event ItemPurchased(
@@ -81,6 +85,13 @@ contract NPCMarketLogic {
         uint256 indexed npcId,
         uint256 indexed itemId,
         address indexed user
+    );
+
+    event DailyResetExecuted(
+        uint256 indexed npcId,
+        uint256 resetDay,
+        uint256 itemCount,
+        uint256 userCount
     );
 
     // ============ MODIFIERS ============
@@ -447,6 +458,189 @@ contract NPCMarketLogic {
         npcMarketProxy.resetUserPurchases(_npcId, _itemId, _user);
 
         emit UserPurchasesReset(_npcId, _itemId, _user);
+    }
+
+    /**
+     * @dev Reset tất cả user purchases cho một item trong NPC market (chỉ admin)
+     * @param _npcId ID của NPC
+     * @param _itemId ID của item
+     * @param _users Mảng địa chỉ users cần reset
+     *
+     * Quy trình:
+     * 1. Validate input parameters
+     * 2. Reset purchase history cho tất cả users trong mảng
+     * 3. Emit events cho mỗi user
+     */
+    function resetMultipleUserPurchases(
+        uint256 _npcId,
+        uint256 _itemId,
+        address[] calldata _users
+    ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(_itemId > 0, "Invalid Item ID");
+        require(_users.length > 0, "Users array cannot be empty");
+        require(_users.length <= 100, "Too many users in one batch");
+
+        for (uint256 i = 0; i < _users.length; i++) {
+            require(_users[i] != address(0), "Invalid user address");
+            npcMarketProxy.resetUserPurchases(_npcId, _itemId, _users[i]);
+            emit UserPurchasesReset(_npcId, _itemId, _users[i]);
+        }
+    }
+
+    /**
+     * @dev Reset tất cả user purchases cho tất cả items trong một NPC market (chỉ admin)
+     * @param _npcId ID của NPC
+     * @param _users Mảng địa chỉ users cần reset
+     *
+     * Quy trình:
+     * 1. Validate input parameters
+     * 2. Lấy tất cả items trong market
+     * 3. Reset purchase history cho tất cả users trên tất cả items
+     * 4. Emit events cho mỗi user-item combination
+     */
+    function resetAllUserPurchasesForNPCMarket(
+        uint256 _npcId,
+        address[] calldata _users
+    ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(_users.length > 0, "Users array cannot be empty");
+        require(_users.length <= 50, "Too many users in one batch");
+
+        // Lấy tất cả items trong market
+        uint256[] memory itemIds = npcMarketProxy.getMarketItemIds(_npcId);
+        require(itemIds.length > 0, "No items in this NPC market");
+
+        for (uint256 i = 0; i < itemIds.length; i++) {
+            for (uint256 j = 0; j < _users.length; j++) {
+                require(_users[j] != address(0), "Invalid user address");
+                npcMarketProxy.resetUserPurchases(
+                    _npcId,
+                    itemIds[i],
+                    _users[j]
+                );
+                emit UserPurchasesReset(_npcId, itemIds[i], _users[j]);
+            }
+        }
+    }
+
+    /**
+     * @dev Reset tất cả user purchases cho một item trên tất cả NPC markets (chỉ admin)
+     * @param _npcIds Mảng ID của các NPC
+     * @param _itemId ID của item
+     * @param _users Mảng địa chỉ users cần reset
+     *
+     * Quy trình:
+     * 1. Validate input parameters
+     * 2. Reset purchase history cho tất cả users trên item này ở tất cả NPC markets
+     * 3. Emit events cho mỗi user-npc-item combination
+     */
+    function resetAllUserPurchasesForItem(
+        uint256[] calldata _npcIds,
+        uint256 _itemId,
+        address[] calldata _users
+    ) external onlyAdmin {
+        require(_npcIds.length > 0, "NPC IDs array cannot be empty");
+        require(_npcIds.length <= 20, "Too many NPCs in one batch");
+        require(_itemId > 0, "Invalid Item ID");
+        require(_users.length > 0, "Users array cannot be empty");
+        require(_users.length <= 30, "Too many users in one batch");
+
+        for (uint256 i = 0; i < _npcIds.length; i++) {
+            require(_npcIds[i] > 0, "Invalid NPC ID");
+            for (uint256 j = 0; j < _users.length; j++) {
+                require(_users[j] != address(0), "Invalid user address");
+                npcMarketProxy.resetUserPurchases(
+                    _npcIds[i],
+                    _itemId,
+                    _users[j]
+                );
+                emit UserPurchasesReset(_npcIds[i], _itemId, _users[j]);
+            }
+        }
+    }
+
+    /**
+     * @dev Thực hiện daily reset cho một NPC market (chỉ admin)
+     * @param _npcId ID của NPC
+     * @param _users Mảng users cần reset (tối đa 50 users)
+     *
+     * Quy trình:
+     * 1. Kiểm tra xem đã reset hôm nay chưa
+     * 2. Reset tất cả user purchases cho tất cả items
+     * 3. Cập nhật lastResetDay
+     * 4. Emit event DailyResetExecuted
+     */
+    function executeDailyReset(
+        uint256 _npcId,
+        address[] calldata _users
+    ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(_users.length > 0, "Users array cannot be empty");
+        require(_users.length <= 50, "Too many users in one batch");
+
+        uint256 currentDay = block.timestamp / SECONDS_PER_DAY;
+        require(
+            lastResetDay[_npcId] < currentDay,
+            "Daily reset already executed for this NPC today"
+        );
+
+        // Lấy tất cả items trong market
+        uint256[] memory itemIds = npcMarketProxy.getMarketItemIds(_npcId);
+        require(itemIds.length > 0, "No items in this NPC market");
+
+        uint256 totalResets = 0;
+
+        // Reset tất cả user purchases cho tất cả items
+        for (uint256 i = 0; i < itemIds.length; i++) {
+            for (uint256 j = 0; j < _users.length; j++) {
+                require(_users[j] != address(0), "Invalid user address");
+                npcMarketProxy.resetUserPurchases(
+                    _npcId,
+                    itemIds[i],
+                    _users[j]
+                );
+                emit UserPurchasesReset(_npcId, itemIds[i], _users[j]);
+                totalResets++;
+            }
+        }
+
+        // Cập nhật lastResetDay
+        lastResetDay[_npcId] = currentDay;
+
+        emit DailyResetExecuted(
+            _npcId,
+            currentDay,
+            itemIds.length,
+            _users.length
+        );
+    }
+
+    /**
+     * @dev Kiểm tra xem NPC market đã được reset hôm nay chưa
+     * @param _npcId ID của NPC
+     * @return bool True nếu đã reset hôm nay
+     */
+    function isDailyResetExecuted(uint256 _npcId) external view returns (bool) {
+        uint256 currentDay = block.timestamp / SECONDS_PER_DAY;
+        return lastResetDay[_npcId] >= currentDay;
+    }
+
+    /**
+     * @dev Lấy ngày reset cuối cùng của NPC market
+     * @param _npcId ID của NPC
+     * @return uint256 Ngày reset cuối cùng (timestamp / SECONDS_PER_DAY)
+     */
+    function getLastResetDay(uint256 _npcId) external view returns (uint256) {
+        return lastResetDay[_npcId];
+    }
+
+    /**
+     * @dev Lấy ngày hiện tại (timestamp / SECONDS_PER_DAY)
+     * @return uint256 Ngày hiện tại
+     */
+    function getCurrentDay() external view returns (uint256) {
+        return block.timestamp / SECONDS_PER_DAY;
     }
 
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============

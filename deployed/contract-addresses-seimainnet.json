@@ -14,7 +14,7 @@
     "NPCMarketComponent": "0x6c2251197038d3D0AF1EBA04798f918C06CDEa81",
     "GachaComponent": "0xCf9197e7360e81Ce40863AcAD48E623CB67CD145",
     "TaskComponent": "0xFD2BBee76683bB544e2cE531245E63E6E1013D60",
-    "FleaMarketComponent": "0x5C18BBA5ceFd411BF979338EF1bA4C0BF83A12C8",
+    "FleaMarketComponent": "0xc72371aD08941d71469fBBd017e7A3b6d8fF4456",
     "CraftingComponent": "0x984274D5a70b6153f083Fc9751a22431c4476bdb",
     "RaisingComponent": "0x8cc1e29dE1A830Bbd2d8A742b8162AeF10843374",
     "ReferralComponent": "0x4cC502a7F88d50C87261d34EEFC55fF08Ac96FDB",
@@ -38,13 +38,31 @@
     "InventoryLogic": "0xD332d186344c91D7EaCA97E6c0EDFCee832c675b",
     "PlantLogic": "0x58b10e55DA779dDBbDC622F18F014A09cB3A0e46",
     "FishingLogic": "0x392B04d69Ca6D3958297E0da0B91872361A1ED79",
-    "NPCMarketLogic": "0x92CF2C31CBB97885f2679991000B1e6A34124499",
-    "GachaLogic": "0x46c44AA197b82FB87884C0978fC1420a19A03983",
+    "NPCMarketLogic": "0x3700536cEa79c3478469Ee29ED7048008a85dBBc",
+    "GachaLogic": "0x1134485C3356f37dB5BA965F64c238ECE595a75D",
     "TaskLogic": "0x2352a02908A9014c9C5d003bDC9CA7e5dAce31CC",
     "FleaMarketLogic": "0x40b6DA09635eE2Ec3c08a37c465e223f6d250fCf",
     "CraftingLogic": "0x5603DdcEEBfD6a60561D83Fe3C2b996591f5fa70",
     "RaisingLogic": "0xEFFc8Bb75b4EABBBBFbf1A624Cd1B321aaE313c2",
-    "ReferralLogic": "0xA8Fccbd46F63a23cD8f3Ad05854e9aaB6973fb4a"
+    "ReferralLogic": "0xA8Fccbd46F63a23cD8f3Ad05854e9aaB6973fb4a",
+    "OldFleaMarketComponent": "0x5C18BBA5ceFd411BF979338EF1bA4C0BF83A12C8",
+    "NPCMarketLogicOptimizations": {
+      "deployedAt": "2025-09-11T19:44:39.553Z",
+      "features": [
+        "resetMultipleUserPurchases",
+        "resetAllUserPurchasesForNPCMarket",
+        "resetAllUserPurchasesForItem",
+        "executeDailyReset",
+        "isDailyResetExecuted",
+        "getLastResetDay",
+        "getCurrentDay"
+      ],
+      "batchLimits": {
+        "resetMultipleUserPurchases": 100,
+        "resetAllUserPurchasesForNPCMarket": 50,
+        "resetAllUserPurchasesForItem": "30 users, 20 NPCs"
+      }
+    }
   },
   "deploymentOrder": [
     "World",
@@ -85,5 +103,14 @@
     "FleaMarketLogic",
     "CraftingLogic",
     "RaisingLogic"
-  ]
+  ],
+  "lastUpgrade": {
+    "component": "FleaMarketComponent",
+    "oldAddress": "0x5C18BBA5ceFd411BF979338EF1bA4C0BF83A12C8",
+    "newAddress": "0xc72371aD08941d71469fBBd017e7A3b6d8fF4456",
+    "timestamp": "2025-09-11T18:25:24.586Z",
+    "deployer": "0x61B89cD59eBf28B65E912608C3356aBb9c7fF511",
+    "network": "seimainnet",
+    "chainId": 1329
+  }
 }

@@ -30,7 +30,7 @@ contract FleaMarketComponent {
     // Thống kê thị trường
     MarketStats public marketStats;
 
-      modifier onlyAuthorized() {
+    modifier onlyAuthorized() {
         require(
             IWorld(world).isLogicRegistered(msg.sender),
             "[COMPONENT] Unauthorized"
@@ -140,6 +140,48 @@ contract FleaMarketComponent {
         address _seller
     ) external view returns (MarketListing[] memory) {
         uint256[] memory sellerListingIds = sellerListings[_seller];
+
+        // Count active listings first
+        uint256 activeCount = 0;
+        for (uint256 i = 0; i < sellerListingIds.length; i++) {
+            if (
+                listings[sellerListingIds[i]].isActive &&
+                listings[sellerListingIds[i]].expirationTime > block.timestamp
+            ) {
+                activeCount++;
+            }
+        }
+
+        // Create array with correct size
+        MarketListing[] memory sellerListingsArray = new MarketListing[](
+            activeCount
+        );
+
+        uint256 currentIndex = 0;
+        for (uint256 i = 0; i < sellerListingIds.length; i++) {
+            if (
+                listings[sellerListingIds[i]].isActive &&
+                listings[sellerListingIds[i]].expirationTime > block.timestamp
+            ) {
+                sellerListingsArray[currentIndex] = listings[
+                    sellerListingIds[i]
+                ];
+                currentIndex++;
+            }
+        }
+
+        return sellerListingsArray;
+    }
+
+    /**
+     * @dev Lấy tất cả listing của seller (bao gồm cả inactive) để xem lịch sử
+     * @param _seller Địa chỉ người bán
+     * @return Mảng tất cả MarketListing của người bán
+     */
+    function getAllListingsBySeller(
+        address _seller
+    ) external view returns (MarketListing[] memory) {
+        uint256[] memory sellerListingIds = sellerListings[_seller];
         MarketListing[] memory sellerListingsArray = new MarketListing[](
             sellerListingIds.length
         );
@@ -208,8 +250,59 @@ contract FleaMarketComponent {
         require(listings[_listingId].id != 0, "Listing does not exist");
         require(listings[_listingId].isActive, "Listing is not active");
 
-        listings[_listingId].isActive = false;
+        // Use removeListing to completely remove the listing
+        removeListing(_listingId);
+    }
+
+    /**
+     * @dev Xóa hoàn toàn listing khỏi hệ thống (internal function)
+     * @param _listingId ID của listing cần xóa
+     */
+    function removeListing(uint256 _listingId) internal {
+        require(listings[_listingId].id != 0, "Listing does not exist");
+
+        MarketListing storage listing = listings[_listingId];
+
+        // Deactivate listing
+        listing.isActive = false;
         marketStats.activeListings--;
+
+        // Remove from seller's listings array
+        uint256[] storage sellerListingIds = sellerListings[listing.seller];
+        for (uint256 i = 0; i < sellerListingIds.length; i++) {
+            if (sellerListingIds[i] == _listingId) {
+                // Move last element to current position and remove last
+                sellerListingIds[i] = sellerListingIds[
+                    sellerListingIds.length - 1
+                ];
+                sellerListingIds.pop();
+                break;
+            }
+        }
+
+        // Remove from item's listings array
+        uint256[] storage itemListingIds = itemListings[listing.itemId];
+        for (uint256 i = 0; i < itemListingIds.length; i++) {
+            if (itemListingIds[i] == _listingId) {
+                // Move last element to current position and remove last
+                itemListingIds[i] = itemListingIds[itemListingIds.length - 1];
+                itemListingIds.pop();
+                break;
+            }
+        }
+
+        // Remove from all listings array
+        for (uint256 i = 0; i < allListingIds.length; i++) {
+            if (allListingIds[i] == _listingId) {
+                // Move last element to current position and remove last
+                allListingIds[i] = allListingIds[allListingIds.length - 1];
+                allListingIds.pop();
+                break;
+            }
+        }
+
+        // Clear the listing data completely
+        delete listings[_listingId];
     }
 
     function purchaseItem(
@@ -237,10 +330,9 @@ contract FleaMarketComponent {
         // Update listing quantity
         listing.quantity -= _quantity;
 
-        // If quantity becomes 0, deactivate listing
+        // If quantity becomes 0, remove listing completely
         if (listing.quantity == 0) {
-            listing.isActive = false;
-            marketStats.activeListings--;
+            removeListing(_listingId);
         }
 
         return true;

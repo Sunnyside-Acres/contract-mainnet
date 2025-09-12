@@ -26,6 +26,10 @@ interface IFleaMarketComponent {
         address _seller
     ) external view returns (MarketListing[] memory);
 
+    function getAllListingsBySeller(
+        address _seller
+    ) external view returns (MarketListing[] memory);
+
     function getListingsByItem(
         uint256 _itemId
     ) external view returns (MarketListing[] memory);
