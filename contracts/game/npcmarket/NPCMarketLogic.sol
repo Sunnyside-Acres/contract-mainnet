@@ -89,7 +89,6 @@ contract NPCMarketLogic {
 
     event DailyResetExecuted(
         uint256 indexed npcId,
-        uint256 resetDay,
         uint256 itemCount,
         uint256 userCount
     );
@@ -579,11 +578,11 @@ contract NPCMarketLogic {
         require(_users.length > 0, "Users array cannot be empty");
         require(_users.length <= 50, "Too many users in one batch");
 
-        uint256 currentDay = block.timestamp / SECONDS_PER_DAY;
-        require(
-            lastResetDay[_npcId] < currentDay,
-            "Daily reset already executed for this NPC today"
-        );
+        // uint256 currentDay = block.timestamp / SECONDS_PER_DAY;
+        // require(
+        //     lastResetDay[_npcId] < currentDay,
+        //     "Daily reset already executed for this NPC today"
+        // );
 
         // Lấy tất cả items trong market
         uint256[] memory itemIds = npcMarketProxy.getMarketItemIds(_npcId);
@@ -605,15 +604,7 @@ contract NPCMarketLogic {
             }
         }
 
-        // Cập nhật lastResetDay
-        lastResetDay[_npcId] = currentDay;
-
-        emit DailyResetExecuted(
-            _npcId,
-            currentDay,
-            itemIds.length,
-            _users.length
-        );
+        emit DailyResetExecuted(_npcId, itemIds.length, _users.length);
     }
 
     /**

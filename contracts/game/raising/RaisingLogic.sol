@@ -249,6 +249,7 @@ contract RaisingLogic {
             harvestedItemIds[0] = drops[1].itemId;
             harvestedItemAmounts[0] = 1;
             harvestedItemCount = 1;
+            totalItemAmount = 1; // FIX: Cập nhật totalItemAmount để đếm đúng
 
             // Lấy số lượng hiện tại của item
             InventoryItem memory currentItem = inventoryProxy.getItem(
@@ -266,6 +267,46 @@ contract RaisingLogic {
                 100,
                 0
             );
+        }
+
+        // BONUS: Thêm +1 item nếu chăm sóc đủ 3 lần
+        if (raising.feedCount >= 3 && drops.length > 1) {
+            // Thêm bonus item (sử dụng drop[1] làm bonus item)
+            uint256 bonusItemId = drops[1].itemId;
+
+            // Tìm xem item này đã có trong danh sách thu hoạch chưa
+            bool itemExists = false;
+            for (uint256 i = 0; i < harvestedItemCount; i++) {
+                if (harvestedItemIds[i] == bonusItemId) {
+                    harvestedItemAmounts[i] += 1;
+                    itemExists = true;
+                    break;
+                }
+            }
+
+            // Nếu chưa có, thêm mới vào danh sách
+            if (!itemExists) {
+                harvestedItemIds[harvestedItemCount] = bonusItemId;
+                harvestedItemAmounts[harvestedItemCount] = 1;
+                harvestedItemCount++;
+            }
+
+            // Cập nhật inventory cho bonus item
+            InventoryItem memory bonusCurrentItem = inventoryProxy.getItem(
+                msg.sender,
+                bonusItemId
+            );
+            uint256 bonusNewQuantity = bonusCurrentItem.quantity + 1;
+            inventoryProxy.setItem(
+                msg.sender,
+                bonusItemId,
+                bonusNewQuantity,
+                100,
+                0
+            );
+
+            // Cập nhật totalItemAmount
+            totalItemAmount += 1;
         }
 
         uint256[] memory finalItemIds = new uint256[](harvestedItemCount);

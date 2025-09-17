@@ -111,6 +111,7 @@ contract FishingLogic {
                 100, // Độ bền
                 0 // Thời gian hết hạn
             );
+
             emit FishingCompleted(msg.sender, FISHING_CHEST_ID, 1);
         } else {
             // Không nhận được gì
@@ -325,7 +326,7 @@ contract FishingLogic {
     }
 
     /**
-     * @dev Giảm độ bền cần câu
+     * @dev Trừ 1 cần câu khi câu cá
      * @param player Địa chỉ người chơi
      */
     function _reduceFishingRodDurability(address player) internal {
@@ -334,24 +335,13 @@ contract FishingLogic {
             FISHING_ROD_ID
         );
 
-        if (fishingRod.durability > 1) {
-            // Giảm độ bền
-            inventoryComponent.setItem(
-                player,
-                FISHING_ROD_ID,
-                fishingRod.quantity,
-                fishingRod.durability - 1,
-                fishingRod.expiration
-            );
-        } else {
-            // Cần câu hỏng, giảm số lượng
-            inventoryComponent.setItem(
-                player,
-                FISHING_ROD_ID,
-                fishingRod.quantity - 1,
-                100, // Reset độ bền cho cần câu mới
-                fishingRod.expiration
-            );
-        }
+        // Luôn trừ 1 cần câu khi câu cá
+        inventoryComponent.setItem(
+            player,
+            FISHING_ROD_ID,
+            fishingRod.quantity - 1,
+            fishingRod.durability,
+            fishingRod.expiration
+        );
     }
 }

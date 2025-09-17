@@ -97,7 +97,7 @@ contract CraftingLogic {
      * @dev Tạo công thức crafting mới (chỉ admin)
      * @param _resultItemId ID của item kết quả
      * @param _resultQuantity Số lượng item kết quả
-     * @param _successRate Tỉ lệ thành công (0-100, đại diện cho số đơn vị trong khoảng)
+     * @param _successRate Tỉ lệ thành công (0-99, đại diện cho số đơn vị trong khoảng)
      * @param _sunlightCost Chi phí sunlight
      * @param _sunnyCost Chi phí sunny
      * @param _ingredients Mảng nguyên liệu cần thiết
@@ -122,8 +122,8 @@ contract CraftingLogic {
         // Validate result item exists
         require(itemProxy.exists(_resultItemId), "Result item does not exist");
 
-        // Validate success rate (0-100)
-        require(_successRate <= 100, "Success rate must be 0-100");
+        // Validate success rate (0-99)
+        require(_successRate <= 99, "Success rate must be 0-99");
 
         // Validate ingredients exist
         for (uint256 i = 0; i < _ingredients.length; i++) {
@@ -160,8 +160,8 @@ contract CraftingLogic {
     /**
      * @dev Craft item với khoảng số user chọn (người chơi gọi)
      * @param _recipeId ID của công thức muốn craft
-     * @param _rangeStart Điểm bắt đầu khoảng số (0-100)
-     * @param _rangeEnd Điểm kết thúc khoảng số (0-100)
+     * @param _rangeStart Điểm bắt đầu khoảng số (0-99)
+     * @param _rangeEnd Điểm kết thúc khoảng số (0-99)
      *
      * Quy trình:
      * 1. Kiểm tra công thức tồn tại và đang hoạt động
@@ -185,14 +185,25 @@ contract CraftingLogic {
         CraftingRecipe memory recipe = craftingProxy.getRecipe(_recipeId);
         require(recipe.isActive, "Recipe is not active");
 
-        // Validate range
+        // Validate range - hỗ trợ cả trường hợp start > end (khoảng ngược)
         require(
-            _rangeStart <= _rangeEnd,
-            "Invalid range: start must be <= end"
+            _rangeStart >= 0 && _rangeStart <= 99,
+            "Range start must be 0-99"
         );
-        require(_rangeStart >= 0 && _rangeEnd <= 100, "Range must be 0-100");
+        require(_rangeEnd >= 0 && _rangeEnd <= 99, "Range end must be 0-99");
+
+        // Tính kích thước khoảng (hỗ trợ cả khoảng thuận và ngược)
+        uint256 rangeSize;
+        if (_rangeStart <= _rangeEnd) {
+            // Khoảng thuận: 5 -> 10 (kích thước = 6)
+            rangeSize = _rangeEnd - _rangeStart + 1;
+        } else {
+            // Khoảng ngược: 80 -> 30 (kích thước = 50)
+            rangeSize = (99 - _rangeStart + 1) + (_rangeEnd + 1);
+        }
+
         require(
-            (_rangeEnd - _rangeStart + 1) == recipe.successRate,
+            rangeSize == recipe.successRate,
             "Range size must match success rate"
         );
 
@@ -251,7 +262,7 @@ contract CraftingLogic {
         }
 
         // Generate random number and determine success
-        uint256 randomNumber = _generateRandomNumber(0, 100);
+        uint256 randomNumber = _generateRandomNumber(0, 99);
         bool isSuccess = _isNumberInRange(randomNumber, _rangeStart, _rangeEnd);
 
         // Add to crafting history
@@ -301,7 +312,7 @@ contract CraftingLogic {
     /**
      * @dev Cập nhật công thức (chỉ admin)
      * @param _recipeId ID của công thức muốn cập nhật
-     * @param _successRate Tỉ lệ thành công mới (0-100)
+     * @param _successRate Tỉ lệ thành công mới (0-99)
      * @param _sunlightCost Chi phí sunlight mới
      * @param _sunnyCost Chi phí sunny mới
      * @param _ingredients Nguyên liệu mới
@@ -323,8 +334,8 @@ contract CraftingLogic {
     ) external onlyAdmin {
         require(craftingProxy.exists(_recipeId), "Recipe does not exist");
 
-        // Validate success rate (0-100)
-        require(_successRate <= 100, "Success rate must be 0-100");
+        // Validate success rate (0-99)
+        require(_successRate <= 99, "Success rate must be 0-99");
 
         // Validate ingredients exist
         for (uint256 i = 0; i < _ingredients.length; i++) {
@@ -416,18 +427,28 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Kiểm tra xem số có nằm trong khoảng không
+     * @dev Kiểm tra xem số có nằm trong khoảng không (hỗ trợ cả khoảng thuận và ngược)
      * @param _number Số cần kiểm tra
      * @param _rangeStart Điểm bắt đầu khoảng
      * @param _rangeEnd Điểm kết thúc khoảng
      * @return bool True nếu số nằm trong khoảng
+     *
+     * Ví dụ:
+     * - Khoảng thuận: 5-10 -> số 7 sẽ trả về true
+     * - Khoảng ngược: 80-30 -> số 2, 75, 99 sẽ trả về true
      */
     function _isNumberInRange(
         uint256 _number,
         uint256 _rangeStart,
         uint256 _rangeEnd
     ) internal pure returns (bool) {
-        return _number >= _rangeStart && _number <= _rangeEnd;
+        if (_rangeStart <= _rangeEnd) {
+            // Khoảng thuận: 5 -> 10
+            return _number >= _rangeStart && _number <= _rangeEnd;
+        } else {
+            // Khoảng ngược: 80 -> 30 (bao gồm 80-99 và 0-30)
+            return _number >= _rangeStart || _number <= _rangeEnd;
+        }
     }
 
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============

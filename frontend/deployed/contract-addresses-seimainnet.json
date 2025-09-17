@@ -2,7 +2,7 @@
   "network": "seimainnet",
   "chainId": 1329,
   "deployer": "0x61B89cD59eBf28B65E912608C3356aBb9c7fF511",
-  "timestamp": "2025-09-08T09:00:44.312Z",
+  "timestamp": "2025-09-15T04:50:52.993Z",
   "contracts": {
     "World": "0xA0Fb50748F806F0af8b002E1f16C69455caF6214",
     "PlayerComponent": "0x123671a4556DB9f45Be41f5Acdc8C3Aa379f27cd",
@@ -37,7 +37,7 @@
     "PlotLogic": "0x79375ABa07A384d4EA7f5b24a817B677e12B59dD",
     "InventoryLogic": "0xD332d186344c91D7EaCA97E6c0EDFCee832c675b",
     "PlantLogic": "0x58b10e55DA779dDBbDC622F18F014A09cB3A0e46",
-    "FishingLogic": "0x392B04d69Ca6D3958297E0da0B91872361A1ED79",
+    "FishingLogic": "0x35352b7D0B284cEEe57599e8b108147006103b83",
     "NPCMarketLogic": "0x92CF2C31CBB97885f2679991000B1e6A34124499",
     "GachaLogic": "0xd980914e050860aFb6547cBF740bEB37b62E7d8c",
     "TaskLogic": "0x2352a02908A9014c9C5d003bDC9CA7e5dAce31CC",

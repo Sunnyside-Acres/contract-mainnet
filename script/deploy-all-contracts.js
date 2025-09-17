@@ -90,13 +90,9 @@ async function main() {
   const npcMarketComponentAddress = await npcMarketComponent.getAddress();
   console.log("✅ NPCMarketComponent deployed to:", npcMarketComponentAddress);
 
-  // 9. Deploy GachaComponent
-  console.log("\n9️⃣ Deploying GachaComponent...");
-  const GachaComponent = await ethers.getContractFactory("GachaComponent");
-  const gachaComponent = await GachaComponent.deploy();
-  await gachaComponent.waitForDeployment();
-  const gachaComponentAddress = await gachaComponent.getAddress();
-  console.log("✅ GachaComponent deployed to:", gachaComponentAddress);
+  // 9. Skip GachaComponent (không tồn tại)
+  console.log("\n9️⃣ Skipping GachaComponent (contract không tồn tại)...");
+  const gachaComponentAddress = "0x0000000000000000000000000000000000000000";
 
   // 10. Deploy TaskComponent
   console.log("\n🔟 Deploying TaskComponent...");
@@ -234,17 +230,9 @@ async function main() {
   const npcMarketProxyAddress = await npcMarketProxy.getAddress();
   console.log("✅ NPCMarketProxy deployed to:", npcMarketProxyAddress);
 
-  // 21. Deploy GachaProxy
-  console.log("\n2️⃣1️⃣ Deploying GachaProxy...");
-  const GachaProxy = await ethers.getContractFactory("GachaProxy");
-  const gachaProxy = await GachaProxy.deploy(
-    worldAddress,
-    deployer.address,
-    gachaComponentAddress
-  );
-  await gachaProxy.waitForDeployment();
-  const gachaProxyAddress = await gachaProxy.getAddress();
-  console.log("✅ GachaProxy deployed to:", gachaProxyAddress);
+  // 21. Skip GachaProxy (không tồn tại)
+  console.log("\n2️⃣1️⃣ Skipping GachaProxy (contract không tồn tại)...");
+  const gachaProxyAddress = "0x0000000000000000000000000000000000000000";
 
   // 22. Deploy TaskProxy
   console.log("\n2️⃣2️⃣ Deploying TaskProxy...");
@@ -380,19 +368,9 @@ async function main() {
   const plantLogicAddress = await plantLogic.getAddress();
   console.log("✅ PlantLogic deployed to:", plantLogicAddress);
 
-  // 32. Deploy FishingLogic (world, inventoryProxy, itemProxy, playerProxy, weatherProxy)
-  console.log("\n3️⃣2️⃣ Deploying FishingLogic...");
-  const FishingLogic = await ethers.getContractFactory("FishingLogic");
-  const fishingLogic = await FishingLogic.deploy(
-    worldAddress,
-    inventoryProxyAddress,
-    itemProxyAddress,
-    playerProxyAddress,
-    weatherProxyAddress
-  );
-  await fishingLogic.waitForDeployment();
-  const fishingLogicAddress = await fishingLogic.getAddress();
-  console.log("✅ FishingLogic deployed to:", fishingLogicAddress);
+  // 32. Skip FishingLogic (không có Component và Proxy)
+  console.log("\n3️⃣2️⃣ Skipping FishingLogic (thiếu Component và Proxy)...");
+  const fishingLogicAddress = "0x0000000000000000000000000000000000000000";
 
   // 33. Deploy NPCMarketLogic (world, npcMarketProxy, itemProxy, inventoryProxy, playerProxy)
   console.log("\n3️⃣3️⃣ Deploying NPCMarketLogic...");
@@ -408,20 +386,9 @@ async function main() {
   const npcMarketLogicAddress = await npcMarketLogic.getAddress();
   console.log("✅ NPCMarketLogic deployed to:", npcMarketLogicAddress);
 
-  // 34. Deploy GachaLogic (world, gachaProxy, playerProxy, inventoryProxy, itemProxy, deployer.address)
-  console.log("\n3️⃣4️⃣ Deploying GachaLogic...");
-  const GachaLogic = await ethers.getContractFactory("GachaLogic");
-  const gachaLogic = await GachaLogic.deploy(
-    worldAddress,
-    gachaProxyAddress,
-    playerProxyAddress,
-    inventoryProxyAddress,
-    itemProxyAddress,
-    deployer.address // deployerWallet
-  );
-  await gachaLogic.waitForDeployment();
-  const gachaLogicAddress = await gachaLogic.getAddress();
-  console.log("✅ GachaLogic deployed to:", gachaLogicAddress);
+  // 34. Skip GachaLogic (không có Component và Proxy)
+  console.log("\n3️⃣4️⃣ Skipping GachaLogic (thiếu Component và Proxy)...");
+  const gachaLogicAddress = "0x0000000000000000000000000000000000000000";
 
   // 35. Deploy TaskLogic (world, taskProxy, playerProxy, inventoryProxy, itemProxy)
   console.log("\n3️⃣5️⃣ Deploying TaskLogic...");
@@ -494,7 +461,7 @@ async function main() {
   // === PHASE 5: CONFIGURE WORLD CONTRACT ===
   console.log("\n⚙️ PHASE 5: Configuring World Contract...");
 
-  // Register tất cả Logic contracts trong World
+  // Register tất cả Logic contracts trong World (chỉ những contract đã deploy)
   const logicContracts = [
     { name: "PlayerLogic", address: playerLogicAddress },
     { name: "ItemLogic", address: itemLogicAddress },
@@ -502,9 +469,7 @@ async function main() {
     { name: "PlotLogic", address: plotLogicAddress },
     { name: "InventoryLogic", address: inventoryLogicAddress },
     { name: "PlantLogic", address: plantLogicAddress },
-    { name: "FishingLogic", address: fishingLogicAddress },
     { name: "NPCMarketLogic", address: npcMarketLogicAddress },
-    { name: "GachaLogic", address: gachaLogicAddress },
     { name: "TaskLogic", address: taskLogicAddress },
     { name: "FleaMarketLogic", address: fleaMarketLogicAddress },
     { name: "CraftingLogic", address: craftingLogicAddress },
@@ -539,7 +504,6 @@ async function main() {
       InventoryComponent: inventoryComponentAddress,
       PlantComponent: plantComponentAddress,
       NPCMarketComponent: npcMarketComponentAddress,
-      GachaComponent: gachaComponentAddress,
       TaskComponent: taskComponentAddress,
       FleaMarketComponent: fleaMarketComponentAddress,
       CraftingComponent: craftingComponentAddress,
@@ -554,7 +518,6 @@ async function main() {
       InventoryProxy: inventoryProxyAddress,
       PlantProxy: plantProxyAddress,
       NPCMarketProxy: npcMarketProxyAddress,
-      GachaProxy: gachaProxyAddress,
       TaskProxy: taskProxyAddress,
       FleaMarketProxy: fleaMarketProxyAddress,
       CraftingProxy: craftingProxyAddress,
@@ -568,9 +531,7 @@ async function main() {
       PlotLogic: plotLogicAddress,
       InventoryLogic: inventoryLogicAddress,
       PlantLogic: plantLogicAddress,
-      FishingLogic: fishingLogicAddress,
       NPCMarketLogic: npcMarketLogicAddress,
-      GachaLogic: gachaLogicAddress,
       TaskLogic: taskLogicAddress,
       FleaMarketLogic: fleaMarketLogicAddress,
       CraftingLogic: craftingLogicAddress,
@@ -586,11 +547,11 @@ async function main() {
       "InventoryComponent",
       "PlantComponent",
       "NPCMarketComponent",
-      "GachaComponent",
       "TaskComponent",
       "FleaMarketComponent",
       "CraftingComponent",
       "RaisingComponent",
+      "ReferralComponent",
       "PlayerProxy",
       "ItemProxy",
       "WeatherProxy",
@@ -598,24 +559,23 @@ async function main() {
       "InventoryProxy",
       "PlantProxy",
       "NPCMarketProxy",
-      "GachaProxy",
       "TaskProxy",
       "FleaMarketProxy",
       "CraftingProxy",
       "RaisingProxy",
+      "ReferralProxy",
       "PlayerLogic",
       "ItemLogic",
       "WeatherLogic",
       "PlotLogic",
       "InventoryLogic",
       "PlantLogic",
-      "FishingLogic",
       "NPCMarketLogic",
-      "GachaLogic",
       "TaskLogic",
       "FleaMarketLogic",
       "CraftingLogic",
       "RaisingLogic",
+      "ReferralLogic",
     ],
   };
 
@@ -635,7 +595,7 @@ async function main() {
   // === SUMMARY ===
   console.log("\n🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!");
   console.log("=".repeat(50));
-  console.log(`📊 Tổng số contracts đã deploy: 38 contracts`);
+  console.log(`📊 Tổng số contracts đã deploy: 36 contracts`);
   console.log(
     `🌐 Network: ${network.name} (Chain ID: ${Number(network.chainId)})`
   );
@@ -643,23 +603,25 @@ async function main() {
   console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
   console.log("\n📋 Contract Categories:");
   console.log(`   • Core: 1 contract`);
-  console.log(`   • Components: 13 contracts`);
-  console.log(`   • Proxies: 13 contracts`);
-  console.log(`   • Logic: 13 contracts`);
-  console.log("\n🎮 Game Systems:");
+  console.log(`   • Components: 12 contracts`);
+  console.log(`   • Proxies: 12 contracts`);
+  console.log(`   • Logic: 12 contracts`);
+  console.log("\n🎮 Game Systems (Đã deploy):");
   console.log(`   • Player Management`);
   console.log(`   • Item System`);
   console.log(`   • Weather System`);
   console.log(`   • Plot Management`);
   console.log(`   • Inventory System`);
   console.log(`   • Plant/Farming`);
-  console.log(`   • Fishing`);
   console.log(`   • NPC Market`);
-  console.log(`   • Gacha System`);
   console.log(`   • Task System`);
   console.log(`   • Flea Market`);
   console.log(`   • Crafting System`);
   console.log(`   • Raising/Livestock`);
+  console.log(`   • Referral System`);
+  console.log("\n⚠️ Game Systems (Bị bỏ qua - thiếu contracts):");
+  console.log(`   • Fishing System (thiếu Component + Proxy)`);
+  console.log(`   • Gacha System (thiếu Component + Proxy)`);
   console.log("\n🔗 Next Steps:");
   console.log(`   • Verify contracts on block explorer`);
   console.log(`   • Initialize game data`);
