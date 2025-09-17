@@ -11,7 +11,11 @@ Script import cơ bản, import từng item một cách tuần tự.
 **Usage:**
 
 ```bash
-npx hardhat run script/import-items-from-csv.js --network seimainnet -- ./data/items.csv
+# Cách 1: Truyền file path trực tiếp
+npx hardhat run script/import-items-from-csv.js --network seimainnet ./data/items.csv
+
+# Cách 2: Sử dụng environment variable
+CSV_FILE_PATH=./data/items.csv npx hardhat run script/import-items-from-csv.js --network seimainnet
 ```
 
 ### 2. `batch-import-items.js`
@@ -21,7 +25,11 @@ Script import tối ưu với batch processing để giảm gas cost.
 **Usage:**
 
 ```bash
-npx hardhat run script/batch-import-items.js --network seimainnet -- ./data/items.csv 5
+# Cách 1: Truyền file path và batch size trực tiếp
+npx hardhat run script/batch-import-items.js --network seimainnet ./data/items.csv 5
+
+# Cách 2: Sử dụng environment variables
+CSV_FILE_PATH=./data/items.csv BATCH_SIZE=5 npx hardhat run script/batch-import-items.js --network seimainnet
 ```
 
 **Parameters:**
@@ -37,6 +45,34 @@ Script validate file CSV trước khi import.
 
 ```bash
 node script/validate-csv-items.js ./data/items.csv
+```
+
+### 4. `add-drops-only.js`
+
+Script chỉ thêm drops cho items đã tồn tại.
+
+**Usage:**
+
+```bash
+# Cách 1: Sử dụng environment variable
+CSV_FILE_PATH=./script/data/drops.csv npx hardhat run script/add-drops-only.js --network seimainnet
+
+# Cách 2: Sử dụng default path
+npx hardhat run script/add-drops-only.js --network seimainnet
+```
+
+### 5. `remove-drops-only.js`
+
+Script xóa drops cho items.
+
+**Usage:**
+
+```bash
+# Cách 1: Sử dụng environment variable
+CSV_FILE_PATH=./script/data/remove-drops.csv npx hardhat run script/remove-drops-only.js --network seimainnet
+
+# Cách 2: Sử dụng default path
+npx hardhat run script/remove-drops-only.js --network seimainnet
 ```
 
 ## 📋 CSV Format
@@ -130,10 +166,10 @@ node script/validate-csv-items.js ./data/my-items.csv
 
 ```bash
 # Import cơ bản (từng item một)
-npx hardhat run script/import-items-from-csv.js --network seimainnet -- ./data/my-items.csv
+npx hardhat run script/import-items-from-csv.js --network seimainnet ./data/my-items.csv
 
 # Hoặc import batch (tối ưu gas)
-npx hardhat run script/batch-import-items.js --network seimainnet -- ./data/my-items.csv 5
+npx hardhat run script/batch-import-items.js --network seimainnet ./data/my-items.csv 5
 ```
 
 ## ⚠️ Lưu ý quan trọng
@@ -189,7 +225,7 @@ cat ./deployed/contract-addresses-seimainnet.json
 npx hardhat run --network seimainnet -e "console.log(await ethers.provider.getBalance('YOUR_ADDRESS'))"
 
 # Test với localhost trước
-npx hardhat run script/import-items-from-csv.js --network localhost -- ./data/test-items.csv
+npx hardhat run script/import-items-from-csv.js --network localhost ./data/test-items.csv
 ```
 
 ## 📊 Performance

@@ -4,10 +4,12 @@ pragma solidity ^0.8.28;
 import "../../struct/Player.sol";
 import "../../interfaces/IWorld.sol";
 import "../../interfaces/IPlayer.sol";
+import "../../interfaces/IInventory.sol";
 
 contract PlayerLogic {
     IWorld public world;
     IPlayerComponent public playerProxy;
+    IInventoryComponent public inventoryProxy;
 
     event PlayerCreated(
         address indexed playerAddress,
@@ -35,9 +37,10 @@ contract PlayerLogic {
         _;
     }
 
-    constructor(address _world, address _playerProxy) {
+    constructor(address _world, address _playerProxy, address _inventoryProxy) {
         world = IWorld(_world);
         playerProxy = IPlayerComponent(_playerProxy);
+        inventoryProxy = IInventoryComponent(_inventoryProxy);
     }
 
     function createPlayer(string memory _name) external {
@@ -46,6 +49,14 @@ contract PlayerLogic {
         require(bytes(_name).length <= 32, "[LOGIC] Name too long");
 
         Player memory player = playerProxy.createPlayer(msg.sender, _name);
+
+        // Thêm item khởi đầu cho player mới
+        // Item ID 8 - quantity 1, durability 100, expiration 0
+        inventoryProxy.setItem(msg.sender, 8, 1, 100, 0);
+
+        // Item ID 10 - quantity 1, durability 100, expiration 0
+        inventoryProxy.setItem(msg.sender, 10, 1, 100, 0);
+
         emit PlayerCreated(
             msg.sender,
             player.name,

@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -15,9 +16,7 @@ module.exports = {
   networks: {
     seimainnet: {
       url: "https://evm-rpc.sei-apis.com",
-      accounts: [
-        "09094442dabc562866823bb2fa37082e9f8317ca4303930ec19f426b270e00f4",
-      ],
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
     local: {
       url: "http://127.0.0.1:8545",

@@ -253,18 +253,23 @@ async function batchImportItems(itemLogic, items, batchSize = 5) {
 async function main() {
   console.log("🚀 Bắt đầu batch import items từ CSV...");
 
-  // Parse command line arguments
-  const args = process.argv.slice(2);
-  if (args.length === 0) {
+  // Lấy tham số từ environment variables
+  // Hardhat không hỗ trợ positional arguments trực tiếp
+  const csvFilePath = process.env.CSV_FILE_PATH || "./script/data/items.csv";
+  const batchSize = process.env.BATCH_SIZE
+    ? parseInt(process.env.BATCH_SIZE)
+    : 5;
+
+  if (!csvFilePath) {
     console.error("❌ Vui lòng cung cấp đường dẫn file CSV");
     console.log(
-      "Usage: npx hardhat run script/batch-import-items.js --network <network> -- <csv-file-path> [batch-size]"
+      "Usage: CSV_FILE_PATH=./script/data/items.csv BATCH_SIZE=5 npx hardhat run script/batch-import-items.js --network <network>"
+    );
+    console.log(
+      "Hoặc: npx hardhat run script/batch-import-items.js --network <network> (sử dụng default values)"
     );
     process.exit(1);
   }
-
-  const csvFilePath = args[0];
-  const batchSize = args[1] ? parseInt(args[1]) : 5;
 
   // Validate inputs
   if (!fs.existsSync(csvFilePath)) {

@@ -66,7 +66,7 @@ export function DataTable<TData, TValue>({
         data,
         columns,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
+        getPaginationRowModel: showPagination ? getPaginationRowModel() : undefined,
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         onSortingChange: setSorting,
@@ -155,9 +155,9 @@ export function DataTable<TData, TValue>({
                                 onChange={(e) => onPaginationChange?.(1, Number(e.target.value))}
                                 className="h-8 w-[70px] rounded border border-input bg-background px-3 py-1 text-sm"
                             >
-                                {[10, 20, 30, 40, 50].map((pageSize) => (
+                                {[10, 20, 30, 40, 50, pagination.totalItems].map((pageSize) => (
                                     <option key={pageSize} value={pageSize}>
-                                        {pageSize}
+                                        {pageSize === pagination.totalItems ? 'All' : pageSize}
                                     </option>
                                 ))}
                             </select>

@@ -100,6 +100,10 @@ contract FishingLogic {
 
         // Tạo số ngẫu nhiên từ 1-100
         uint256 randomNum = _generateRandomNumber(100) + 1;
+        InventoryItem memory fishingChest = inventoryComponent.getItem(
+            msg.sender,
+            FISHING_CHEST_ID
+        );
 
         // Kiểm tra xem có nhận được rương không
         if (randomNum <= chestProbability) {
@@ -107,8 +111,8 @@ contract FishingLogic {
             inventoryComponent.setItem(
                 msg.sender,
                 FISHING_CHEST_ID, // ID rương
-                1, // Số lượng
-                100, // Độ bền
+                fishingChest.quantity + 1, // Số lượng
+                fishingChest.durability, // Độ bền
                 0 // Thời gian hết hạn
             );
 
@@ -312,14 +316,7 @@ contract FishingLogic {
      */
     function _generateRandomNumber(uint256 max) internal returns (uint256) {
         uint256 random = uint256(
-            keccak256(
-                abi.encodePacked(
-                    block.timestamp,
-                    block.prevrandao,
-                    msg.sender,
-                    nonce
-                )
-            )
+            keccak256(abi.encodePacked(block.number, msg.sender, nonce))
         );
         nonce++;
         return random % max;

@@ -101,7 +101,7 @@ function parseDrops(dropsStr) {
     if (itemId && probability && quantity) {
       drops.push({
         itemId: parseInt(itemId.trim()),
-        probability: Math.round(parseFloat(probability.trim()) * 100), // Convert to basis points
+        probability: Math.round(parseFloat(probability.trim()) * 100), // Convert percentage to basis points (25% = 2500)
         yield: parseInt(quantity.trim()),
       });
     }
@@ -244,16 +244,21 @@ async function main() {
   console.log("🚀 Bắt đầu import items từ CSV...");
 
   // Lấy command line arguments
-  const args = process.argv.slice(2);
-  if (args.length === 0) {
+  // Hardhat không hỗ trợ positional arguments trực tiếp
+  // Sử dụng environment variable hoặc hardcoded path
+  const csvFilePath =
+    process.env.CSV_FILE_PATH || "./script/data/items_drop.csv";
+
+  if (!csvFilePath) {
     console.error("❌ Vui lòng cung cấp đường dẫn file CSV");
     console.log(
-      "Usage: npx hardhat run script/import-items-from-csv.js --network <network> -- <csv-file-path>"
+      "Usage: CSV_FILE_PATH=./script/data/items.csv npx hardhat run script/import-items-from-csv.js --network <network>"
+    );
+    console.log(
+      "Hoặc: npx hardhat run script/import-items-from-csv.js --network <network> (sử dụng default path)"
     );
     process.exit(1);
   }
-
-  const csvFilePath = args[0];
 
   // Kiểm tra file tồn tại
   if (!fs.existsSync(csvFilePath)) {
