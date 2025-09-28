@@ -30,7 +30,7 @@ async function main() {
   // Lấy địa chỉ các contracts cần thiết
   const worldAddress = deploymentInfo.contracts.World;
   const playerProxyAddress = deploymentInfo.contracts.PlayerProxy;
-  const inventoryComponentAddress = deploymentInfo.contracts.InventoryComponent;
+  const inventoryComponentAddress = deploymentInfo.contracts.InventoryProxy;
   const oldPlayerLogicAddress = deploymentInfo.contracts.PlayerLogic;
 
   console.log("\n📋 Existing contract addresses:");
