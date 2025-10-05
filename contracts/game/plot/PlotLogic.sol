@@ -53,9 +53,7 @@ contract PlotLogic {
     function createPlot(
         int256 _xCoordinate,
         int256 _yCoordinate
-    ) external returns (uint256) {
-        playerProxy.getPlayer(msg.sender);
-
+    ) external {
         WeatherStructs.Weather memory currentWeather = weatherProxy
             .getCurrentWeather();
 
@@ -112,10 +110,11 @@ contract PlotLogic {
             }
         }
 
-        plotProxy.createPlot(_xCoordinate, _yCoordinate, plotType, msg.sender);
-
-        uint256 plotId = uint256(
-            keccak256(abi.encodePacked(msg.sender, _xCoordinate, _yCoordinate))
+        uint256 plotId = plotProxy.createPlot(
+            int32(_xCoordinate),
+            int32(_yCoordinate),
+            uint8(plotType),
+            msg.sender
         );
 
         emit PlotCreated(

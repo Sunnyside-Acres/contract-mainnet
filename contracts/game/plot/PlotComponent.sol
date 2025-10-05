@@ -31,9 +31,9 @@ contract PlotComponent {
     }
 
     function createPlot(
-        int256 _xCoordinate,
-        int256 _yCoordinate,
-        uint256 _plotType,
+        int32 _xCoordinate,
+        int32 _yCoordinate,
+        uint8 _plotType,
         address _plotOwner
     ) external onlyAuthorized returns (uint256) {
         uint256 plotId = uint256(
@@ -44,11 +44,11 @@ contract PlotComponent {
             "[COMPONENT] Plot exist"
         );
         require(
-            _xCoordinate >= -1000000000000000000,
+            _xCoordinate >= -2147483648,
             "[COMPONENT] Invalid xCoordinate"
         );
         require(
-            _yCoordinate >= -1000000000000000000,
+            _yCoordinate >= -2147483648,
             "[COMPONENT] Invalid yCoordinate"
         );
 
@@ -60,7 +60,7 @@ contract PlotComponent {
             isActive: true,
             xCoordinate: _xCoordinate,
             yCoordinate: _yCoordinate,
-            creationTime: block.timestamp,
+            creationTime: uint64(block.timestamp),
             isLocked: false
         });
 

@@ -5,9 +5,9 @@ import "../struct/Plot.sol";
 
 interface IPlotComponent {
     function createPlot(
-        int256 xCoordinate,
-        int256 yCoordinate,
-        uint256 plotType,
+        int32 xCoordinate,
+        int32 yCoordinate,
+        uint8 plotType,
         address plotOwner
     ) external returns (uint256);
 

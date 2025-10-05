@@ -39,27 +39,21 @@ contract PlantComponent {
         _;
     }
 
-    function plantCrop(
-        uint256 _plotId,
-        uint256 _itemId,
-        address _plantOwner,
+    // Helper function để tính toán modifiers cho plot type và weather
+    function _calculateGrowthModifiers(
         uint256 _plotType,
-        uint256 _growthTime,
-        WeatherStructs.WeatherState _weatherState
-    ) external onlyAuthorized {
-        uint256 plantId = uint256(
-            keccak256(
-                abi.encodePacked(_plantOwner, _plotId, _itemId, block.timestamp)
-            )
-        );
+        WeatherStructs.WeatherState _weatherState,
+        uint256 _baseGrowthTime,
+        uint256 _baseQuality
+    )
+        private
+        pure
+        returns (uint256 adjustedGrowthTime, uint256 adjustedQuality)
+    {
+        adjustedGrowthTime = _baseGrowthTime;
+        adjustedQuality = _baseQuality;
 
-        require(plants[plantId].id == 0, "[COMPONENT] Plant already exists");
-        require(_growthTime > 0, "[COMPONENT] Invalid growth time");
-        require(_plotType <= 2, "[COMPONENT] Invalid plot type");
-
-        uint256 adjustedGrowthTime = _growthTime;
-        uint256 adjustedQuality = 100;
-
+        // Plot type modifiers
         if (_plotType == 1) {
             adjustedGrowthTime = (adjustedGrowthTime * 95) / 100; // Giảm 5%
             adjustedQuality += 5;
@@ -68,29 +62,64 @@ contract PlantComponent {
             adjustedQuality += 10;
         }
 
+        // Weather modifiers
         if (_weatherState == WeatherStructs.WeatherState.Cloudy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 90) / 100; // Giảm 5%
+            adjustedGrowthTime = (adjustedGrowthTime * 90) / 100; // Giảm 10%
             adjustedQuality += 10;
         } else if (_weatherState == WeatherStructs.WeatherState.Rainy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 85) / 100; // Giảm 10%
+            adjustedGrowthTime = (adjustedGrowthTime * 85) / 100; // Giảm 15%
             adjustedQuality += 15;
         } else if (_weatherState == WeatherStructs.WeatherState.Stormy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 80) / 100; // Giảm 10%
+            adjustedGrowthTime = (adjustedGrowthTime * 80) / 100; // Giảm 20%
             adjustedQuality += 20;
         } else {
-            adjustedGrowthTime = (adjustedGrowthTime * 95) / 100; // Giảm 10%
+            adjustedGrowthTime = (adjustedGrowthTime * 95) / 100; // Giảm 5%
             adjustedQuality += 5;
         }
+    }
 
+    function plantCrop(
+        uint256 _plotId,
+        uint256 _itemId,
+        address _plantOwner,
+        uint256 _plotType,
+        uint256 _growthTime,
+        WeatherStructs.WeatherState _weatherState
+    ) external onlyAuthorized {
+        // Cache block.timestamp để tránh multiple calls
+        uint256 currentTime = block.timestamp;
+
+        uint256 plantId = uint256(
+            keccak256(
+                abi.encodePacked(_plantOwner, _plotId, _itemId, currentTime)
+            )
+        );
+
+        require(plants[plantId].id == 0, "[COMPONENT] Plant already exists");
+        require(_growthTime > 0, "[COMPONENT] Invalid growth time");
+        require(_plotType <= 2, "[COMPONENT] Invalid plot type");
+
+        // Sử dụng helper function để tính toán modifiers
+        (
+            uint256 adjustedGrowthTime,
+            uint256 adjustedQuality
+        ) = _calculateGrowthModifiers(
+                _plotType,
+                _weatherState,
+                _growthTime,
+                100
+            );
+
+        // Batch storage operations
         plants[plantId] = Plant(
             plantId,
-            _plotId,
-            _itemId,
-            block.timestamp,
-            block.timestamp,
-            adjustedQuality,
-            adjustedGrowthTime,
-            0,
+            uint64(_plotId),
+            uint64(_itemId),
+            uint64(currentTime),
+            uint64(currentTime),
+            uint32(adjustedGrowthTime),
+            uint16(adjustedQuality),
+            uint16(0),
             false
         );
 
@@ -107,34 +136,27 @@ contract PlantComponent {
     ) external onlyAuthorized {
         Plant storage plant = plants[_plantId];
         require(!plant.isHarvested, "[COMPONENT] Plant already harvested");
-
         require(plant.tendCount <= 3, "[COMPONENT] Too many tend");
 
+        // Cache current time và optimize time calculation
+        uint256 currentTime = block.timestamp;
         require(
-            block.timestamp >= plant.lastTendedTime + (plant.growthTime / 3),
+            currentTime >= plant.lastTendedTime + (plant.growthTime / 3),
             "Too early to tend"
         );
 
-        uint256 adjustedGrowthTime = plant.growthTime;
-        uint256 adjustedQuality = plant.qualityModifier;
+        // Sử dụng helper function để tính toán modifiers
+        (uint256 adjustedGrowthTime, uint256 adjustedQuality) = _calculateGrowthModifiers(
+            0, // plotType = 0 (không áp dụng plot modifier khi tend)
+            _weatherState,
+            plant.growthTime,
+            plant.qualityModifier
+        );
 
-        if (_weatherState == WeatherStructs.WeatherState.Cloudy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 90) / 100; // Giảm 5%
-            adjustedQuality += 10;
-        } else if (_weatherState == WeatherStructs.WeatherState.Rainy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 85) / 100; // Giảm 10%
-            adjustedQuality += 15;
-        } else if (_weatherState == WeatherStructs.WeatherState.Stormy) {
-            adjustedGrowthTime = (adjustedGrowthTime * 80) / 100; // Giảm 10%
-            adjustedQuality += 20;
-        } else {
-            adjustedGrowthTime = (adjustedGrowthTime * 95) / 100; // Giảm 10%
-            adjustedQuality += 5;
-        }
-
-        plant.qualityModifier = adjustedQuality;
-        plant.growthTime = adjustedGrowthTime;
-        plant.lastTendedTime = block.timestamp;
+        // Batch storage updates
+        plant.qualityModifier = uint16(adjustedQuality);
+        plant.growthTime = uint32(adjustedGrowthTime);
+        plant.lastTendedTime = uint64(currentTime);
         plant.tendCount++;
 
         emit PlantTended(_plantId, adjustedQuality);
@@ -145,12 +167,15 @@ contract PlantComponent {
     ) external onlyAuthorized returns (uint256) {
         Plant storage plant = plants[_plantId];
         require(!plant.isHarvested, "[COMPONENT] Plant already harvested");
+
+        // Cache current time
+        uint256 currentTime = block.timestamp;
         require(
-            plant.plantedTime + plant.growthTime <= block.timestamp,
+            plant.plantedTime + plant.growthTime <= currentTime,
             "Plant not fully grown"
         );
 
-        // Lưu thông tin cần thiết trước khi xóa
+        // Cache tất cả values cần thiết trong 1 lần để giảm storage reads
         address owner = plantOwners[_plantId];
         uint256 plotId = plant.plotId;
         uint256 qualityModifier = plant.qualityModifier;
@@ -158,7 +183,7 @@ contract PlantComponent {
         // Xóa khỏi danh sách owner trước
         removePlantFromOwnerList(owner, _plantId);
 
-        // Sau đó xóa các mapping
+        // Batch delete operations
         delete plantOwners[_plantId];
         delete plants[_plantId];
         delete plotPlants[plotId];
@@ -211,13 +236,16 @@ contract PlantComponent {
         uint256[] memory allPlants = ownerPlants[owner];
         uint256 count = 0;
 
-        // Đếm số lượng cây hợp lệ (còn tồn tại trong mapping và chưa thu hoạch)
+        // Single pass để đếm và tạo mảng kết quả
         for (uint256 i = 0; i < allPlants.length; i++) {
             uint256 plantId = allPlants[i];
+            // Cache plant data để tránh multiple SLOAD
+            Plant memory plant = plants[plantId];
+
             if (
                 plantOwners[plantId] == owner && // Kiểm tra quyền sở hữu
-                plants[plantId].id != 0 && // Kiểm tra plant còn tồn tại
-                !plants[plantId].isHarvested // Kiểm tra chưa thu hoạch
+                plant.id != 0 && // Kiểm tra plant còn tồn tại
+                !plant.isHarvested // Kiểm tra chưa thu hoạch
             ) {
                 count++;
             }
@@ -227,15 +255,16 @@ contract PlantComponent {
         Plant[] memory result = new Plant[](count);
         uint256 index = 0;
 
-        // Lấy thông tin các cây hợp lệ
+        // Second pass để populate result
         for (uint256 i = 0; i < allPlants.length; i++) {
             uint256 plantId = allPlants[i];
+            Plant memory plant = plants[plantId];
+
             if (
                 plantOwners[plantId] == owner &&
-                plants[plantId].id != 0 &&
-                !plants[plantId].isHarvested
+                plant.id != 0 &&
+                !plant.isHarvested
             ) {
-                Plant memory plant = plants[plantId];
                 result[index] = plant;
                 index++;
             }
