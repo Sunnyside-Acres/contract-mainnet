@@ -12,14 +12,16 @@ import "../../struct/Player.sol";
 
 /**
  * @title CraftingLogic
- * @dev Logic contract cho hệ thống Crafting - cho phép người chơi tạo item từ nguyên liệu
+ * @author RYG.Labs
+ * @notice Logic contract for the Crafting system - allows players to create items from materials
+ * @dev Implements the core crafting mechanics for the game
  *
- * Tính năng chính:
- * - Tạo và quản lý công thức crafting
- * - Craft item với tỉ lệ thành công dựa trên khoảng số user chọn
- * - Quản lý nguyên liệu và chi phí (sunlight, sunny)
- * - Lịch sử crafting và thống kê
- * - Kiểm tra điều kiện crafting
+ * Key Features:
+ * - Create and manage crafting recipes
+ * - Craft items with success rate based on user-selected range
+ * - Manage ingredients and costs (sunlight, sunny)
+ * - Crafting history and statistics
+ * - Check crafting conditions
  */
 contract CraftingLogic {
     IWorld public world;
@@ -94,21 +96,22 @@ contract CraftingLogic {
     // ============ WRITE FUNCTIONS (EXTERNAL) ============
 
     /**
-     * @dev Tạo công thức crafting mới (chỉ admin)
-     * @param _resultItemId ID của item kết quả
-     * @param _resultQuantity Số lượng item kết quả
-     * @param _successRate Tỉ lệ thành công (0-99, đại diện cho số đơn vị trong khoảng)
-     * @param _sunlightCost Chi phí sunlight
-     * @param _sunnyCost Chi phí sunny
-     * @param _ingredients Mảng nguyên liệu cần thiết
-     * @param _minPlayerLevel Level tối thiểu của người chơi
-     * @return recipeId ID của công thức mới tạo
+     * @notice Create a new crafting recipe (admin only)
+     * @dev Validates all inputs before creating the recipe
+     * @param _resultItemId The ID of the resulting item
+     * @param _resultQuantity The quantity of the resulting item
+     * @param _successRate The success rate (0-99, represents number of units in range)
+     * @param _sunlightCost The sunlight cost for crafting
+     * @param _sunnyCost The sunny token cost for crafting
+     * @param _ingredients Array of required ingredients
+     * @param _minPlayerLevel Minimum player level required
+     * @return recipeId The ID of the newly created recipe
      *
-     * Quy trình:
-     * 1. Validate result item và ingredients tồn tại
-     * 2. Kiểm tra số lượng nguyên liệu > 0
-     * 3. Tạo công thức trong component
-     * 4. Emit event RecipeCreated
+     * Process:
+     * 1. Validate that result item and ingredients exist
+     * 2. Check that ingredient quantities > 0
+     * 3. Create recipe in component
+     * 4. Emit RecipeCreated event
      */
     function createRecipe(
         uint256 _resultItemId,
@@ -158,20 +161,21 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Craft item với khoảng số user chọn (người chơi gọi)
-     * @param _recipeId ID của công thức muốn craft
-     * @param _rangeStart Điểm bắt đầu khoảng số (0-99)
-     * @param _rangeEnd Điểm kết thúc khoảng số (0-99)
+     * @notice Craft an item with user-selected number range
+     * @dev Players call this function to attempt crafting. Success is determined by whether a random number falls within the selected range
+     * @param _recipeId The ID of the recipe to craft
+     * @param _rangeStart The start point of the number range (0-99)
+     * @param _rangeEnd The end point of the number range (0-99)
      *
-     * Quy trình:
-     * 1. Kiểm tra công thức tồn tại và đang hoạt động
-     * 2. Validate level người chơi và tài nguyên
-     * 3. Kiểm tra đủ nguyên liệu trong inventory
-     * 4. Validate khoảng số user chọn
-     * 5. Trừ sunlight, sunny và nguyên liệu
-     * 6. Random số từ 0-100 và xác định thành công
-     * 7. Thêm item kết quả nếu thành công
-     * 8. Ghi lịch sử crafting
+     * Process:
+     * 1. Check that recipe exists and is active
+     * 2. Validate player level and resources
+     * 3. Check that player has all required ingredients
+     * 4. Validate user-selected range
+     * 5. Deduct sunlight, sunny, and ingredients
+     * 6. Generate random number 0-100 and determine success
+     * 7. Add result item if successful
+     * 8. Record crafting history
      */
     function craftItem(
         uint256 _recipeId,
@@ -185,20 +189,20 @@ contract CraftingLogic {
         CraftingRecipe memory recipe = craftingProxy.getRecipe(_recipeId);
         require(recipe.isActive, "Recipe is not active");
 
-        // Validate range - hỗ trợ cả trường hợp start > end (khoảng ngược)
+        // Validate range - supports both normal and wrap-around ranges (start > end)
         require(
             _rangeStart >= 0 && _rangeStart <= 99,
             "Range start must be 0-99"
         );
         require(_rangeEnd >= 0 && _rangeEnd <= 99, "Range end must be 0-99");
 
-        // Tính kích thước khoảng (hỗ trợ cả khoảng thuận và ngược)
+        // Calculate range size (supports both normal and wrap-around ranges)
         uint256 rangeSize;
         if (_rangeStart <= _rangeEnd) {
-            // Khoảng thuận: 5 -> 10 (kích thước = 6)
+            // Normal range: 5 -> 10 (size = 6)
             rangeSize = _rangeEnd - _rangeStart + 1;
         } else {
-            // Khoảng ngược: 80 -> 30 (kích thước = 50)
+            // Wrap-around range: 80 -> 30 (size = 50)
             rangeSize = (99 - _rangeStart + 1) + (_rangeEnd + 1);
         }
 
@@ -243,7 +247,7 @@ contract CraftingLogic {
             playerProxy.subtractSunny(player, recipe.sunnyCost);
         }
 
-        // Deduct ingredients (luôn trừ dù thành công hay thất bại)
+        // Deduct ingredients (always deducted regardless of success or failure)
         for (uint256 i = 0; i < recipe.ingredients.length; i++) {
             CraftingIngredient memory ingredient = recipe.ingredients[i];
             InventoryItem memory playerItem = inventoryProxy.getItem(
@@ -310,19 +314,20 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Cập nhật công thức (chỉ admin)
-     * @param _recipeId ID của công thức muốn cập nhật
-     * @param _successRate Tỉ lệ thành công mới (0-99)
-     * @param _sunlightCost Chi phí sunlight mới
-     * @param _sunnyCost Chi phí sunny mới
-     * @param _ingredients Nguyên liệu mới
-     * @param _minPlayerLevel Level tối thiểu mới
+     * @notice Update an existing recipe (admin only)
+     * @dev Validates all inputs before updating the recipe
+     * @param _recipeId The ID of the recipe to update
+     * @param _successRate The new success rate (0-99)
+     * @param _sunlightCost The new sunlight cost
+     * @param _sunnyCost The new sunny token cost
+     * @param _ingredients The new ingredients array
+     * @param _minPlayerLevel The new minimum player level
      *
-     * Quy trình:
-     * 1. Kiểm tra công thức tồn tại
-     * 2. Validate nguyên liệu mới
-     * 3. Cập nhật thông tin công thức
-     * 4. Emit event RecipeUpdated
+     * Process:
+     * 1. Check that recipe exists
+     * 2. Validate new ingredients
+     * 3. Update recipe information
+     * 4. Emit RecipeUpdated event
      */
     function updateRecipe(
         uint256 _recipeId,
@@ -362,14 +367,15 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Bật/tắt công thức (chỉ admin)
-     * @param _recipeId ID của công thức
-     * @param _isActive Trạng thái hoạt động mới
+     * @notice Enable or disable a recipe (admin only)
+     * @dev Changes the active status of a recipe
+     * @param _recipeId The ID of the recipe
+     * @param _isActive The new active status
      *
-     * Quy trình:
-     * 1. Kiểm tra công thức tồn tại
-     * 2. Cập nhật trạng thái hoạt động
-     * 3. Emit event RecipeStatusChanged
+     * Process:
+     * 1. Check that recipe exists
+     * 2. Update active status
+     * 3. Emit RecipeStatusChanged event
      */
     function setRecipeActive(
         uint256 _recipeId,
@@ -382,13 +388,14 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Xóa công thức (chỉ admin)
-     * @param _recipeId ID của công thức muốn xóa
+     * @notice Delete a recipe (admin only)
+     * @dev Removes a recipe from the system
+     * @param _recipeId The ID of the recipe to delete
      *
-     * Quy trình:
-     * 1. Kiểm tra công thức tồn tại
-     * 2. Xóa công thức khỏi hệ thống
-     * 3. Emit event RecipeDeleted
+     * Process:
+     * 1. Check that recipe exists
+     * 2. Remove recipe from system
+     * 3. Emit RecipeDeleted event
      */
     function deleteRecipe(uint256 _recipeId) external onlyAdmin {
         require(craftingProxy.exists(_recipeId), "Recipe does not exist");
@@ -400,10 +407,10 @@ contract CraftingLogic {
     // ============ INTERNAL FUNCTIONS ============
 
     /**
-     * @dev Tạo số random trong khoảng min-max
-     * @param _min Giá trị tối thiểu
-     * @param _max Giá trị tối đa
-     * @return Số random trong khoảng
+     * @dev Generate a random number within min-max range
+     * @param _min The minimum value
+     * @param _max The maximum value
+     * @return A random number within the range
      */
     function _generateRandomNumber(
         uint256 _min,
@@ -427,15 +434,15 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Kiểm tra xem số có nằm trong khoảng không (hỗ trợ cả khoảng thuận và ngược)
-     * @param _number Số cần kiểm tra
-     * @param _rangeStart Điểm bắt đầu khoảng
-     * @param _rangeEnd Điểm kết thúc khoảng
-     * @return bool True nếu số nằm trong khoảng
+     * @dev Check if a number is within a range (supports both normal and wrap-around ranges)
+     * @param _number The number to check
+     * @param _rangeStart The start of the range
+     * @param _rangeEnd The end of the range
+     * @return bool True if the number is within the range
      *
-     * Ví dụ:
-     * - Khoảng thuận: 5-10 -> số 7 sẽ trả về true
-     * - Khoảng ngược: 80-30 -> số 2, 75, 99 sẽ trả về true
+     * Examples:
+     * - Normal range: 5-10 -> number 7 returns true
+     * - Wrap-around range: 80-30 -> numbers 2, 75, 99 return true
      */
     function _isNumberInRange(
         uint256 _number,
@@ -443,10 +450,10 @@ contract CraftingLogic {
         uint256 _rangeEnd
     ) internal pure returns (bool) {
         if (_rangeStart <= _rangeEnd) {
-            // Khoảng thuận: 5 -> 10
+            // Normal range: 5 -> 10
             return _number >= _rangeStart && _number <= _rangeEnd;
         } else {
-            // Khoảng ngược: 80 -> 30 (bao gồm 80-99 và 0-30)
+            // Wrap-around range: 80 -> 30 (includes 80-99 and 0-30)
             return _number >= _rangeStart || _number <= _rangeEnd;
         }
     }
@@ -454,16 +461,16 @@ contract CraftingLogic {
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============
 
     /**
-     * @dev Lấy tất cả công thức crafting
-     * @return Mảng tất cả CraftingRecipe
+     * @notice Get all crafting recipes
+     * @return Array of all CraftingRecipe structs
      */
     function getAllRecipes() external view returns (CraftingRecipe[] memory) {
         return craftingProxy.getAllRecipes();
     }
 
     /**
-     * @dev Lấy các công thức đang hoạt động
-     * @return Mảng các CraftingRecipe đang hoạt động
+     * @notice Get all active crafting recipes
+     * @return Array of active CraftingRecipe structs
      */
     function getActiveRecipes()
         external
@@ -474,9 +481,9 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Lấy lịch sử crafting của người chơi
-     * @param _player Địa chỉ người chơi
-     * @return Mảng CraftingHistory của người chơi
+     * @notice Get a player's crafting history
+     * @param _player The player's address
+     * @return Array of CraftingHistory structs for the player
      */
     function getPlayerCraftingHistory(
         address _player
@@ -485,17 +492,19 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Kiểm tra xem người chơi có thể craft công thức này không
-     * @param _player Địa chỉ người chơi
-     * @param _recipeId ID của công thức
-     * @return (bool success, string message) Kết quả kiểm tra
+     * @notice Check if a player can craft a recipe
+     * @dev Performs comprehensive validation of player's ability to craft
+     * @param _player The player's address
+     * @param _recipeId The ID of the recipe
+     * @return success True if player can craft
+     * @return message Description of the result
      *
-     * Kiểm tra:
-     * 1. Công thức tồn tại và đang hoạt động
-     * 2. Người chơi đã khởi tạo
-     * 3. Level người chơi đủ yêu cầu
-     * 4. Đủ sunlight và sunny
-     * 5. Đủ nguyên liệu trong inventory
+     * Checks:
+     * 1. Recipe exists and is active
+     * 2. Player is initialized
+     * 3. Player level meets requirement
+     * 4. Sufficient sunlight and sunny
+     * 5. Sufficient ingredients in inventory
      */
     function canCraftRecipe(
         address _player,
@@ -540,9 +549,9 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Lấy thông tin chi tiết về công thức
-     * @param _recipeId ID của công thức
-     * @return recipe Thông tin chi tiết của công thức
+     * @notice Get detailed information about a recipe
+     * @param _recipeId The ID of the recipe
+     * @return recipe The detailed recipe information
      */
     function getRecipeDetails(
         uint256 _recipeId
@@ -552,11 +561,11 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Lấy thống kê crafting của người chơi
-     * @param _player Địa chỉ người chơi
-     * @return totalCrafts Tổng số lần craft
-     * @return successfulCrafts Số lần craft thành công
-     * @return successRate Tỉ lệ thành công (0-10000)
+     * @notice Get a player's crafting statistics
+     * @param _player The player's address
+     * @return totalCrafts Total number of crafting attempts
+     * @return successfulCrafts Number of successful crafts
+     * @return successRate Success rate (0-10000, representing percentage with 2 decimal places)
      */
     function getPlayerCraftingStats(
         address _player
@@ -586,9 +595,9 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Lấy danh sách công thức mà người chơi có thể craft
-     * @param _player Địa chỉ người chơi
-     * @return Mảng các công thức có thể craft
+     * @notice Get list of recipes that a player can craft
+     * @param _player The player's address
+     * @return Array of recipes that the player can currently craft
      */
     function getAvailableRecipesForPlayer(
         address _player
@@ -619,11 +628,11 @@ contract CraftingLogic {
     }
 
     /**
-     * @dev Lấy thống kê tổng quan về hệ thống crafting
-     * @return totalRecipes Tổng số công thức
-     * @return activeRecipes Số công thức đang hoạt động
-     * @return totalCrafts Tổng số lần craft
-     * @return totalSuccessfulCrafts Tổng số lần craft thành công
+     * @notice Get overall crafting system statistics
+     * @return totalRecipes Total number of recipes
+     * @return activeRecipes Number of active recipes
+     * @return totalCrafts Total number of crafting attempts (not currently tracked)
+     * @return totalSuccessfulCrafts Total number of successful crafts (not currently tracked)
      */
     function getCraftingSystemStats()
         external

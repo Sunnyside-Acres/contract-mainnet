@@ -4,32 +4,44 @@ pragma solidity ^0.8.28;
 import "../../interfaces/IWorld.sol";
 import "../../struct/FleaMarket.sol";
 
+/**
+ * @title FleaMarketComponent
+ * @author RYG.Labs
+ * @notice Data storage contract for the Flea Market system
+ * @dev Stores all market listings, transactions, and market statistics
+ */
 contract FleaMarketComponent {
+    /// @notice Address of the World contract for access control
     address public world;
+
+    /// @notice Address of the admin
     address public admin;
+
+    /// @notice Address of the implementation logic contract
     address public implementation;
 
-    // Mapping từ listing ID đến MarketListing
+    /// @notice Mapping from listing ID to MarketListing
     mapping(uint256 => MarketListing) public listings;
 
-    // Mapping từ player address đến danh sách listing IDs
+    /// @notice Mapping from player address to their listing IDs
     mapping(address => uint256[]) public sellerListings;
 
-    // Mapping từ item ID đến danh sách listing IDs
+    /// @notice Mapping from item ID to listing IDs for that item
     mapping(uint256 => uint256[]) public itemListings;
 
-    // Mapping từ player address đến lịch sử giao dịch
+    /// @notice Mapping from player address to their transaction history
     mapping(address => MarketTransaction[]) public transactionHistory;
 
-    // Tổng số listing
+    /// @notice Total number of listings created
     uint256 public listingCount;
 
-    // Danh sách tất cả listing IDs
+    /// @notice Array of all listing IDs
     uint256[] public allListingIds;
 
-    // Thống kê thị trường
+    /// @notice Market statistics
     MarketStats public marketStats;
 
+    /// @notice Restricts access to authorized logic contracts only
     modifier onlyAuthorized() {
         require(
             IWorld(world).isLogicRegistered(msg.sender),
@@ -38,6 +50,17 @@ contract FleaMarketComponent {
         _;
     }
 
+    /**
+     * @notice Create a new market listing
+     * @param _seller The address of the seller
+     * @param _itemId The ID of the item being sold
+     * @param _quantity The quantity of items
+     * @param _price The price per item
+     * @param _duration The listing duration in seconds
+     * @param _durability The durability of the item
+     * @param _expiration The expiration time of the item
+     * @return The ID of the newly created listing
+     */
     function createListing(
         address _seller,
         uint256 _itemId,
@@ -82,6 +105,11 @@ contract FleaMarketComponent {
         return listingId;
     }
 
+    /**
+     * @notice Get a listing by ID
+     * @param _listingId The ID of the listing
+     * @return The MarketListing struct
+     */
     function getListing(
         uint256 _listingId
     ) external view returns (MarketListing memory) {
@@ -89,6 +117,10 @@ contract FleaMarketComponent {
         return listings[_listingId];
     }
 
+    /**
+     * @notice Get all listings
+     * @return Array of all MarketListing structs
+     */
     function getAllListings() external view returns (MarketListing[] memory) {
         MarketListing[] memory allListings = new MarketListing[](
             allListingIds.length
@@ -101,6 +133,10 @@ contract FleaMarketComponent {
         return allListings;
     }
 
+    /**
+     * @notice Get all active (non-expired) listings
+     * @return Array of active MarketListing structs
+     */
     function getActiveListings()
         external
         view
@@ -136,6 +172,11 @@ contract FleaMarketComponent {
         return activeListings;
     }
 
+    /**
+     * @notice Get active listings by seller
+     * @param _seller The seller's address
+     * @return Array of active MarketListing structs for the seller
+     */
     function getListingsBySeller(
         address _seller
     ) external view returns (MarketListing[] memory) {
@@ -174,9 +215,9 @@ contract FleaMarketComponent {
     }
 
     /**
-     * @dev Lấy tất cả listing của seller (bao gồm cả inactive) để xem lịch sử
-     * @param _seller Địa chỉ người bán
-     * @return Mảng tất cả MarketListing của người bán
+     * @notice Get all listings by seller (including inactive ones) for viewing history
+     * @param _seller The seller's address
+     * @return Array of all MarketListing structs for the seller
      */
     function getAllListingsBySeller(
         address _seller
@@ -193,6 +234,11 @@ contract FleaMarketComponent {
         return sellerListingsArray;
     }
 
+    /**
+     * @notice Get active listings by item ID
+     * @param _itemId The item ID
+     * @return Array of active MarketListing structs for the item
+     */
     function getListingsByItem(
         uint256 _itemId
     ) external view returns (MarketListing[] memory) {
@@ -228,6 +274,13 @@ contract FleaMarketComponent {
         return itemListingsArray;
     }
 
+    /**
+     * @notice Update an existing listing
+     * @param _listingId The ID of the listing to update
+     * @param _quantity The new quantity
+     * @param _price The new price
+     * @param _duration The new duration in seconds
+     */
     function updateListing(
         uint256 _listingId,
         uint256 _quantity,
@@ -246,6 +299,10 @@ contract FleaMarketComponent {
         listing.expirationTime = block.timestamp + _duration;
     }
 
+    /**
+     * @notice Cancel a listing
+     * @param _listingId The ID of the listing to cancel
+     */
     function cancelListing(uint256 _listingId) external onlyAuthorized {
         require(listings[_listingId].id != 0, "Listing does not exist");
         require(listings[_listingId].isActive, "Listing is not active");
@@ -255,8 +312,8 @@ contract FleaMarketComponent {
     }
 
     /**
-     * @dev Xóa hoàn toàn listing khỏi hệ thống (internal function)
-     * @param _listingId ID của listing cần xóa
+     * @dev Remove a listing completely from the system (internal function)
+     * @param _listingId The ID of the listing to remove
      */
     function removeListing(uint256 _listingId) internal {
         require(listings[_listingId].id != 0, "Listing does not exist");
@@ -305,6 +362,13 @@ contract FleaMarketComponent {
         delete listings[_listingId];
     }
 
+    /**
+     * @notice Process a purchase from a listing
+     * @param _listingId The ID of the listing
+     * @param _buyer The buyer's address
+     * @param _quantity The quantity to purchase
+     * @return True if purchase was successful
+     */
     function purchaseItem(
         uint256 _listingId,
         address _buyer,
@@ -338,6 +402,17 @@ contract FleaMarketComponent {
         return true;
     }
 
+    /**
+     * @notice Add a transaction to history
+     * @param _listingId The ID of the listing
+     * @param _seller The seller's address
+     * @param _buyer The buyer's address
+     * @param _itemId The item ID
+     * @param _quantity The quantity purchased
+     * @param _price The price per item
+     * @param _durability The item durability
+     * @param _expiration The item expiration
+     */
     function addTransaction(
         uint256 _listingId,
         address _seller,
@@ -371,24 +446,47 @@ contract FleaMarketComponent {
         marketStats.totalVolume += _price * _quantity;
     }
 
+    /**
+     * @notice Get a player's transaction history
+     * @param _player The player's address
+     * @return Array of MarketTransaction structs for the player
+     */
     function getTransactionHistory(
         address _player
     ) external view returns (MarketTransaction[] memory) {
         return transactionHistory[_player];
     }
 
+    /**
+     * @notice Get market statistics
+     * @return The MarketStats struct
+     */
     function getMarketStats() external view returns (MarketStats memory) {
         return marketStats;
     }
 
+    /**
+     * @notice Get the total number of listings
+     * @return The total listing count
+     */
     function getListingCount() external view returns (uint256) {
         return listingCount;
     }
 
+    /**
+     * @notice Check if a listing exists
+     * @param _listingId The ID of the listing
+     * @return True if the listing exists, false otherwise
+     */
     function exists(uint256 _listingId) external view returns (bool) {
         return listings[_listingId].id != 0;
     }
 
+    /**
+     * @notice Check if a listing is active and not expired
+     * @param _listingId The ID of the listing
+     * @return True if the listing is active and not expired, false otherwise
+     */
     function isListingActive(uint256 _listingId) external view returns (bool) {
         return
             listings[_listingId].isActive &&

@@ -1,19 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+/**
+ * @title WeatherStructs
+ * @notice Library containing weather-related data structures
+ */
 library WeatherStructs {
-    // Enum để định nghĩa các trạng thái thời tiết
+    /**
+     * @notice Enum defining weather states
+     */
     enum WeatherState {
-        Sunny,
-        Rainy,
-        Stormy,
-        Cloudy
+        Sunny, /// Sunny weather
+        Rainy, /// Rainy weather
+        Stormy, /// Stormy weather
+        Cloudy /// Cloudy weather
     }
 
-    // Struct để lưu thông tin thời tiết
+    /**
+     * @notice Struct representing weather information
+     */
     struct Weather {
-        WeatherState state; // Trạng thái thời tiết
-        uint256 startTime; // Thời gian bắt đầu (timestamp)
-        uint256 duration; // Thời gian kéo dài (tính bằng giây)
+        WeatherState state; /// Current weather state
+        uint256 startTime; /// Start timestamp
+        uint256 duration; /// Duration in seconds
     }
 }

@@ -8,19 +8,45 @@ import "../../interfaces/IPlot.sol";
 import "../../interfaces/IInventory.sol";
 import "../../interfaces/IItem.sol";
 
+/**
+ * @title PlantLogic
+ * @dev Logic contract for Plant/Crop system - handles crop planting and harvesting gameplay
+ * @notice This contract manages all planting-related gameplay including planting seeds, tending crops, and harvesting
+ *
+ * Key Features:
+ * - Plant seeds on plots
+ * - Tend crops to improve quality (up to 3 times)
+ * - Harvest crops with quality-based rewards
+ * - Weather integration for growth modifiers
+ * - Quality-based reward system with probabilistic drops
+ */
 contract PlantLogic {
+    /// @notice World contract for access control
     IWorld public world;
+    /// @notice Plant component for crop data storage
     IPlantComponent public plantProxy;
+    /// @notice Plot component for land plot management
     IPlotComponent public plotProxy;
+    /// @notice Inventory component for item management
     IInventoryComponent public inventoryProxy;
+    /// @notice Weather component for environmental effects
     IWeatherComponent public weatherProxy;
+    /// @notice Item component for item data and drops
     IItemComponent public itemProxy;
 
+    /**
+     * @dev Modifier to restrict access to admin only
+     * @notice Reverts if caller is not an admin
+     */
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
         _;
     }
 
+    /**
+     * @dev Modifier to restrict access to registered logic contracts only
+     * @notice Reverts if caller is not a registered logic contract
+     */
     modifier onlyInternal() {
         require(
             world.isLogicRegistered(msg.sender),
@@ -29,6 +55,7 @@ contract PlantLogic {
         _;
     }
 
+    /// @notice Emitted when a player plants a seed on a plot
     event PlantCreated(
         uint256 indexed plantId,
         address indexed player,
@@ -42,6 +69,7 @@ contract PlantLogic {
         bool isHarvested
     );
 
+    /// @notice Emitted when a player harvests a crop
     event PlantHarvested(
         address indexed player,
         uint256 indexed plantId,
@@ -49,11 +77,22 @@ contract PlantLogic {
         uint256[] itemIds,
         uint256[] itemAmounts
     );
+
+    /// @notice Emitted when a player tends to a crop
     event PlantTended(
         uint256 indexed plantId,
         WeatherStructs.WeatherState weatherState
     );
 
+    /**
+     * @dev Initializes the PlantLogic contract with required dependencies
+     * @param _world Address of the World contract
+     * @param _plantProxy Address of the PlantComponent proxy
+     * @param _plotProxy Address of the PlotComponent proxy
+     * @param _inventoryProxy Address of the InventoryComponent proxy
+     * @param _weatherProxy Address of the WeatherComponent proxy
+     * @param _itemProxy Address of the ItemComponent proxy
+     */
     constructor(
         address _world,
         address _plantProxy,
@@ -70,18 +109,45 @@ contract PlantLogic {
         itemProxy = IItemComponent(_itemProxy);
     }
 
+    /**
+     * @dev Internal helper for pseudo-random number generation
+     * @notice Uses sender address and block number for randomness (not cryptographically secure)
+     * @param max Maximum value (exclusive)
+     * @return Random number between 0 and max-1
+     */
     function random(uint256 max) private view returns (uint256) {
         return
             uint256(keccak256(abi.encodePacked(msg.sender, block.number))) %
             max;
     }
 
+    /**
+     * @dev Plants a seed on a plot
+     * @notice Consumes one seed item from inventory and creates a crop on the specified plot
+     *
+     * Requirements:
+     * - Plot ID and item ID must be valid
+     * - Caller must own the plot
+     * - Plot must be active
+     * - Plot must not already have a plant
+     * - Item must be of type Seed
+     * - Player must have at least 1 of the seed in inventory
+     *
+     * Effects:
+     * - Removes 1 seed from inventory
+     * - Creates new plant with weather-adjusted growth time
+     * - Associates plant with plot
+     * - Emits PlantCreated event
+     *
+     * @param _plotId ID of the plot to plant on
+     * @param _itemId ID of the seed item to plant
+     */
     function plantCrop(uint256 _plotId, uint256 _itemId) external {
-        // Kiểm tra điều kiện trước khi trồng
+        // Validate conditions before planting
         require(_plotId > 0, "Invalid plot ID");
         require(_itemId > 0, "Invalid item ID");
 
-        // Kiểm tra xem plot có tồn tại không
+        // Check if plot exists
         require(
             plotProxy.getPlotOwner(_plotId) == msg.sender,
             "Plot not owned"
@@ -89,7 +155,7 @@ contract PlantLogic {
 
         require(plotProxy.getPlot(_plotId).isActive, "Plot is not active");
 
-        // Kiểm tra xem plot đã có cây hay chưa
+        // Check if plot already has a plant
         require(
             plantProxy.getPlotPlants(_plotId) == 0,
             "Plot already has a plant"
@@ -110,7 +176,7 @@ contract PlantLogic {
             .getCurrentWeatherState();
 
         Plot memory plot = plotProxy.getPlot(_plotId);
-        // Kiểm tra xem item có tồn tại không
+        // Verify item exists
         require(
             item.itemType == ItemStructs.ItemType.Seed,
             "Item is not a seed"
@@ -139,7 +205,7 @@ contract PlantLogic {
             weatherState
         );
 
-        // Lấy thông tin plant vừa tạo để emit event
+        // Get plant info after creation to emit event
         uint256 plantId = uint256(
             keccak256(
                 abi.encodePacked(msg.sender, _plotId, _itemId, block.timestamp)
@@ -162,6 +228,30 @@ contract PlantLogic {
         );
     }
 
+    /**
+     * @dev Harvests a fully grown crop
+     * @notice Removes the crop and plot, gives rewards based on quality and RNG
+     *
+     * Requirements:
+     * - Caller must be the plant owner
+     * - Plant must not be already harvested
+     * - Plant must be fully grown (checked in component)
+     *
+     * Reward System:
+     * - Uses drop system with probability and yield
+     * - Quality modifier increases drop probability and yield
+     * - Minimum quality is 100 (no penalty)
+     * - Guaranteed at least 1 item of the first drop
+     *
+     * Effects:
+     * - Marks plant as harvested
+     * - Deletes plant data
+     * - Deletes associated plot
+     * - Adds harvested items to player inventory
+     * - Emits PlantHarvested event
+     *
+     * @param plantId ID of the plant to harvest
+     */
     function plantHarvest(uint256 plantId) external {
         require(plantId > 0, "Invalid plant ID");
         require(
@@ -204,7 +294,7 @@ contract PlantLogic {
                 if (drops[i].yield == 0) {
                     itemAmount = 1;
                 } else {
-                    // Sử dụng yield làm số lượng cơ bản, qualityModifier làm hệ số nhân
+                    // Use yield as base quantity, qualityModifier as multiplier
                     itemAmount = (drops[i].yield * qualityMultiplier) / 100;
                     if (itemAmount == 0) {
                         itemAmount = 1;
@@ -213,12 +303,12 @@ contract PlantLogic {
 
                 totalItemAmount += itemAmount;
 
-                // Lưu thông tin item được thu hoạch
+                // Store harvested item information
                 harvestedItemIds[harvestedItemCount] = drops[i].itemId;
                 harvestedItemAmounts[harvestedItemCount] = itemAmount;
                 harvestedItemCount++;
 
-                // Thêm item vào inventory
+                // Add item to inventory
                 InventoryItem memory currentItem = inventoryProxy.getItem(
                     msg.sender,
                     drops[i].itemId
@@ -234,7 +324,7 @@ contract PlantLogic {
             }
         }
 
-        // Đảm bảo ít nhất một vật phẩm
+        // Guarantee at least one item
         if (totalItemAmount == 0) {
             harvestedItemIds[0] = drops[0].itemId;
             harvestedItemAmounts[0] = 1;
@@ -262,7 +352,7 @@ contract PlantLogic {
             finalItemAmounts[i] = harvestedItemAmounts[i];
         }
 
-        // Gọi plantHarvest để xóa plant sau khi đã xử lý xong logic
+        // Call plantHarvest to delete plant after processing logic
         plantProxy.plantHarvest(plantId);
 
         plotProxy.deletePlot(plant.plotId, msg.sender);
@@ -276,6 +366,24 @@ contract PlantLogic {
         );
     }
 
+    /**
+     * @dev Tends to a crop to improve its quality
+     * @notice Increases quality modifier by 10% per tending, up to 3 times
+     *
+     * Requirements:
+     * - Caller must be the plant owner
+     * - Plant must not be already harvested
+     * - Tending cooldown must have passed (checked in component)
+     * - Tend count must not exceed 3 (checked in component)
+     *
+     * Effects:
+     * - Increases quality modifier by 10%
+     * - Increments tend count
+     * - Updates last tended time
+     * - Emits PlantTended event
+     *
+     * @param plantId ID of the plant to tend
+     */
     function plantTended(uint256 plantId) external {
         require(plantId > 0, "Invalid plant ID");
         require(
@@ -294,29 +402,55 @@ contract PlantLogic {
         emit PlantTended(plantId, weatherState);
     }
 
-    // View functions
+    // ============ VIEW FUNCTIONS ============
+
+    /**
+     * @dev Gets plant data by ID
+     * @param plantId ID of the plant
+     * @return Plant struct with all data
+     */
     function getPlantedCrop(
         uint256 plantId
     ) external view returns (Plant memory) {
         return plantProxy.getPlantedCrop(plantId);
     }
 
+    /**
+     * @dev Gets the plant ID on a specific plot
+     * @param plotId ID of the plot
+     * @return Plant ID (0 if no plant)
+     */
     function getPlotPlants(uint256 plotId) external view returns (uint256) {
         return plantProxy.getPlotPlants(plotId);
     }
 
+    /**
+     * @dev Gets all plant IDs owned by a player
+     * @param _playerAddress Address of the player
+     * @return Array of plant IDs
+     */
     function getOwnerPlants(
         address _playerAddress
     ) external view returns (uint256[] memory) {
         return plantProxy.getOwnerPlants(_playerAddress);
     }
 
+    /**
+     * @dev Gets detailed information for all plants owned by a player
+     * @param _playerAddress Address of the player
+     * @return Array of Plant structs
+     */
     function getOwnerPlantsWithDetails(
         address _playerAddress
     ) external view returns (Plant[] memory) {
         return plantProxy.getOwnerPlantsWithDetails(_playerAddress);
     }
 
+    /**
+     * @dev Gets the owner of a plant
+     * @param plantId ID of the plant
+     * @return Address of the plant owner
+     */
     function getPlantOwner(uint256 plantId) external view returns (address) {
         return plantProxy.getPlantOwner(plantId);
     }

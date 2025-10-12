@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+/**
+ * @title Plot
+ * @notice Struct representing a farming plot
+ */
 struct Plot {
-    uint256 id;
-    address owner; 
-    uint256 plotType; // Loại đất (0=Thường, 1=Phì nhiêu, 2=Ma thuật)
-    uint256 fertility; // Độ phì nhiêu (0-100, ảnh hưởng đến tốc độ phát triển cây)
-    bool isActive; // Ô đất có sẵn sàng để trồng không
-    int256 xCoordinate; // Tọa độ X trên lưới 2D
-    int256 yCoordinate; // Tọa độ Y trên lưới 2D
-    uint256 creationTime; // Thời gian ô đất được tạo
-    bool isLocked; // Ô đất có bị khóa không (do sự kiện hoặc quy định)
+    uint256 id; /// Unique plot ID
+    address owner; /// Address of the plot owner
+    uint256 plotType; /// Plot type (0=Normal, 1=Fertile, 2=Magic)
+    uint256 fertility; /// Fertility level (0-100, affects crop growth rate)
+    bool isActive; /// Whether plot is available for planting
+    int256 xCoordinate; /// X coordinate on 2D grid
+    int256 yCoordinate; /// Y coordinate on 2D grid
+    uint256 creationTime; /// Timestamp when plot was created
+    bool isLocked; /// Whether plot is locked (due to events or rules)
 }

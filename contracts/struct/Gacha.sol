@@ -3,71 +3,96 @@ pragma solidity ^0.8.28;
 
 import "./Item.sol";
 
+/**
+ * @title GachaStructs
+ * @notice Library containing gacha-related data structures
+ */
 library GachaStructs {
+    /**
+     * @notice Enum defining gacha types
+     */
     enum GachaType {
-        Normal, // Gacha thường
-        Premium, // Gacha cao cấp
-        Limited, // Gacha giới hạn
-        Event // Gacha sự kiện
+        Normal, /// Normal gacha
+        Premium, /// Premium gacha
+        Limited, /// Limited-time gacha
+        Event /// Event gacha
     }
 
+    /**
+     * @notice Enum defining payment methods for gacha
+     */
     enum PaymentType {
-        Sunny, // Thanh toán bằng Sunny
-        Sunlight, // Thanh toán bằng Sunlight
-        ERC20 // Thanh toán bằng ERC20 token
+        Sunny, /// Pay with Sunny currency
+        Sunlight, /// Pay with Sunlight currency
+        ERC20 /// Pay with ERC20 token
     }
 
+    /**
+     * @notice Struct representing a gacha pool
+     */
     struct GachaPool {
-        uint256 id;
-        string name;
-        string description;
-        GachaType gachaType;
-        PaymentType paymentType;
-        uint256 price; // Giá gacha
-        address erc20Token; // Địa chỉ ERC20 token (nếu paymentType là ERC20)
-        uint256 maxPulls; // Số lần pull tối đa
-        uint256 currentPulls; // Số lần pull hiện tại
-        uint256 startTime; // Thời gian bắt đầu
-        uint256 endTime; // Thời gian kết thúc
-        bool isActive; // Trạng thái hoạt động
-        bool isPaused; // Trạng thái tạm dừng
+        uint256 id; /// Unique pool ID
+        string name; /// Name of the gacha pool
+        string description; /// Description of the pool
+        GachaType gachaType; /// Type of gacha
+        PaymentType paymentType; /// Payment method
+        uint256 price; /// Cost per pull
+        address erc20Token; /// ERC20 token address (if payment type is ERC20)
+        uint256 maxPulls; /// Maximum pulls allowed
+        uint256 currentPulls; /// Current number of pulls
+        uint256 startTime; /// Start timestamp
+        uint256 endTime; /// End timestamp
+        bool isActive; /// Whether pool is active
+        bool isPaused; /// Whether pool is paused
     }
 
+    /**
+     * @notice Struct representing an item in a gacha pool
+     */
     struct GachaItem {
-        uint256 itemId; // ID của item
-        ItemStructs.Rarity rarity; // Độ hiếm của item
-        uint256 probability; // Xác suất rơi (basis points: 10000 = 100%)
-        uint256 minQuantity; // Số lượng tối thiểu
-        uint256 maxQuantity; // Số lượng tối đa
-        bool isGuaranteed; // Có đảm bảo rơi hay không
-        uint256 guaranteedPulls; // Số lần pull để đảm bảo
+        uint256 itemId; /// ID of the item
+        ItemStructs.Rarity rarity; /// Rarity of the item
+        uint256 probability; /// Drop probability (basis points: 10000 = 100%)
+        uint256 minQuantity; /// Minimum quantity per pull
+        uint256 maxQuantity; /// Maximum quantity per pull
+        bool isGuaranteed; /// Whether item is guaranteed after N pulls
+        uint256 guaranteedPulls; /// Number of pulls until guaranteed
     }
 
+    /**
+     * @notice Struct representing the result of a gacha pull
+     */
     struct GachaResult {
-        uint256 pullId; // ID của lần pull
-        uint256 gachaPoolId; // ID của gacha pool
-        address player; // Người chơi
-        uint256 itemId; // Item nhận được
-        uint256 quantity; // Số lượng item
-        ItemStructs.Rarity rarity; // Độ hiếm của item
-        uint256 timestamp; // Thời gian pull
-        uint256 cost; // Chi phí pull
-        PaymentType paymentType; // Loại thanh toán
+        uint256 pullId; /// Unique pull ID
+        uint256 gachaPoolId; /// ID of the gacha pool
+        address player; /// Address of the player
+        uint256 itemId; /// ID of the item received
+        uint256 quantity; /// Quantity of items received
+        ItemStructs.Rarity rarity; /// Rarity of the item
+        uint256 timestamp; /// Timestamp of the pull
+        uint256 cost; /// Cost of the pull
+        PaymentType paymentType; /// Payment method used
     }
 
+    /**
+     * @notice Struct containing player gacha statistics (with mappings)
+     */
     struct PlayerGachaStats {
-        address player; // Địa chỉ người chơi
-        uint256 totalPulls; // Tổng số lần pull
-        uint256 totalSpent; // Tổng số tiền đã chi
-        mapping(uint256 => uint256) pullsPerPool; // Số lần pull theo pool
-        mapping(uint256 => uint256) spentPerPool; // Số tiền chi theo pool
-        mapping(uint256 => uint256) guaranteedPulls; // Số lần pull đảm bảo theo pool
+        address player; /// Address of the player
+        uint256 totalPulls; /// Total number of pulls
+        uint256 totalSpent; /// Total amount spent
+        mapping(uint256 => uint256) pullsPerPool; /// Pulls per pool
+        mapping(uint256 => uint256) spentPerPool; /// Amount spent per pool
+        mapping(uint256 => uint256) guaranteedPulls; /// Guaranteed pulls counter per pool
     }
 
+    /**
+     * @notice Struct containing gacha pool statistics (with mappings)
+     */
     struct GachaPoolStats {
-        uint256 totalPulls; // Tổng số lần pull
-        uint256 totalRevenue; // Tổng doanh thu
-        mapping(ItemStructs.Rarity => uint256) itemsPulled; // Số item đã pull theo rarity
-        mapping(uint256 => uint256) itemPulls; // Số lần pull theo item
+        uint256 totalPulls; /// Total number of pulls in pool
+        uint256 totalRevenue; /// Total revenue generated
+        mapping(ItemStructs.Rarity => uint256) itemsPulled; /// Items pulled by rarity
+        mapping(uint256 => uint256) itemPulls; /// Pulls per item ID
     }
 }

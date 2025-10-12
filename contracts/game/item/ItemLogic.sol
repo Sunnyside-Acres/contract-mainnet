@@ -6,21 +6,33 @@ import "../../interfaces/IItem.sol";
 
 /**
  * @title ItemLogic
- * @dev Logic contract cho hệ thống Item - quản lý thông tin và thuộc tính của các item trong game
+ * @notice Logic contract for the Item system - manages information and attributes of items in the game
+ * @dev This contract handles all business logic for items, while ItemComponent stores the data
  *
- * Tính năng chính:
- * - Tạo và quản lý item với các thuộc tính cơ bản
- * - Quản lý item drops (tỉ lệ rơi item)
- * - Thiết lập và quản lý thuộc tính của item
- * - Kiểm tra và validate item
- * - Hỗ trợ các loại item khác nhau (weapon, armor, material, etc.)
+ * Main features:
+ * - Create and manage items with basic properties
+ * - Manage item drops (drop rates)
+ * - Set and manage item attributes
+ * - Validate and check items
+ * - Support different item types (weapon, armor, material, etc.)
  */
 contract ItemLogic {
+    /// @notice Reference to the World contract that manages system authorization
     IWorld public world;
+
+    /// @notice Reference to the ItemComponent proxy contract for data storage
     IItemComponent public itemProxy;
 
     // ============ EVENTS ============
 
+    /// @notice Emitted when a new item is created
+    /// @param itemId The unique identifier of the created item
+    /// @param name The name of the item
+    /// @param itemType The type of the item
+    /// @param rarity The rarity level of the item
+    /// @param maxStacked Maximum number that can be stacked
+    /// @param isStacked Whether the item can be stacked
+    /// @param isTradable Whether the item can be traded
     event ItemCreated(
         uint256 indexed itemId,
         string name,
@@ -31,6 +43,15 @@ contract ItemLogic {
         bool isTradable
     );
 
+    /// @notice Emitted when an item's information is updated
+    /// @param itemId The ID of the updated item
+    /// @param name The updated name
+    /// @param itemType The updated type
+    /// @param rarity The updated rarity
+    /// @param maxStacked The updated max stack size
+    /// @param isStacked The updated stackable status
+    /// @param isTradable The updated tradable status
+    /// @param isBanned The updated banned status
     event ItemUpdated(
         uint256 indexed itemId,
         string name,
@@ -42,14 +63,24 @@ contract ItemLogic {
         bool isBanned
     );
 
+    /// @notice Emitted when item drops are configured
+    /// @param itemId The ID of the item
+    /// @param drops Array of item drops with probabilities
     event ItemDropsSet(uint256 indexed itemId, ItemStructs.ItemDrop[] drops);
 
+    /// @notice Emitted when an item attribute is set
+    /// @param itemId The ID of the item
+    /// @param attribute The type of attribute
+    /// @param value The value of the attribute
     event ItemAttributeSet(
         uint256 indexed itemId,
         ItemStructs.Attribute attribute,
         uint256 value
     );
 
+    /// @notice Emitted when an item attribute is removed
+    /// @param itemId The ID of the item
+    /// @param attribute The type of attribute removed
     event ItemAttributeRemoved(
         uint256 indexed itemId,
         ItemStructs.Attribute attribute
@@ -57,11 +88,15 @@ contract ItemLogic {
 
     // ============ MODIFIERS ============
 
+    /// @notice Restricts function access to admin only
+    /// @dev Checks if msg.sender is registered as admin in the World contract
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
         _;
     }
 
+    /// @notice Restricts function access to registered logic contracts only
+    /// @dev Checks if msg.sender is a registered logic contract in the World contract
     modifier onlyInternal() {
         require(
             world.isLogicRegistered(msg.sender),
@@ -72,6 +107,11 @@ contract ItemLogic {
 
     // ============ CONSTRUCTOR ============
 
+    /**
+     * @notice Initializes the ItemLogic contract
+     * @param _world Address of the World contract
+     * @param _itemProxy Address of the ItemComponent proxy contract
+     */
     constructor(address _world, address _itemProxy) {
         world = IWorld(_world);
         itemProxy = IItemComponent(_itemProxy);
@@ -80,19 +120,20 @@ contract ItemLogic {
     // ============ WRITE FUNCTIONS (EXTERNAL) ============
 
     /**
-     * @dev Tạo item mới (chỉ admin)
-     * @param _itemId ID của item
-     * @param _name Tên của item
-     * @param _itemType Loại item (weapon, armor, material, etc.)
-     * @param _rarity Độ hiếm của item
-     * @param _maxStacked Số lượng tối đa có thể stack
-     * @param _isStacked Có thể stack hay không
-     * @param _isTradable Có thể trade hay không
+     * @notice Creates a new item in the system (admin only)
+     * @dev Validates input parameters and creates item in component
+     * @param _itemId The unique ID of the item
+     * @param _name The name of the item
+     * @param _itemType The type of item (weapon, armor, material, etc.)
+     * @param _rarity The rarity level of the item
+     * @param _maxStacked Maximum number that can be stacked
+     * @param _isStacked Whether the item can be stacked
+     * @param _isTradable Whether the item can be traded
      *
-     * Quy trình:
+     * Process:
      * 1. Validate input parameters
-     * 2. Tạo item trong component
-     * 3. Emit event ItemCreated
+     * 2. Create item in component
+     * 3. Emit ItemCreated event
      */
     function createItem(
         uint256 _itemId,
@@ -130,15 +171,16 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Tạo item drops (tỉ lệ rơi item) (chỉ admin)
-     * @param _itemId ID của item
-     * @param _drops Mảng các item drop với tỉ lệ rơi
+     * @notice Configures item drops with drop rates (admin only)
+     * @dev Validates item exists and drop data before setting drops in component
+     * @param _itemId The ID of the item
+     * @param _drops Array of item drops with drop rates
      *
-     * Quy trình:
-     * 1. Kiểm tra item tồn tại
+     * Process:
+     * 1. Check that item exists
      * 2. Validate drops data
-     * 3. Thiết lập drops trong component
-     * 4. Emit event ItemDropsSet
+     * 3. Set drops in component
+     * 4. Emit ItemDropsSet event
      */
     function createDrops(
         uint256 _itemId,
@@ -168,21 +210,22 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Cập nhật thông tin item (chỉ admin)
-     * @param _itemId ID của item
-     * @param _name Tên mới
-     * @param _itemType Loại item mới
-     * @param _rarity Độ hiếm mới
-     * @param _maxStacked Số lượng stack tối đa mới
-     * @param _isStacked Có thể stack hay không
-     * @param _isTradable Có thể trade hay không
-     * @param _isBanned Có bị ban hay không
+     * @notice Updates item information (admin only)
+     * @dev Validates item exists and input parameters before updating
+     * @param _itemId The ID of the item
+     * @param _name The new name
+     * @param _itemType The new item type
+     * @param _rarity The new rarity
+     * @param _maxStacked The new maximum stack size
+     * @param _isStacked Whether it can be stacked
+     * @param _isTradable Whether it can be traded
+     * @param _isBanned Whether it is banned
      *
-     * Quy trình:
-     * 1. Kiểm tra item tồn tại
+     * Process:
+     * 1. Check that item exists
      * 2. Validate input parameters
-     * 3. Cập nhật thông tin item
-     * 4. Emit event ItemUpdated
+     * 3. Update item information
+     * 4. Emit ItemUpdated event
      */
     function updateItem(
         uint256 _itemId,
@@ -227,53 +270,49 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Thiết lập thuộc tính cho item (chỉ admin)
-     * @param _itemId ID của item
-     * @param _attr Loại thuộc tính
-     * @param _value Giá trị thuộc tính
+     * @notice Sets an attribute for an item (admin only)
+     * @dev Validates item exists and is not banned before setting attribute
+     * @param _itemId The ID of the item
+     * @param _attr The type of attribute
+     * @param _value The value of the attribute
      *
-     * Quy trình:
-     * 1. Kiểm tra item tồn tại và không bị ban
-     * 2. Validate thuộc tính và giá trị
-     * 3. Thiết lập thuộc tính
-     * 4. Emit event ItemAttributeSet
+     * Process:
+     * 1. Check item exists and is not banned
+     * 2. Validate attribute and value
+     * 3. Set the attribute
+     * 4. Emit ItemAttributeSet event
      */
     function setAttr(
         uint256 _itemId,
         ItemStructs.Attribute _attr,
         uint256 _value
     ) external onlyAdmin {
-        // Kiểm tra item có tồn tại không
         require(_itemId > 0, "Invalid item ID");
 
-        // Kiểm tra item có tồn tại trong hệ thống không
         ItemStructs.Item memory item = itemProxy.getItem(_itemId);
         require(item.id > 0, "Item does not exist");
 
-        // Kiểm tra item không bị ban
         require(!item.isBanned, "Cannot modify banned item");
 
-        // Kiểm tra giá trị thuộc tính hợp lệ
         require(_value > 0, "Attribute value must be greater than 0");
 
-        // Kiểm tra thuộc tính hợp lệ
         require(uint8(_attr) >= 0, "Invalid attribute type");
 
-        // Gọi hàm setAttr từ component
         itemProxy.setAttr(_itemId, _attr, _value);
 
         emit ItemAttributeSet(_itemId, _attr, _value);
     }
 
     /**
-     * @dev Xóa thuộc tính của item (chỉ admin)
-     * @param _itemId ID của item
-     * @param _attr Loại thuộc tính cần xóa
+     * @notice Removes an attribute from an item (admin only)
+     * @dev Validates item exists before removing attribute
+     * @param _itemId The ID of the item
+     * @param _attr The type of attribute to remove
      *
-     * Quy trình:
-     * 1. Kiểm tra item tồn tại
-     * 2. Xóa thuộc tính
-     * 3. Emit event ItemAttributeRemoved
+     * Process:
+     * 1. Check item exists
+     * 2. Remove the attribute
+     * 3. Emit ItemAttributeRemoved event
      */
     function removeAttr(
         uint256 _itemId,
@@ -292,17 +331,17 @@ contract ItemLogic {
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============
 
     /**
-     * @dev Lấy tất cả ID của các item trong hệ thống
-     * @return Mảng ID của tất cả item
+     * @notice Gets all item IDs in the system
+     * @return Array of all item IDs
      */
     function getAllItems() external view returns (uint256[] memory) {
         return itemProxy.getAllItems();
     }
 
     /**
-     * @dev Lấy thông tin chi tiết của item
-     * @param _itemId ID của item
-     * @return Thông tin chi tiết của item
+     * @notice Gets detailed information about an item
+     * @param _itemId The ID of the item
+     * @return Detailed information about the item
      */
     function getItem(
         uint256 _itemId
@@ -312,9 +351,9 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Lấy thông tin drops của item
-     * @param _itemId ID của item
-     * @return Mảng các item drop với tỉ lệ rơi
+     * @notice Gets the drop information for an item
+     * @param _itemId The ID of the item
+     * @return Array of item drops with drop rates
      */
     function getItemDrops(
         uint256 _itemId
@@ -324,10 +363,10 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Lấy giá trị thuộc tính cụ thể của item
-     * @param _itemId ID của item
-     * @param _attribute Loại thuộc tính
-     * @return Giá trị thuộc tính
+     * @notice Gets the value of a specific attribute of an item
+     * @param _itemId The ID of the item
+     * @param _attribute The type of attribute
+     * @return The value of the attribute
      */
     function getItemAttribute(
         uint256 _itemId,
@@ -338,9 +377,10 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Lấy tất cả thuộc tính của item
-     * @param _itemId ID của item
-     * @return (attributes, values) Mảng loại thuộc tính và giá trị tương ứng
+     * @notice Gets all attributes of an item
+     * @param _itemId The ID of the item
+     * @return attributes Array of attribute types
+     * @return values Array of corresponding values
      */
     function getItemAttributes(
         uint256 _itemId
@@ -350,9 +390,9 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Kiểm tra item có tồn tại không
-     * @param _itemId ID của item
-     * @return bool True nếu item tồn tại
+     * @notice Checks if an item exists
+     * @param _itemId The ID of the item
+     * @return True if the item exists, false otherwise
      */
     function itemExists(uint256 _itemId) external view returns (bool) {
         require(_itemId > 0, "Invalid item ID");
@@ -361,11 +401,11 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Lấy thống kê tổng quan về hệ thống item
-     * @return totalItems Tổng số item
-     * @return activeItems Số item đang hoạt động (không bị ban)
-     * @return bannedItems Số item bị ban
-     * @return tradableItems Số item có thể trade
+     * @notice Gets overview statistics about the item system
+     * @return totalItems Total number of items
+     * @return activeItems Number of active items (not banned)
+     * @return bannedItems Number of banned items
+     * @return tradableItems Number of tradable items
      */
     function getItemSystemStats()
         external
@@ -396,9 +436,9 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Lấy danh sách item theo loại
-     * @param _itemType Loại item cần lọc
-     * @return Mảng ID của các item thuộc loại này
+     * @notice Gets list of items by type
+     * @param _itemType The type of item to filter
+     * @return Array of IDs of items of this type
      */
     function getItemsByType(
         ItemStructs.ItemType _itemType
@@ -429,9 +469,9 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Lấy danh sách item theo độ hiếm
-     * @param _rarity Độ hiếm cần lọc
-     * @return Mảng ID của các item có độ hiếm này
+     * @notice Gets list of items by rarity
+     * @param _rarity The rarity level to filter
+     * @return Array of IDs of items with this rarity
      */
     function getItemsByRarity(
         ItemStructs.Rarity _rarity
@@ -462,8 +502,8 @@ contract ItemLogic {
     }
 
     /**
-     * @dev Lấy danh sách item có thể trade
-     * @return Mảng ID của các item có thể trade
+     * @notice Gets list of tradable items
+     * @return Array of IDs of items that can be traded
      */
     function getTradableItems() external view returns (uint256[] memory) {
         uint256[] memory allItemIds = itemProxy.getAllItems();

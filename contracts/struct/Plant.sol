@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+/**
+ * @title Plant
+ * @notice Struct representing a planted crop
+ */
 struct Plant {
-    uint256 id;
-    uint256 plotId;
-    uint256 itemId;
-    uint256 plantedTime; // Thời gian bắt đầu trồng
-    uint256 lastTendedTime; // Thời điểm cây được chăm sóc cuối cùng
-    uint256 qualityModifier; // Chỉ số chất lượng ảnh hưởng từ chăm sóc 0 -> 100
-    uint256 growthTime; // Thời gian trồng cây
-    uint256 tendCount; // Số lần chăm sóc
-    bool isHarvested; // Trạng thái đã thu hoạch hay chưa
+    uint256 id; /// Unique plant ID
+    uint256 plotId; /// ID of the plot where crop is planted
+    uint256 itemId; /// ID of the crop item
+    uint256 plantedTime; /// Timestamp when crop was planted
+    uint256 lastTendedTime; /// Timestamp of last tending action
+    uint256 qualityModifier; /// Quality modifier from care (0-100)
+    uint256 growthTime; /// Time required for crop to grow
+    uint256 tendCount; /// Number of times crop has been tended
+    bool isHarvested; /// Whether crop has been harvested
 }
