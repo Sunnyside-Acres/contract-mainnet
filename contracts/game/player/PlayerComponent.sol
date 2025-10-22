@@ -30,6 +30,7 @@ contract PlayerComponent {
     event AddSunny(address indexed playerAddress, uint256 amount);
     event SubtractSunny(address indexed playerAddress, uint256 amount);
     event SubtractSunlight(address indexed playerAddress, uint256 amount);
+    event SubtractMana(address indexed playerAddress, uint256 amount);
     event XPAdded(address indexed playerAddress, uint256 amount);
     event LevelUp(address indexed playerAddress, uint16 newLevel);
 
@@ -141,6 +142,38 @@ contract PlayerComponent {
         players[_playerAddress].sunlight -= _amount;
 
         emit SubtractSunlight(_playerAddress, _amount);
+    }
+
+    /**
+     * @notice Subtract mana from a player
+     * @param _playerAddress The player's address
+     * @param _amount The amount to subtract
+     */
+    function subtractMana(
+        address _playerAddress,
+        uint256 _amount
+    ) external onlyAuthorized {
+        require(playerExists[_playerAddress], "[COMPONENT] Player not found");
+        require(
+            players[_playerAddress].mana >= _amount,
+            "[COMPONENT] Insufficient mana"
+        );
+        players[_playerAddress].mana -= uint16(_amount);
+
+        emit SubtractMana(_playerAddress, _amount);
+    }
+
+    /**
+     * @notice Set a player's mana
+     * @param _playerAddress The player's address
+     * @param _mana The new mana value
+     */
+    function setMana(
+        address _playerAddress,
+        uint16 _mana
+    ) external onlyAuthorized {
+        require(playerExists[_playerAddress], "[COMPONENT] Player not found");
+        players[_playerAddress].mana = _mana;
     }
 
     /**

@@ -57,6 +57,20 @@ interface IPlayerComponent {
     function subtractSunlight(address _playerAddress, uint256 _amount) external;
 
     /**
+     * @notice Subtracts mana from a player
+     * @param _playerAddress Address of the player
+     * @param _amount Amount of mana to subtract
+     */
+    function subtractMana(address _playerAddress, uint256 _amount) external;
+
+    /**
+     * @notice Sets a player's mana
+     * @param _playerAddress Address of the player
+     * @param _mana The new mana value
+     */
+    function setMana(address _playerAddress, uint16 _mana) external;
+
+    /**
      * @notice Gets the sunlight balance of a player
      * @param _playerAddress Address of the player
      * @return uint256 Sunlight balance
