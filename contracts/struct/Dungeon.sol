@@ -65,6 +65,8 @@ library DungeonStructs {
         ItemRequirement[] itemRequirements; /// Vật phẩm yêu cầu để vào
         DungeonStage[] stages; /// Các màn có sẵn trong dungeon này
         uint256 cooldownTime; /// Thời gian chờ giữa các lần thử (giây)
+        uint256 minBetAmount; /// Số tiền bet tối thiểu (wei)
+        uint256 maxBetAmount; /// Số tiền bet tối đa (wei)
         bool isActive; /// Dungeon có hoạt động không
         bool isPaused; /// Dungeon có bị tạm dừng không
         uint256 createdAt; /// Thời gian tạo
@@ -104,5 +106,7 @@ library DungeonStructs {
         uint256 sunnyReward; /// Thưởng sunny
         uint256 betAmount; /// Số tiền bet (native token)
         bool hasBet; /// Có bet hay không
+        uint256[] equipmentItemIds; /// ID các equipment items được sử dụng
+        uint256[] equipmentQuantities; /// Số lượng các equipment items
     }
 }

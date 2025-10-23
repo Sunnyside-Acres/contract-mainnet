@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "../../struct/Dungeon.sol";
+import "../../interfaces/IWorld.sol";
 
 /**
  * @title DungeonComponent
@@ -10,6 +11,14 @@ import "../../struct/Dungeon.sol";
  * @dev Chứa logic cơ bản để quản lý dungeons và player progress
  */
 contract DungeonComponent {
+    /// @notice Address của World contract để kiểm soát quyền truy cập
+    address public world;
+
+      /// @notice Address của admin
+    address public admin;
+    /// @notice Address của implementation logic contract
+    address public implementation;
+
     /// @notice Mapping từ dungeon ID đến Dungeon struct
     mapping(uint256 => DungeonStructs.Dungeon) public dungeons;
     /// @notice Array của tất cả dungeon IDs
@@ -71,6 +80,12 @@ contract DungeonComponent {
         uint256[] rewardQuantities
     );
 
+    /// @notice Chỉ cho phép logic contracts được ủy quyền truy cập
+    modifier onlyAuthorized() {
+        require(IWorld(world).isLogicRegistered(msg.sender), "Unauthorized");
+        _;
+    }
+
     /**
      * @notice Tạo dungeon mới
      * @param _dungeonId ID duy nhất của dungeon
@@ -97,8 +112,10 @@ contract DungeonComponent {
         uint256 _sunlightCost,
         uint256 _sunnyCost,
         DungeonStructs.ItemRequirement[] memory _itemRequirements,
-        uint256 _cooldownTime
-    ) external returns (uint256) {
+        uint256 _cooldownTime,
+        uint256 _minBetAmount,
+        uint256 _maxBetAmount
+    ) external onlyAuthorized returns (uint256) {
         require(_dungeonId > 0, "Dungeon ID must be greater than 0");
         require(!dungeonExists[_dungeonId], "Dungeon already exists");
         require(bytes(_name).length > 0, "Dungeon name cannot be empty");
@@ -107,6 +124,9 @@ contract DungeonComponent {
             "Level requirement must be greater than 0"
         );
         require(_cooldownTime > 0, "Cooldown time must be greater than 0");
+        require(_minBetAmount >= 0, "Min bet amount must be >= 0");
+        require(_maxBetAmount > 0, "Max bet amount must be > 0");
+        require(_minBetAmount <= _maxBetAmount, "Min bet amount must be <= max bet amount");
 
         DungeonStructs.Dungeon memory newDungeon = DungeonStructs.Dungeon({
             id: _dungeonId,
@@ -121,6 +141,8 @@ contract DungeonComponent {
             itemRequirements: _itemRequirements,
             stages: new DungeonStructs.DungeonStage[](0), // Bắt đầu với mảng rỗng
             cooldownTime: _cooldownTime,
+            minBetAmount: _minBetAmount,
+            maxBetAmount: _maxBetAmount,
             isActive: true,
             isPaused: false,
             createdAt: block.timestamp,
@@ -147,7 +169,7 @@ contract DungeonComponent {
         uint256 _dungeonId,
         uint256 _stageNumber,
         uint256 _rewardMultiplier
-    ) external returns (bool) {
+    ) external onlyAuthorized returns (bool) {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
         require(_stageNumber > 0, "Stage number must be greater than 0");
         require(
@@ -214,7 +236,7 @@ contract DungeonComponent {
      * @param _dungeonId ID của dungeon
      * @param _isActive Có hoạt động không
      */
-    function setDungeonActive(uint256 _dungeonId, bool _isActive) external {
+    function setDungeonActive(uint256 _dungeonId, bool _isActive) external onlyAuthorized {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
         dungeons[_dungeonId].isActive = _isActive;
         dungeons[_dungeonId].updatedAt = block.timestamp;
@@ -225,7 +247,7 @@ contract DungeonComponent {
      * @param _dungeonId ID của dungeon
      * @param _isPaused Có bị tạm dừng không
      */
-    function setDungeonPaused(uint256 _dungeonId, bool _isPaused) external {
+    function setDungeonPaused(uint256 _dungeonId, bool _isPaused) external onlyAuthorized {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
         dungeons[_dungeonId].isPaused = _isPaused;
         dungeons[_dungeonId].updatedAt = block.timestamp;
@@ -244,8 +266,10 @@ contract DungeonComponent {
         address _player,
         uint256 _dungeonId,
         uint256 _stageNumber,
-        uint256 _betAmount
-    ) external returns (uint256) {
+        uint256 _betAmount,
+        uint256[] memory _equipmentItemIds,
+        uint256[] memory _equipmentQuantities
+    ) external onlyAuthorized returns (uint256) {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
         require(_stageNumber > 0, "Stage number must be greater than 0");
 
@@ -287,7 +311,9 @@ contract DungeonComponent {
                 sunlightReward: 0,
                 sunnyReward: 0,
                 betAmount: _betAmount,
-                hasBet: _betAmount > 0
+                hasBet: _betAmount > 0,
+                equipmentItemIds: _equipmentItemIds,
+                equipmentQuantities: _equipmentQuantities
             });
 
         dungeonSessions[sessionId] = newSession;
@@ -322,7 +348,7 @@ contract DungeonComponent {
         uint256[] memory _monsterHPs,
         uint256 _sunlightReward,
         uint256 _sunnyReward
-    ) external {
+    ) external onlyAuthorized {
         require(
             dungeonSessions[_sessionId].sessionId > 0,
             "Session does not exist"
@@ -330,6 +356,20 @@ contract DungeonComponent {
         require(
             !dungeonSessions[_sessionId].isCompleted,
             "Session already ended"
+        );
+        require(
+            !dungeonSessions[_sessionId].isClaimed,
+            "Session already claimed"
+        );
+
+        // Validate array lengths
+        require(
+            _rewardItemIds.length == _rewardQuantities.length,
+            "Reward arrays length mismatch"
+        );
+        require(
+            _playerDamages.length == _monsterHPs.length,
+            "Battle data arrays length mismatch"
         );
 
         DungeonStructs.DungeonSession storage session = dungeonSessions[
@@ -374,7 +414,7 @@ contract DungeonComponent {
      * @param _sessionId ID của phiên chơi
      * @return success Có thành công không
      */
-    function claimDungeonRewards(uint256 _sessionId) external returns (bool) {
+    function claimDungeonRewards(uint256 _sessionId) external onlyAuthorized returns (bool) {
         require(
             dungeonSessions[_sessionId].sessionId > 0,
             "Session does not exist"

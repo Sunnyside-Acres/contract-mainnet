@@ -25,10 +25,9 @@ contract DungeonLogic {
     /// @notice Address của PlayerComponent
     address public playerComponent;
 
-    /// @notice Số tiền bet tối thiểu (wei)
-    uint256 public minBetAmount;
-    /// @notice Số tiền bet tối đa (wei)
-    uint256 public maxBetAmount;
+
+    /// @notice Reentrancy guard
+    bool private _locked;
 
     /// @notice Events
     event DungeonCreated(
@@ -86,16 +85,19 @@ contract DungeonLogic {
         uint256 timestamp
     );
 
-    event MinMaxBetAmountUpdated(
-        uint256 minBetAmount,
-        uint256 maxBetAmount,
-        address indexed admin
-    );
 
     /// @notice Chỉ cho phép admin truy cập
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
         _;
+    }
+
+    /// @notice Reentrancy guard modifier
+    modifier nonReentrant() {
+        require(!_locked, "ReentrancyGuard: reentrant call");
+        _locked = true;
+        _;
+        _locked = false;
     }
 
     /**
@@ -151,7 +153,9 @@ contract DungeonLogic {
         uint256 _sunlightCost,
         uint256 _sunnyCost,
         DungeonStructs.ItemRequirement[] memory _itemRequirements,
-        uint256 _cooldownTime
+        uint256 _cooldownTime,
+        uint256 _minBetAmount,
+        uint256 _maxBetAmount
     ) external onlyAdmin returns (uint256) {
         // Validate input
         require(_dungeonId > 0, "Dungeon ID must be greater than 0");
@@ -191,7 +195,9 @@ contract DungeonLogic {
             _sunlightCost,
             _sunnyCost,
             _itemRequirements,
-            _cooldownTime
+            _cooldownTime,
+            _minBetAmount,
+            _maxBetAmount
         );
 
         emit DungeonCreated(dungeonId, _name, _dungeonType, _difficulty);
@@ -258,27 +264,6 @@ contract DungeonLogic {
         DungeonComponent(dungeonProxy).setDungeonPaused(_dungeonId, _isPaused);
     }
 
-    /**
-     * @notice Thiết lập min/max bet amount (chỉ admin)
-     * @param _minBetAmount Số tiền bet tối thiểu (wei)
-     * @param _maxBetAmount Số tiền bet tối đa (wei)
-     */
-    function setMinMaxBetAmount(
-        uint256 _minBetAmount,
-        uint256 _maxBetAmount
-    ) external onlyAdmin {
-        require(_minBetAmount >= 0, "Min bet amount must be >= 0");
-        require(_maxBetAmount > 0, "Max bet amount must be > 0");
-        require(
-            _minBetAmount <= _maxBetAmount,
-            "Min bet amount must be <= max bet amount"
-        );
-
-        minBetAmount = _minBetAmount;
-        maxBetAmount = _maxBetAmount;
-
-        emit MinMaxBetAmountUpdated(_minBetAmount, _maxBetAmount, msg.sender);
-    }
 
     // ============ READ FUNCTIONS (EXTERNAL) ============
 
@@ -310,18 +295,6 @@ contract DungeonLogic {
         return DungeonComponent(dungeonProxy).exists(_dungeonId);
     }
 
-    /**
-     * @notice Lấy thông tin min/max bet amount
-     * @return _minBetAmount Số tiền bet tối thiểu
-     * @return _maxBetAmount Số tiền bet tối đa
-     */
-    function getMinMaxBetAmount()
-        external
-        view
-        returns (uint256 _minBetAmount, uint256 _maxBetAmount)
-    {
-        return (minBetAmount, maxBetAmount);
-    }
 
     // ============ DUNGEON SESSION FUNCTIONS ============
 
@@ -336,10 +309,16 @@ contract DungeonLogic {
     function startDungeon(
         uint256 _dungeonId,
         uint256 _stageNumber,
-        uint256 _betAmount
+        uint256 _betAmount,
+        uint256[] memory _equipmentItemIds,
+        uint256[] memory _equipmentQuantities
     ) external payable returns (uint256) {
         require(_dungeonId > 0, "Dungeon ID must be greater than 0");
         require(_stageNumber > 0, "Stage number must be greater than 0");
+
+        // Lấy thông tin dungeon
+        DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
+            .getDungeon(_dungeonId);
 
         // Kiểm tra bet amount
         if (_betAmount > 0) {
@@ -347,15 +326,14 @@ contract DungeonLogic {
                 msg.value == _betAmount,
                 "Bet amount must match sent value"
             );
-            require(_betAmount >= minBetAmount, "Bet amount below minimum");
-            require(_betAmount <= maxBetAmount, "Bet amount exceeds maximum");
+            require(_betAmount >= dungeon.minBetAmount, "Bet amount below minimum");
+            require(_betAmount <= dungeon.maxBetAmount, "Bet amount exceeds maximum");
         } else {
             require(msg.value == 0, "No bet amount but value sent");
         }
 
-        // Lấy thông tin dungeon
-        DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
-            .getDungeon(_dungeonId);
+        // Kiểm tra equipment items
+        _validateEquipmentItems(_equipmentItemIds, _equipmentQuantities);
 
         // Kiểm tra và trừ item requirements
         _checkAndDeductRequirements(dungeon);
@@ -367,7 +345,9 @@ contract DungeonLogic {
             msg.sender,
             _dungeonId,
             _stageNumber,
-            _betAmount
+            _betAmount,
+            _equipmentItemIds,
+            _equipmentQuantities
         );
 
         emit DungeonSessionStarted(
@@ -442,7 +422,7 @@ contract DungeonLogic {
      * @param _sessionId ID của phiên chơi
      * @return success Có thành công không
      */
-    function claimRewards(uint256 _sessionId) external returns (bool) {
+    function claimRewards(uint256 _sessionId) external nonReentrant returns (bool) {
         require(_sessionId > 0, "Session ID must be greater than 0");
 
         DungeonStructs.DungeonSession memory session = DungeonComponent(
@@ -484,9 +464,10 @@ contract DungeonLogic {
             uint256 betReward = (session.betAmount * session.rewardMultiplier) /
                 10000;
 
-            // Chuyển tiền thưởng cho người chơi
+            // Chuyển tiền thưởng cho người chơi (sử dụng call() thay vì transfer())
             if (betReward > 0) {
-                payable(msg.sender).transfer(betReward);
+                (bool transferSuccess, ) = payable(msg.sender).call{value: betReward}("");
+                require(transferSuccess, "Bet reward transfer failed");
 
                 emit BetRewardClaimed(
                     _sessionId,
@@ -498,11 +479,11 @@ contract DungeonLogic {
             }
         }
 
-        bool success = DungeonComponent(dungeonProxy).claimDungeonRewards(
+        bool claimSuccess = DungeonComponent(dungeonProxy).claimDungeonRewards(
             _sessionId
         );
 
-        if (success) {
+        if (claimSuccess) {
             emit DungeonRewardsClaimed(
                 _sessionId,
                 msg.sender,
@@ -511,7 +492,7 @@ contract DungeonLogic {
             );
         }
 
-        return success;
+        return claimSuccess;
     }
 
     /**
@@ -560,13 +541,13 @@ contract DungeonLogic {
      */
     function emergencyWithdraw(
         address payable _to
-    ) external onlyAdmin returns (bool) {
+    ) external onlyAdmin nonReentrant returns (bool) {
         require(_to != address(0), "Invalid recipient address");
 
         uint256 contractBalance = address(this).balance;
         require(contractBalance > 0, "No funds to withdraw");
 
-        // Chuyển toàn bộ ETH trong contract
+        // Chuyển toàn bộ ETH trong contract (sử dụng call() thay vì transfer())
         (bool success, ) = _to.call{value: contractBalance}("");
         require(success, "Transfer failed");
 
@@ -664,6 +645,47 @@ contract DungeonLogic {
             PlayerComponent(playerComponent).subtractSunny(
                 msg.sender,
                 _dungeon.sunnyCost
+            );
+        }
+    }
+
+    /**
+     * @notice Kiểm tra equipment items
+     * @param _equipmentItemIds Array ID các equipment items
+     * @param _equipmentQuantities Array số lượng các equipment items
+     */
+    function _validateEquipmentItems(
+        uint256[] memory _equipmentItemIds,
+        uint256[] memory _equipmentQuantities
+    ) internal view {
+        require(
+            _equipmentItemIds.length == _equipmentQuantities.length,
+            "Equipment arrays length mismatch"
+        );
+
+        // Kiểm tra từng equipment item
+        for (uint256 i = 0; i < _equipmentItemIds.length; i++) {
+            require(_equipmentItemIds[i] > 0, "Invalid equipment item ID");
+            require(_equipmentQuantities[i] > 0, "Invalid equipment quantity");
+
+            // Kiểm tra player có equipment item không
+            require(
+                InventoryComponent(inventoryComponent).exists(
+                    msg.sender,
+                    _equipmentItemIds[i]
+                ),
+                "Player does not have equipment item"
+            );
+
+            // Lấy thông tin equipment item
+            InventoryItem memory equipmentItem = InventoryComponent(
+                inventoryComponent
+            ).getItem(msg.sender, _equipmentItemIds[i]);
+
+            // Kiểm tra số lượng
+            require(
+                equipmentItem.quantity >= _equipmentQuantities[i],
+                "Not enough equipment items"
             );
         }
     }

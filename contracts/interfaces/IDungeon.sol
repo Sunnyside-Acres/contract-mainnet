@@ -4,10 +4,10 @@ pragma solidity ^0.8.28;
 import "../struct/Dungeon.sol";
 
 /**
- * @title IDungeonComponent
+ * @title IDungeon
  * @notice Interface for managing dungeons
  */
-interface IDungeonComponent {
+interface IDungeon {
     /**
      * @notice Creates a new dungeon
      * @param _dungeonId ID of the dungeon
@@ -81,7 +81,7 @@ interface IDungeonComponent {
      * @notice Gets all dungeon IDs
      * @return Array of dungeon IDs
      */
-    function getAllDungeons() external view returns (uint256[] memory);
+    function getAllDungeonIds() external view returns (uint256[] memory);
 
     /**
      * @notice Gets player's dungeon progress
@@ -111,4 +111,145 @@ interface IDungeonComponent {
      * @param _dungeonId Dungeon ID
      */
     function unlockDungeon(address _player, uint256 _dungeonId) external;
+
+    // ============ DUNGEON STAGE FUNCTIONS ============
+
+    /**
+     * @notice Adds a new stage to dungeon
+     * @param _dungeonId ID of the dungeon
+     * @param _stageNumber Stage number
+     * @param _rewardMultiplier Reward multiplier (basis points)
+     */
+    function addDungeonStage(
+        uint256 _dungeonId,
+        uint256 _stageNumber,
+        uint256 _rewardMultiplier
+    ) external;
+
+    // ============ DUNGEON MANAGEMENT FUNCTIONS ============
+
+    /**
+     * @notice Sets dungeon active status
+     * @param _dungeonId ID of the dungeon
+     * @param _isActive Whether dungeon is active
+     */
+    function setDungeonActive(uint256 _dungeonId, bool _isActive) external;
+
+    /**
+     * @notice Sets dungeon paused status
+     * @param _dungeonId ID of the dungeon
+     * @param _isPaused Whether dungeon is paused
+     */
+    function setDungeonPaused(uint256 _dungeonId, bool _isPaused) external;
+
+    // ============ DUNGEON SESSION FUNCTIONS ============
+
+    /**
+     * @notice Starts a dungeon session
+     * @param _player Player address
+     * @param _dungeonId ID of the dungeon
+     * @param _stageNumber Stage number to play
+     * @param _betAmount Bet amount (0 if no bet)
+     * @return sessionId ID of the new session
+     */
+    function startDungeonSession(
+        address _player,
+        uint256 _dungeonId,
+        uint256 _stageNumber,
+        uint256 _betAmount,
+        uint256[] memory _equipmentItemIds,
+        uint256[] memory _equipmentQuantities
+    ) external returns (uint256);
+
+    /**
+     * @notice Ends a dungeon session
+     * @param _sessionId ID of the session
+     * @param _isCompleted Whether session was completed
+     * @param _rewardItemIds Reward item IDs
+     * @param _rewardQuantities Reward quantities
+     * @param _playerDamages Player damages in rounds
+     * @param _monsterHPs Monster HPs in rounds
+     * @param _sunlightReward Sunlight reward
+     * @param _sunnyReward Sunny reward
+     */
+    function endDungeonSession(
+        uint256 _sessionId,
+        bool _isCompleted,
+        uint256[] memory _rewardItemIds,
+        uint256[] memory _rewardQuantities,
+        uint256[] memory _playerDamages,
+        uint256[] memory _monsterHPs,
+        uint256 _sunlightReward,
+        uint256 _sunnyReward
+    ) external;
+
+    /**
+     * @notice Claims dungeon rewards
+     * @param _sessionId ID of the session
+     * @return success Whether claim was successful
+     */
+    function claimDungeonRewards(uint256 _sessionId) external returns (bool);
+
+    // ============ SESSION QUERY FUNCTIONS ============
+
+    /**
+     * @notice Gets dungeon session information
+     * @param _sessionId ID of the session
+     * @return session DungeonSession struct
+     */
+    function getDungeonSession(
+        uint256 _sessionId
+    ) external view returns (DungeonStructs.DungeonSession memory);
+
+    /**
+     * @notice Gets player's session IDs
+     * @param _player Player address
+     * @return sessionIds Array of session IDs
+     */
+    function getPlayerSessions(
+        address _player
+    ) external view returns (uint256[] memory);
+
+    /**
+     * @notice Gets session battle data
+     * @param _sessionId ID of the session
+     * @return playerDamages Player damages array
+     * @return monsterHPs Monster HPs array
+     */
+    function getSessionBattleData(
+        uint256 _sessionId
+    ) external view returns (uint256[] memory playerDamages, uint256[] memory monsterHPs);
+
+    // ============ BETTING FUNCTIONS ============
+
+    /**
+     * @notice Sets min/max bet amounts
+     * @param _minBetAmount Minimum bet amount
+     * @param _maxBetAmount Maximum bet amount
+     */
+    function setMinMaxBetAmount(
+        uint256 _minBetAmount,
+        uint256 _maxBetAmount
+    ) external;
+
+    /**
+     * @notice Gets min/max bet amounts
+     * @return _minBetAmount Minimum bet amount
+     * @return _maxBetAmount Maximum bet amount
+     */
+    function getMinMaxBetAmount()
+        external
+        view
+        returns (uint256 _minBetAmount, uint256 _maxBetAmount);
+
+    // ============ EMERGENCY FUNCTIONS ============
+
+    /**
+     * @notice Emergency withdraw function
+     * @param _to Address to withdraw to
+     * @return success Whether withdrawal was successful
+     */
+    function emergencyWithdraw(
+        address payable _to
+    ) external returns (bool);
 }

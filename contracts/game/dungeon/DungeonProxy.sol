@@ -31,6 +31,13 @@ contract DungeonProxy {
     mapping(address => mapping(uint256 => DungeonStructs.PlayerDungeonProgress))
         public playerDungeonProgress;
 
+    /// @notice Mapping từ session ID đến DungeonSession
+    mapping(uint256 => DungeonStructs.DungeonSession) public dungeonSessions;
+    /// @notice Mapping từ player address đến session IDs
+    mapping(address => uint256[]) public playerSessions;
+    /// @notice Tổng số session đã tạo
+    uint256 public sessionCount;
+
     /// @notice Emitted khi implementation được upgrade
     event ComponentUpdated(address indexed newImplementation);
 
@@ -68,28 +75,25 @@ contract DungeonProxy {
     }
 
     /**
-     * @notice Fallback function để delegate calls đến implementation
+     * @notice Fallback function that delegates all calls to the implementation
+     * @dev Uses delegatecall to maintain proxy storage context
      */
-    fallback() external payable {
+    fallback() external onlyAuthorized {
         address impl = implementation;
-        require(impl != address(0), "Implementation not set");
-
-        assembly {
-            calldatacopy(0, 0, calldatasize())
-            let result := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)
-            returndatacopy(0, 0, returndatasize())
+        require(impl != address(0), "No implementation set");
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, 0, calldatasize())
+            let result := delegatecall(gas(), impl, ptr, calldatasize(), 0, 0)
+            let size := returndatasize()
+            returndatacopy(ptr, 0, size)
             switch result
             case 0 {
-                revert(0, returndatasize())
+                revert(ptr, size)
             }
             default {
-                return(0, returndatasize())
+                return(ptr, size)
             }
         }
     }
-
-    /**
-     * @notice Receive function để nhận ETH
-     */
-    receive() external payable {}
 }
