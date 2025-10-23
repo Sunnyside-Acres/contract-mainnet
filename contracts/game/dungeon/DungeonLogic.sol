@@ -25,7 +25,6 @@ contract DungeonLogic {
     /// @notice Address của PlayerComponent
     address public playerComponent;
 
-
     /// @notice Reentrancy guard
     bool private _locked;
 
@@ -84,7 +83,6 @@ contract DungeonLogic {
         uint256 amount,
         uint256 timestamp
     );
-
 
     /// @notice Chỉ cho phép admin truy cập
     modifier onlyAdmin() {
@@ -264,7 +262,6 @@ contract DungeonLogic {
         DungeonComponent(dungeonProxy).setDungeonPaused(_dungeonId, _isPaused);
     }
 
-
     // ============ READ FUNCTIONS (EXTERNAL) ============
 
     /**
@@ -295,6 +292,112 @@ contract DungeonLogic {
         return DungeonComponent(dungeonProxy).exists(_dungeonId);
     }
 
+    /**
+     * @notice Kiểm tra người chơi có đủ item requirements để vào dungeon không
+     * @param _player Address của người chơi
+     * @param _dungeonId ID của dungeon
+     * @return hasRequirements Có đủ requirements không
+     */
+    function checkItemRequirements(
+        address _player,
+        uint256 _dungeonId
+    ) external view returns (bool) {
+        // Lấy thông tin dungeon
+        DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
+            .getDungeon(_dungeonId);
+
+        // Kiểm tra từng item requirement
+        for (uint256 i = 0; i < dungeon.itemRequirements.length; i++) {
+            DungeonStructs.ItemRequirement memory requirement = dungeon
+                .itemRequirements[i];
+
+            // Kiểm tra người chơi có item không
+            if (
+                !InventoryComponent(inventoryComponent).exists(
+                    _player,
+                    requirement.itemId
+                )
+            ) {
+                return false;
+            }
+
+            // Lấy thông tin item hiện tại
+            InventoryItem memory playerItem = InventoryComponent(
+                inventoryComponent
+            ).getItem(_player, requirement.itemId);
+
+            // Kiểm tra số lượng
+            if (playerItem.quantity < requirement.quantity) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @notice Kiểm tra người chơi có đủ resources (energy, sunlight, sunny) để vào dungeon không
+     * @param _player Address của người chơi
+     * @param _dungeonId ID của dungeon
+     * @return hasResources Có đủ resources không
+     */
+    function checkResourceRequirements(
+        address _player,
+        uint256 _dungeonId
+    ) external view returns (bool) {
+        // Lấy thông tin dungeon
+        DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
+            .getDungeon(_dungeonId);
+
+        // Lấy thông tin player
+        Player memory player = PlayerComponent(playerComponent).getPlayer(
+            _player
+        );
+
+        // Kiểm tra energy (mana)
+        if (dungeon.energyCost > 0 && player.mana < dungeon.energyCost) {
+            return false;
+        }
+
+        // Kiểm tra sunlight
+        if (
+            dungeon.sunlightCost > 0 && player.sunlight < dungeon.sunlightCost
+        ) {
+            return false;
+        }
+
+        // Kiểm tra sunny
+        if (dungeon.sunnyCost > 0 && player.sunny < dungeon.sunnyCost) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @notice Kiểm tra người chơi có đủ tất cả requirements (items + resources) để vào dungeon không
+     * @param _player Address của người chơi
+     * @param _dungeonId ID của dungeon
+     * @return hasAllRequirements Có đủ tất cả requirements không
+     */
+    function checkAllRequirements(
+        address _player,
+        uint256 _dungeonId
+    ) external view returns (bool) {
+        // Kiểm tra item requirements
+        bool hasItems = this.checkItemRequirements(_player, _dungeonId);
+        if (!hasItems) {
+            return false;
+        }
+
+        // Kiểm tra resource requirements
+        bool hasResources = this.checkResourceRequirements(_player, _dungeonId);
+        if (!hasResources) {
+            return false;
+        }
+
+        return true;
+    }
 
     // ============ DUNGEON SESSION FUNCTIONS ============
 
@@ -326,8 +429,14 @@ contract DungeonLogic {
                 msg.value == _betAmount,
                 "Bet amount must match sent value"
             );
-            require(_betAmount >= dungeon.minBetAmount, "Bet amount below minimum");
-            require(_betAmount <= dungeon.maxBetAmount, "Bet amount exceeds maximum");
+            require(
+                _betAmount >= dungeon.minBetAmount,
+                "Bet amount below minimum"
+            );
+            require(
+                _betAmount <= dungeon.maxBetAmount,
+                "Bet amount exceeds maximum"
+            );
         } else {
             require(msg.value == 0, "No bet amount but value sent");
         }
@@ -422,7 +531,9 @@ contract DungeonLogic {
      * @param _sessionId ID của phiên chơi
      * @return success Có thành công không
      */
-    function claimRewards(uint256 _sessionId) external nonReentrant returns (bool) {
+    function claimRewards(
+        uint256 _sessionId
+    ) external nonReentrant returns (bool) {
         require(_sessionId > 0, "Session ID must be greater than 0");
 
         DungeonStructs.DungeonSession memory session = DungeonComponent(
@@ -466,7 +577,9 @@ contract DungeonLogic {
 
             // Chuyển tiền thưởng cho người chơi (sử dụng call() thay vì transfer())
             if (betReward > 0) {
-                (bool transferSuccess, ) = payable(msg.sender).call{value: betReward}("");
+                (bool transferSuccess, ) = payable(msg.sender).call{
+                    value: betReward
+                }("");
                 require(transferSuccess, "Bet reward transfer failed");
 
                 emit BetRewardClaimed(
