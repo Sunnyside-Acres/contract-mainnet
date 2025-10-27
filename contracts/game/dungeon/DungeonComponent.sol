@@ -439,7 +439,7 @@ contract DungeonComponent {
 
         emit DungeonRewardsClaimed(
             _sessionId,
-            playerAddress,
+            msg.sender,
             session.rewardItemIds,
             session.rewardQuantities
         );

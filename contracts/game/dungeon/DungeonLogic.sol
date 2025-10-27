@@ -406,13 +406,11 @@ contract DungeonLogic {
      * @dev Người chơi gọi hàm này để bắt đầu chơi dungeon
      * @param _dungeonId ID của dungeon
      * @param _stageNumber Số màn muốn chơi
-     * @param _betAmount Số tiền bet (0 nếu không bet)
      * @return sessionId ID của phiên chơi mới
      */
     function startDungeon(
         uint256 _dungeonId,
         uint256 _stageNumber,
-        uint256 _betAmount,
         uint256[] memory _equipmentItemIds,
         uint256[] memory _equipmentQuantities
     ) external payable returns (uint256) {
@@ -423,24 +421,11 @@ contract DungeonLogic {
         DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
             .getDungeon(_dungeonId);
 
-        // Kiểm tra bet amount
-        if (_betAmount > 0) {
-            require(
-                msg.value == _betAmount,
-                "Bet amount must match sent value"
-            );
-            require(
-                _betAmount >= dungeon.minBetAmount,
-                "Bet amount below minimum"
-            );
-            require(
-                _betAmount <= dungeon.maxBetAmount,
-                "Bet amount exceeds maximum"
-            );
-        } else {
-            require(msg.value == 0, "No bet amount but value sent");
-        }
-
+        require(
+            msg.value >= dungeon.minBetAmount &&
+                msg.value <= dungeon.maxBetAmount,
+            "Bet amount out of range"
+        );
         // Kiểm tra equipment items
         _validateEquipmentItems(_equipmentItemIds, _equipmentQuantities);
 
@@ -454,7 +439,7 @@ contract DungeonLogic {
             msg.sender,
             _dungeonId,
             _stageNumber,
-            _betAmount,
+            msg.value,
             _equipmentItemIds,
             _equipmentQuantities
         );
@@ -464,7 +449,7 @@ contract DungeonLogic {
             msg.sender,
             _dungeonId,
             _stageNumber,
-            _betAmount
+            msg.value
         );
         return sessionId;
     }
