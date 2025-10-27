@@ -421,11 +421,14 @@ contract DungeonLogic {
         DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
             .getDungeon(_dungeonId);
 
-        require(
-            msg.value >= dungeon.minBetAmount &&
-                msg.value <= dungeon.maxBetAmount,
-            "Bet amount out of range"
-        );
+        if (msg.value > 0) {
+            require(
+                msg.value >= dungeon.minBetAmount &&
+                    msg.value <= dungeon.maxBetAmount,
+                "Bet amount out of range"
+            );
+        }
+
         // Kiểm tra equipment items
         _validateEquipmentItems(_equipmentItemIds, _equipmentQuantities);
 
