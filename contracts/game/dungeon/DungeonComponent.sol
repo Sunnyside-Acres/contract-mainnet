@@ -414,7 +414,7 @@ contract DungeonComponent {
      * @param _sessionId ID của phiên chơi
      * @return success Có thành công không
      */
-    function claimDungeonRewards(uint256 _sessionId) external onlyAuthorized returns (bool) {
+    function claimDungeonRewards(uint256 _sessionId, address playerAddress) external onlyAuthorized returns (bool) {
         require(
             dungeonSessions[_sessionId].sessionId > 0,
             "Session does not exist"
@@ -428,7 +428,7 @@ contract DungeonComponent {
             "Rewards already claimed"
         );
         require(
-            dungeonSessions[_sessionId].player == msg.sender,
+            dungeonSessions[_sessionId].player == playerAddress,
             "Not your session"
         );
 
@@ -439,7 +439,7 @@ contract DungeonComponent {
 
         emit DungeonRewardsClaimed(
             _sessionId,
-            msg.sender,
+            playerAddress,
             session.rewardItemIds,
             session.rewardQuantities
         );

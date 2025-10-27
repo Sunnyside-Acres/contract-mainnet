@@ -593,7 +593,8 @@ contract DungeonLogic {
         }
 
         bool claimSuccess = DungeonComponent(dungeonProxy).claimDungeonRewards(
-            _sessionId
+            _sessionId,
+            msg.sender
         );
 
         if (claimSuccess) {
