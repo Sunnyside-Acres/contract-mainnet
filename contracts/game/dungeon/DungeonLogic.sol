@@ -28,6 +28,9 @@ contract DungeonLogic {
     /// @notice Reentrancy guard
     bool private _locked;
 
+    /// @dev Maximum quantity allowed per item stack
+    uint256 constant MAX_QUANTITY = 1000000;
+
     /// @notice Events
     event DungeonCreated(
         uint256 indexed dungeonId,
@@ -555,6 +558,55 @@ contract DungeonLogic {
                 msg.sender,
                 session.sunnyReward
             );
+        }
+
+        if (session.rewardItemIds.length > 0) {
+            InventoryComponent inventory = InventoryComponent(
+                inventoryComponent
+            );
+
+            for (uint256 i = 0; i < session.rewardItemIds.length; i++) {
+                uint256 itemId = session.rewardItemIds[i];
+                uint256 addQty = session.rewardQuantities[i];
+
+                require(addQty > 0, "Invalid reward quantity");
+                require(addQty <= MAX_QUANTITY, "Exceeds max quantity");
+
+                bool existsItem = inventory.exists(msg.sender, itemId);
+
+                uint256 newQty;
+                uint256 durability;
+                uint256 expiration;
+
+                if (existsItem) {
+                    InventoryItem memory currentItem = inventory.getItem(
+                        msg.sender,
+                        itemId
+                    );
+                    newQty = currentItem.quantity + addQty;
+
+                    require(
+                        newQty >= currentItem.quantity,
+                        "Quantity overflow"
+                    );
+                    require(newQty <= MAX_QUANTITY, "Exceeds maximum quantity");
+
+                    durability = currentItem.durability;
+                    expiration = currentItem.expiration;
+                } else {
+                    newQty = addQty;
+                    durability = 100;
+                    expiration = 0;
+                }
+
+                inventory.setItem(
+                    msg.sender,
+                    itemId,
+                    newQty,
+                    durability,
+                    expiration
+                );
+            }
         }
 
         // Xử lý bet rewards nếu có
