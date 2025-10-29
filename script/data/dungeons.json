@@ -1,0 +1,218 @@
+{
+    "dungeons": [
+        {
+            "id": 1,
+            "name": "Forest of Beginnings",
+            "description": "A peaceful forest perfect for new adventurers to start their journey",
+            "dungeonType": "Normal",
+            "difficulty": "Easy",
+            "levelRequirement": 1,
+            "energyCost": 10,
+            "sunlightCost": 100,
+            "sunnyCost": 0,
+            "itemRequirements": [
+                {
+                    "itemId": 1,
+                    "quantity": 1,
+                    "isConsumed": false
+                }
+            ],
+            "stages": [
+                {
+                    "stageNumber": 1,
+                    "rewardMultiplier": 1000
+                },
+                {
+                    "stageNumber": 2,
+                    "rewardMultiplier": 1200
+                },
+                {
+                    "stageNumber": 3,
+                    "rewardMultiplier": 1500
+                }
+            ],
+            "cooldownTime": 300,
+            "minBetAmount": "1000000000000000000",
+            "maxBetAmount": "10000000000000000000"
+        },
+        {
+            "id": 2,
+            "name": "Crystal Caverns",
+            "description": "Mysterious caves filled with glowing crystals and hidden treasures",
+            "dungeonType": "Elite",
+            "difficulty": "Medium",
+            "levelRequirement": 5,
+            "energyCost": 25,
+            "sunlightCost": 500,
+            "sunnyCost": 1000000000000000000,
+            "itemRequirements": [
+                {
+                    "itemId": 2,
+                    "quantity": 2,
+                    "isConsumed": true
+                },
+                {
+                    "itemId": 3,
+                    "quantity": 1,
+                    "isConsumed": false
+                }
+            ],
+            "stages": [
+                {
+                    "stageNumber": 1,
+                    "rewardMultiplier": 2000
+                },
+                {
+                    "stageNumber": 2,
+                    "rewardMultiplier": 2500
+                },
+                {
+                    "stageNumber": 3,
+                    "rewardMultiplier": 3000
+                },
+                {
+                    "stageNumber": 4,
+                    "rewardMultiplier": 4000
+                }
+            ],
+            "cooldownTime": 600,
+            "minBetAmount": "2000000000000000000",
+            "maxBetAmount": "20000000000000000000"
+        },
+        {
+            "id": 3,
+            "name": "Dragon's Lair",
+            "description": "The legendary lair of the ancient dragon, only for the bravest warriors",
+            "dungeonType": "Boss",
+            "difficulty": "Expert",
+            "levelRequirement": 20,
+            "energyCost": 100,
+            "sunlightCost": 2000,
+            "sunnyCost": 5000000000000000000,
+            "itemRequirements": [
+                {
+                    "itemId": 4,
+                    "quantity": 1,
+                    "isConsumed": true
+                },
+                {
+                    "itemId": 5,
+                    "quantity": 3,
+                    "isConsumed": true
+                }
+            ],
+            "stages": [
+                {
+                    "stageNumber": 1,
+                    "rewardMultiplier": 5000
+                },
+                {
+                    "stageNumber": 2,
+                    "rewardMultiplier": 7500
+                },
+                {
+                    "stageNumber": 3,
+                    "rewardMultiplier": 10000
+                }
+            ],
+            "cooldownTime": 3600,
+            "minBetAmount": "5000000000000000000",
+            "maxBetAmount": "50000000000000000000"
+        },
+        {
+            "id": 4,
+            "name": "Moonlight Festival",
+            "description": "A special event dungeon that appears only during the full moon",
+            "dungeonType": "Event",
+            "difficulty": "Hard",
+            "levelRequirement": 10,
+            "energyCost": 50,
+            "sunlightCost": 1000,
+            "sunnyCost": 2000000000000000000,
+            "itemRequirements": [
+                {
+                    "itemId": 6,
+                    "quantity": 1,
+                    "isConsumed": false
+                }
+            ],
+            "stages": [
+                {
+                    "stageNumber": 1,
+                    "rewardMultiplier": 3000
+                },
+                {
+                    "stageNumber": 2,
+                    "rewardMultiplier": 4000
+                },
+                {
+                    "stageNumber": 3,
+                    "rewardMultiplier": 5000
+                },
+                {
+                    "stageNumber": 4,
+                    "rewardMultiplier": 6000
+                },
+                {
+                    "stageNumber": 5,
+                    "rewardMultiplier": 8000
+                }
+            ],
+            "cooldownTime": 1800,
+            "minBetAmount": "3000000000000000000",
+            "maxBetAmount": "30000000000000000000"
+        },
+        {
+            "id": 5,
+            "name": "Ancient Raid Dungeon",
+            "description": "A massive raid dungeon requiring multiple players to conquer",
+            "dungeonType": "Raid",
+            "difficulty": "Master",
+            "levelRequirement": 30,
+            "energyCost": 200,
+            "sunlightCost": 5000,
+            "sunnyCost": 10000000000000000000,
+            "itemRequirements": [
+                {
+                    "itemId": 7,
+                    "quantity": 1,
+                    "isConsumed": true
+                },
+                {
+                    "itemId": 8,
+                    "quantity": 5,
+                    "isConsumed": true
+                }
+            ],
+            "stages": [
+                {
+                    "stageNumber": 1,
+                    "rewardMultiplier": 10000
+                },
+                {
+                    "stageNumber": 2,
+                    "rewardMultiplier": 15000
+                },
+                {
+                    "stageNumber": 3,
+                    "rewardMultiplier": 20000
+                },
+                {
+                    "stageNumber": 4,
+                    "rewardMultiplier": 25000
+                },
+                {
+                    "stageNumber": 5,
+                    "rewardMultiplier": 30000
+                },
+                {
+                    "stageNumber": 6,
+                    "rewardMultiplier": 40000
+                }
+            ],
+            "cooldownTime": 7200,
+            "minBetAmount": "10000000000000000000",
+            "maxBetAmount": "100000000000000000000"
+        }
+    ]
+}
