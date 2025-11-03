@@ -154,8 +154,8 @@ async function main() {
   // === PHASE 3: DEPLOY PROXIES (PHỤ THUỘC WORLD + COMPONENTS) ===
   console.log("\n📦 PHASE 3: Deploying Proxies...");
 
-  // 14. Deploy PlayerProxy
-  console.log("\n1️⃣4️⃣ Deploying PlayerProxy...");
+  // 1. Deploy PlayerProxy
+  console.log("\n1️⃣ Deploying PlayerProxy...");
   const PlayerProxy = await ethers.getContractFactory("PlayerProxy");
   const playerProxy = await PlayerProxy.deploy(
     worldAddress,
@@ -166,8 +166,8 @@ async function main() {
   const playerProxyAddress = await playerProxy.getAddress();
   console.log("✅ PlayerProxy deployed to:", playerProxyAddress);
 
-  // 15. Deploy ItemProxy
-  console.log("\n1️⃣5️⃣ Deploying ItemProxy...");
+  // 2. Deploy ItemProxy
+  console.log("\n2️⃣ Deploying ItemProxy...");
   const ItemProxy = await ethers.getContractFactory("ItemProxy");
   const itemProxy = await ItemProxy.deploy(
     worldAddress,
@@ -178,8 +178,8 @@ async function main() {
   const itemProxyAddress = await itemProxy.getAddress();
   console.log("✅ ItemProxy deployed to:", itemProxyAddress);
 
-  // 16. Deploy WeatherProxy
-  console.log("\n1️⃣6️⃣ Deploying WeatherProxy...");
+  // 3. Deploy WeatherProxy
+  console.log("\n3️⃣ Deploying WeatherProxy...");
   const WeatherProxy = await ethers.getContractFactory("WeatherProxy");
   const weatherProxy = await WeatherProxy.deploy(
     worldAddress,
@@ -190,8 +190,8 @@ async function main() {
   const weatherProxyAddress = await weatherProxy.getAddress();
   console.log("✅ WeatherProxy deployed to:", weatherProxyAddress);
 
-  // 17. Deploy PlotProxy
-  console.log("\n1️⃣7️⃣ Deploying PlotProxy...");
+  // 4. Deploy PlotProxy
+  console.log("\n4️⃣ Deploying PlotProxy...");
   const PlotProxy = await ethers.getContractFactory("PlotProxy");
   const plotProxy = await PlotProxy.deploy(
     worldAddress,
@@ -202,8 +202,8 @@ async function main() {
   const plotProxyAddress = await plotProxy.getAddress();
   console.log("✅ PlotProxy deployed to:", plotProxyAddress);
 
-  // 18. Deploy InventoryProxy
-  console.log("\n1️⃣8️⃣ Deploying InventoryProxy...");
+  // 5. Deploy InventoryProxy
+  console.log("\n5️⃣ Deploying InventoryProxy...");
   const InventoryProxy = await ethers.getContractFactory("InventoryProxy");
   const inventoryProxy = await InventoryProxy.deploy(
     worldAddress,
@@ -214,8 +214,8 @@ async function main() {
   const inventoryProxyAddress = await inventoryProxy.getAddress();
   console.log("✅ InventoryProxy deployed to:", inventoryProxyAddress);
 
-  // 19. Deploy PlantProxy
-  console.log("\n1️⃣9️⃣ Deploying PlantProxy...");
+  // 6. Deploy PlantProxy
+  console.log("\n6️⃣ Deploying PlantProxy...");
   const PlantProxy = await ethers.getContractFactory("PlantProxy");
   const plantProxy = await PlantProxy.deploy(
     worldAddress,
@@ -226,8 +226,8 @@ async function main() {
   const plantProxyAddress = await plantProxy.getAddress();
   console.log("✅ PlantProxy deployed to:", plantProxyAddress);
 
-  // 20. Deploy NPCMarketProxy
-  console.log("\n2️⃣0️⃣ Deploying NPCMarketProxy...");
+  // 7. Deploy NPCMarketProxy
+  console.log("\n7️⃣ Deploying NPCMarketProxy...");
   const NPCMarketProxy = await ethers.getContractFactory("NPCMarketProxy");
   const npcMarketProxy = await NPCMarketProxy.deploy(
     worldAddress,
@@ -238,12 +238,12 @@ async function main() {
   const npcMarketProxyAddress = await npcMarketProxy.getAddress();
   console.log("✅ NPCMarketProxy deployed to:", npcMarketProxyAddress);
 
-  // 21. Skip GachaProxy (không tồn tại)
-  console.log("\n2️⃣1️⃣ Skipping GachaProxy (contract không tồn tại)...");
+  // 8. Skip GachaProxy (không tồn tại)
+  console.log("\n8️⃣ Skipping GachaProxy (contract không tồn tại)...");
   const gachaProxyAddress = "0x0000000000000000000000000000000000000000";
 
-  // 22. Deploy TaskProxy
-  console.log("\n2️⃣2️⃣ Deploying TaskProxy...");
+  // 9. Deploy TaskProxy
+  console.log("\n9️⃣ Deploying TaskProxy...");
   const TaskProxy = await ethers.getContractFactory("TaskProxy");
   const taskProxy = await TaskProxy.deploy(
     worldAddress,
@@ -254,8 +254,8 @@ async function main() {
   const taskProxyAddress = await taskProxy.getAddress();
   console.log("✅ TaskProxy deployed to:", taskProxyAddress);
 
-  // 23. Deploy FleaMarketProxy
-  console.log("\n2️⃣3️⃣ Deploying FleaMarketProxy...");
+  // 10. Deploy FleaMarketProxy
+  console.log("\n🔟 Deploying FleaMarketProxy...");
   const FleaMarketProxy = await ethers.getContractFactory("FleaMarketProxy");
   const fleaMarketProxy = await FleaMarketProxy.deploy(
     worldAddress,
@@ -266,8 +266,8 @@ async function main() {
   const fleaMarketProxyAddress = await fleaMarketProxy.getAddress();
   console.log("✅ FleaMarketProxy deployed to:", fleaMarketProxyAddress);
 
-  // 24. Deploy CraftingProxy
-  console.log("\n2️⃣4️⃣ Deploying CraftingProxy...");
+  // 11. Deploy CraftingProxy
+  console.log("\n1️⃣1️⃣ Deploying CraftingProxy...");
   const CraftingProxy = await ethers.getContractFactory("CraftingProxy");
   const craftingProxy = await CraftingProxy.deploy(
     worldAddress,
@@ -278,8 +278,8 @@ async function main() {
   const craftingProxyAddress = await craftingProxy.getAddress();
   console.log("✅ CraftingProxy deployed to:", craftingProxyAddress);
 
-  // 25. Deploy RaisingProxy
-  console.log("\n2️⃣5️⃣ Deploying RaisingProxy...");
+  // 12. Deploy RaisingProxy
+  console.log("\n1️⃣2️⃣ Deploying RaisingProxy...");
   const RaisingProxy = await ethers.getContractFactory("RaisingProxy");
   const raisingProxy = await RaisingProxy.deploy(
     worldAddress,
@@ -290,8 +290,8 @@ async function main() {
   const raisingProxyAddress = await raisingProxy.getAddress();
   console.log("✅ RaisingProxy deployed to:", raisingProxyAddress);
 
-  // 26. Deploy ReferralProxy
-  console.log("\n2️⃣6️⃣ Deploying ReferralProxy...");
+  // 13. Deploy ReferralProxy
+  console.log("\n1️⃣3️⃣ Deploying ReferralProxy...");
   const ReferralProxy = await ethers.getContractFactory("ReferralProxy");
   const referralProxy = await ReferralProxy.deploy(
     worldAddress,
@@ -302,8 +302,8 @@ async function main() {
   const referralProxyAddress = await referralProxy.getAddress();
   console.log("✅ ReferralProxy deployed to:", referralProxyAddress);
 
-  // 27. Deploy DungeonProxy
-  console.log("\n2️⃣7️⃣ Deploying DungeonProxy...");
+  // 14. Deploy DungeonProxy
+  console.log("\n1️⃣4️⃣ Deploying DungeonProxy...");
   const DungeonProxy = await ethers.getContractFactory("DungeonProxy");
   const dungeonProxy = await DungeonProxy.deploy(
     worldAddress,
@@ -317,8 +317,8 @@ async function main() {
   // === PHASE 4: DEPLOY LOGIC CONTRACTS (PHỤ THUỘC WORLD + PROXIES) ===
   console.log("\n📦 PHASE 4: Deploying Logic Contracts...");
 
-  // 26. Deploy PlayerLogic (world, playerProxy, inventoryProxy)
-  console.log("\n2️⃣6️⃣ Deploying PlayerLogic...");
+  // 1. Deploy PlayerLogic (world, playerProxy, inventoryProxy)
+  console.log("\n1️⃣ Deploying PlayerLogic...");
   const PlayerLogic = await ethers.getContractFactory("PlayerLogic");
   const playerLogic = await PlayerLogic.deploy(
     worldAddress,
@@ -329,16 +329,16 @@ async function main() {
   const playerLogicAddress = await playerLogic.getAddress();
   console.log("✅ PlayerLogic deployed to:", playerLogicAddress);
 
-  // 27. Deploy ItemLogic (world, itemProxy)
-  console.log("\n2️⃣7️⃣ Deploying ItemLogic...");
+  // 2. Deploy ItemLogic (world, itemProxy)
+  console.log("\n2️⃣ Deploying ItemLogic...");
   const ItemLogic = await ethers.getContractFactory("ItemLogic");
   const itemLogic = await ItemLogic.deploy(worldAddress, itemProxyAddress);
   await itemLogic.waitForDeployment();
   const itemLogicAddress = await itemLogic.getAddress();
   console.log("✅ ItemLogic deployed to:", itemLogicAddress);
 
-  // 28. Deploy WeatherLogic (world, weatherProxy)
-  console.log("\n2️⃣8️⃣ Deploying WeatherLogic...");
+  // 3. Deploy WeatherLogic (world, weatherProxy)
+  console.log("\n3️⃣ Deploying WeatherLogic...");
   const WeatherLogic = await ethers.getContractFactory("WeatherLogic");
   const weatherLogic = await WeatherLogic.deploy(
     worldAddress,
@@ -348,8 +348,8 @@ async function main() {
   const weatherLogicAddress = await weatherLogic.getAddress();
   console.log("✅ WeatherLogic deployed to:", weatherLogicAddress);
 
-  // 29. Deploy PlotLogic (world, plotProxy, weatherProxy, playerProxy)
-  console.log("\n2️⃣9️⃣ Deploying PlotLogic...");
+  // 4. Deploy PlotLogic (world, plotProxy, weatherProxy, playerProxy)
+  console.log("\n4️⃣ Deploying PlotLogic...");
   const PlotLogic = await ethers.getContractFactory("PlotLogic");
   const plotLogic = await PlotLogic.deploy(
     worldAddress,
@@ -361,8 +361,8 @@ async function main() {
   const plotLogicAddress = await plotLogic.getAddress();
   console.log("✅ PlotLogic deployed to:", plotLogicAddress);
 
-  // 30. Deploy InventoryLogic (world, inventoryProxy, itemProxy, playerProxy)
-  console.log("\n3️⃣0️⃣ Deploying InventoryLogic...");
+  // 5. Deploy InventoryLogic (world, inventoryProxy, itemProxy, playerProxy)
+  console.log("\n5️⃣ Deploying InventoryLogic...");
   const InventoryLogic = await ethers.getContractFactory("InventoryLogic");
   const inventoryLogic = await InventoryLogic.deploy(
     worldAddress,
@@ -374,8 +374,8 @@ async function main() {
   const inventoryLogicAddress = await inventoryLogic.getAddress();
   console.log("✅ InventoryLogic deployed to:", inventoryLogicAddress);
 
-  // 31. Deploy PlantLogic (world, plantProxy, plotProxy, inventoryProxy, weatherProxy, itemProxy)
-  console.log("\n3️⃣1️⃣ Deploying PlantLogic...");
+  // 6. Deploy PlantLogic (world, plantProxy, plotProxy, inventoryProxy, weatherProxy, itemProxy)
+  console.log("\n6️⃣ Deploying PlantLogic...");
   const PlantLogic = await ethers.getContractFactory("PlantLogic");
   const plantLogic = await PlantLogic.deploy(
     worldAddress,
@@ -389,12 +389,22 @@ async function main() {
   const plantLogicAddress = await plantLogic.getAddress();
   console.log("✅ PlantLogic deployed to:", plantLogicAddress);
 
-  // 32. Skip FishingLogic (không có Component và Proxy)
-  console.log("\n3️⃣2️⃣ Skipping FishingLogic (thiếu Component và Proxy)...");
-  const fishingLogicAddress = "0x0000000000000000000000000000000000000000";
+  // 7. Deploy FishingLogic (world, inventoryComponent, itemComponent, playerComponent, weatherComponent)
+  console.log("\n7️⃣ Deploying FishingLogic...");
+  const FishingLogic = await ethers.getContractFactory("FishingLogic");
+  const fishingLogic = await FishingLogic.deploy(
+    worldAddress,
+    inventoryComponentAddress,
+    itemComponentAddress,
+    playerComponentAddress,
+    weatherComponentAddress
+  );
+  await fishingLogic.waitForDeployment();
+  const fishingLogicAddress = await fishingLogic.getAddress();
+  console.log("✅ FishingLogic deployed to:", fishingLogicAddress);
 
-  // 33. Deploy NPCMarketLogic (world, npcMarketProxy, itemProxy, inventoryProxy, playerProxy)
-  console.log("\n3️⃣3️⃣ Deploying NPCMarketLogic...");
+  // 8. Deploy NPCMarketLogic (world, npcMarketProxy, itemProxy, inventoryProxy, playerProxy)
+  console.log("\n8️⃣ Deploying NPCMarketLogic...");
   const NPCMarketLogic = await ethers.getContractFactory("NPCMarketLogic");
   const npcMarketLogic = await NPCMarketLogic.deploy(
     worldAddress,
@@ -407,12 +417,21 @@ async function main() {
   const npcMarketLogicAddress = await npcMarketLogic.getAddress();
   console.log("✅ NPCMarketLogic deployed to:", npcMarketLogicAddress);
 
-  // 34. Skip GachaLogic (không có Component và Proxy)
-  console.log("\n3️⃣4️⃣ Skipping GachaLogic (thiếu Component và Proxy)...");
-  const gachaLogicAddress = "0x0000000000000000000000000000000000000000";
+  // 9. Deploy GachaLogic (world, playerProxy, inventoryProxy, itemProxy)
+  console.log("\n9️⃣ Deploying GachaLogic...");
+  const GachaLogic = await ethers.getContractFactory("GachaLogic");
+  const gachaLogic = await GachaLogic.deploy(
+    worldAddress,
+    playerProxyAddress,
+    inventoryProxyAddress,
+    itemProxyAddress
+  );
+  await gachaLogic.waitForDeployment();
+  const gachaLogicAddress = await gachaLogic.getAddress();
+  console.log("✅ GachaLogic deployed to:", gachaLogicAddress);
 
-  // 35. Deploy TaskLogic (world, taskProxy, playerProxy, inventoryProxy, itemProxy)
-  console.log("\n3️⃣5️⃣ Deploying TaskLogic...");
+  // 10. Deploy TaskLogic (world, taskProxy, playerProxy, inventoryProxy, itemProxy)
+  console.log("\n🔟 Deploying TaskLogic...");
   const TaskLogic = await ethers.getContractFactory("TaskLogic");
   const taskLogic = await TaskLogic.deploy(
     worldAddress,
@@ -425,8 +444,8 @@ async function main() {
   const taskLogicAddress = await taskLogic.getAddress();
   console.log("✅ TaskLogic deployed to:", taskLogicAddress);
 
-  // 36. Deploy FleaMarketLogic (world, fleaMarketProxy, inventoryProxy, itemProxy, playerProxy)
-  console.log("\n3️⃣6️⃣ Deploying FleaMarketLogic...");
+  // 11. Deploy FleaMarketLogic (world, fleaMarketProxy, inventoryProxy, itemProxy, playerProxy)
+  console.log("\n1️⃣1️⃣ Deploying FleaMarketLogic...");
   const FleaMarketLogic = await ethers.getContractFactory("FleaMarketLogic");
   const fleaMarketLogic = await FleaMarketLogic.deploy(
     worldAddress,
@@ -439,8 +458,8 @@ async function main() {
   const fleaMarketLogicAddress = await fleaMarketLogic.getAddress();
   console.log("✅ FleaMarketLogic deployed to:", fleaMarketLogicAddress);
 
-  // 37. Deploy CraftingLogic (world, craftingProxy, inventoryProxy, itemProxy, playerProxy)
-  console.log("\n3️⃣7️⃣ Deploying CraftingLogic...");
+  // 12. Deploy CraftingLogic (world, craftingProxy, inventoryProxy, itemProxy, playerProxy)
+  console.log("\n1️⃣2️⃣ Deploying CraftingLogic...");
   const CraftingLogic = await ethers.getContractFactory("CraftingLogic");
   const craftingLogic = await CraftingLogic.deploy(
     worldAddress,
@@ -453,8 +472,8 @@ async function main() {
   const craftingLogicAddress = await craftingLogic.getAddress();
   console.log("✅ CraftingLogic deployed to:", craftingLogicAddress);
 
-  // 38. Deploy RaisingLogic (world, raisingProxy, inventoryProxy, weatherProxy, itemProxy)
-  console.log("\n3️⃣8️⃣ Deploying RaisingLogic...");
+  // 13. Deploy RaisingLogic (world, raisingProxy, inventoryProxy, weatherProxy, itemProxy)
+  console.log("\n1️⃣3️⃣ Deploying RaisingLogic...");
   const RaisingLogic = await ethers.getContractFactory("RaisingLogic");
   const raisingLogic = await RaisingLogic.deploy(
     worldAddress,
@@ -467,8 +486,8 @@ async function main() {
   const raisingLogicAddress = await raisingLogic.getAddress();
   console.log("✅ RaisingLogic deployed to:", raisingLogicAddress);
 
-  // 39. Deploy ReferralLogic (world, referralComponent, playerProxy)
-  console.log("\n3️⃣9️⃣ Deploying ReferralLogic...");
+  // 14. Deploy ReferralLogic (world, referralComponent, playerProxy)
+  console.log("\n1️⃣4️⃣ Deploying ReferralLogic...");
   const ReferralLogic = await ethers.getContractFactory("ReferralLogic");
   const referralLogic = await ReferralLogic.deploy(
     worldAddress,
@@ -479,8 +498,8 @@ async function main() {
   const referralLogicAddress = await referralLogic.getAddress();
   console.log("✅ ReferralLogic deployed to:", referralLogicAddress);
 
-  // 40. Deploy DungeonLogic (world, dungeonProxy, inventoryComponent, playerComponent)
-  console.log("\n4️⃣0️⃣ Deploying DungeonLogic...");
+  // 15. Deploy DungeonLogic (world, dungeonProxy, inventoryComponent, playerComponent)
+  console.log("\n1️⃣5️⃣ Deploying DungeonLogic...");
   const DungeonLogic = await ethers.getContractFactory("DungeonLogic");
   const dungeonLogic = await DungeonLogic.deploy(
     worldAddress,
@@ -503,7 +522,9 @@ async function main() {
     { name: "PlotLogic", address: plotLogicAddress },
     { name: "InventoryLogic", address: inventoryLogicAddress },
     { name: "PlantLogic", address: plantLogicAddress },
+    { name: "FishingLogic", address: fishingLogicAddress },
     { name: "NPCMarketLogic", address: npcMarketLogicAddress },
+    { name: "GachaLogic", address: gachaLogicAddress },
     { name: "TaskLogic", address: taskLogicAddress },
     { name: "FleaMarketLogic", address: fleaMarketLogicAddress },
     { name: "CraftingLogic", address: craftingLogicAddress },
@@ -568,7 +589,9 @@ async function main() {
       PlotLogic: plotLogicAddress,
       InventoryLogic: inventoryLogicAddress,
       PlantLogic: plantLogicAddress,
+      FishingLogic: fishingLogicAddress,
       NPCMarketLogic: npcMarketLogicAddress,
+      GachaLogic: gachaLogicAddress,
       TaskLogic: taskLogicAddress,
       FleaMarketLogic: fleaMarketLogicAddress,
       CraftingLogic: craftingLogicAddress,
@@ -610,7 +633,9 @@ async function main() {
       "PlotLogic",
       "InventoryLogic",
       "PlantLogic",
+      "FishingLogic",
       "NPCMarketLogic",
+      "GachaLogic",
       "TaskLogic",
       "FleaMarketLogic",
       "CraftingLogic",
@@ -636,7 +661,7 @@ async function main() {
   // === SUMMARY ===
   console.log("\n🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!");
   console.log("=".repeat(50));
-  console.log(`📊 Tổng số contracts đã deploy: 40 contracts`);
+  console.log(`📊 Tổng số contracts đã deploy: 44 contracts`);
   console.log(
     `🌐 Network: ${network.name} (Chain ID: ${Number(network.chainId)})`
   );
@@ -644,9 +669,9 @@ async function main() {
   console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
   console.log("\n📋 Contract Categories:");
   console.log(`   • Core: 1 contract`);
-  console.log(`   • Components: 13 contracts`);
-  console.log(`   • Proxies: 13 contracts`);
-  console.log(`   • Logic: 13 contracts`);
+  console.log(`   • Components: 14 contracts`);
+  console.log(`   • Proxies: 14 contracts`);
+  console.log(`   • Logic: 15 contracts`);
   console.log("\n🎮 Game Systems (Đã deploy):");
   console.log(`   • Player Management`);
   console.log(`   • Item System`);
@@ -661,9 +686,8 @@ async function main() {
   console.log(`   • Raising/Livestock`);
   console.log(`   • Referral System`);
   console.log(`   • Dungeon System`);
-  console.log("\n⚠️ Game Systems (Bị bỏ qua - thiếu contracts):");
-  console.log(`   • Fishing System (thiếu Component + Proxy)`);
-  console.log(`   • Gacha System (thiếu Component + Proxy)`);
+  console.log(`   • Fishing System`);
+  console.log(`   • Gacha System`);
   console.log("\n🔗 Next Steps:");
   console.log(`   • Verify contracts on block explorer`);
   console.log(`   • Initialize game data`);

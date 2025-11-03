@@ -157,11 +157,11 @@ contract GachaLogic {
         }
 
         // Remove 1 opened item from inventory
+        // Note: exists() check at line 101-104 already ensures quantity > 0
         InventoryItem memory currentItem = inventoryProxy.getItem(
             msg.sender,
             _itemId
         );
-        require(currentItem.quantity > 0, "No items to consume");
 
         uint256 newQuantity = currentItem.quantity - 1;
         inventoryProxy.setItem(
@@ -222,7 +222,7 @@ contract GachaLogic {
             return (false, "Item does not exist");
         }
 
-        // Check if player has this item in inventory
+        // Check if player has this item in inventory (quantity > 0)
         if (!inventoryProxy.exists(_player, _itemId)) {
             return (false, "You don't have this item");
         }

@@ -190,11 +190,8 @@ contract CraftingLogic {
         require(recipe.isActive, "Recipe is not active");
 
         // Validate range - supports both normal and wrap-around ranges (start > end)
-        require(
-            _rangeStart >= 0 && _rangeStart <= 99,
-            "Range start must be 0-99"
-        );
-        require(_rangeEnd >= 0 && _rangeEnd <= 99, "Range end must be 0-99");
+        require(_rangeStart <= 99, "Range start must be 0-99");
+        require(_rangeEnd <= 99, "Range end must be 0-99");
 
         // Calculate range size (supports both normal and wrap-around ranges)
         uint256 rangeSize;
@@ -202,7 +199,7 @@ contract CraftingLogic {
             // Normal range: 5 -> 10 (size = 6)
             rangeSize = _rangeEnd - _rangeStart + 1;
         } else {
-            // Wrap-around range: 80 -> 30 (size = 50)
+            // Wrap-around range: 80 -> 30 (size = 51: 20 numbers from 80-99 + 31 numbers from 0-30)
             rangeSize = (99 - _rangeStart + 1) + (_rangeEnd + 1);
         }
 
