@@ -13,6 +13,7 @@ module.exports = {
       viaIR: true,
     },
   },
+  defaultNetwork:"seimainnet",
   networks: {
     seimainnet: {
       url: "https://evm-rpc.sei-apis.com",

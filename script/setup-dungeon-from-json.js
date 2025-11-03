@@ -29,7 +29,8 @@ async function main() {
   console.log("📋 Loaded deployment info from:", deploymentPath);
 
   // Lấy địa chỉ DungeonLogic contract
-  const dungeonLogicAddress = deploymentInfo.contracts.DungeonLogic;
+  const dungeonLogicAddress = '0x064405294Aa5aeD0CbAD2039805D1E43e54f9D39';
+  // const dungeonLogicAddress = deploymentInfo.contracts.DungeonLogic;
   console.log("🎯 DungeonLogic address:", dungeonLogicAddress);
 
   // Load dungeon data từ JSON file
@@ -181,7 +182,7 @@ async function main() {
       console.log(`\n🔍 Verifying dungeon ID ${dungeon.id}: "${dungeon.name}"`);
 
       try {
-        const dungeonInfo = await dungeonLogic.getDungeon(dungeon.id);
+        const dungeonInfo = await dungeonLogic.getDungeon(1);
         console.log(`   • Name: ${dungeonInfo.name}`);
         console.log(`   • Type: ${dungeonInfo.dungeonType}`);
         console.log(`   • Difficulty: ${dungeonInfo.difficulty}`);
