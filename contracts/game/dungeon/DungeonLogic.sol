@@ -87,6 +87,8 @@ contract DungeonLogic {
         uint256 timestamp
     );
 
+    event DungeonDeleted(uint256 indexed dungeonId);
+
     /// @notice Chỉ cho phép admin truy cập
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
@@ -263,6 +265,21 @@ contract DungeonLogic {
         bool _isPaused
     ) external onlyAdmin {
         DungeonComponent(dungeonProxy).setDungeonPaused(_dungeonId, _isPaused);
+    }
+
+    /**
+     * @notice Xóa dungeon (chỉ admin)
+     * @param _dungeonId ID của dungeon cần xóa
+     * @return success Có thành công không
+     */
+    function deleteDungeon(
+        uint256 _dungeonId
+    ) external onlyAdmin returns (bool) {
+        bool success = DungeonComponent(dungeonProxy).deleteDungeon(_dungeonId);
+        if (success) {
+            emit DungeonDeleted(_dungeonId);
+        }
+        return success;
     }
 
     // ============ READ FUNCTIONS (EXTERNAL) ============

@@ -14,7 +14,7 @@ contract DungeonComponent {
     /// @notice Address của World contract để kiểm soát quyền truy cập
     address public world;
 
-      /// @notice Address của admin
+    /// @notice Address của admin
     address public admin;
     /// @notice Address của implementation logic contract
     address public implementation;
@@ -80,6 +80,8 @@ contract DungeonComponent {
         uint256[] rewardQuantities
     );
 
+    event DungeonDeleted(uint256 indexed dungeonId);
+
     /// @notice Chỉ cho phép logic contracts được ủy quyền truy cập
     modifier onlyAuthorized() {
         require(IWorld(world).isLogicRegistered(msg.sender), "Unauthorized");
@@ -126,7 +128,10 @@ contract DungeonComponent {
         require(_cooldownTime > 0, "Cooldown time must be greater than 0");
         require(_minBetAmount >= 0, "Min bet amount must be >= 0");
         require(_maxBetAmount > 0, "Max bet amount must be > 0");
-        require(_minBetAmount <= _maxBetAmount, "Min bet amount must be <= max bet amount");
+        require(
+            _minBetAmount <= _maxBetAmount,
+            "Min bet amount must be <= max bet amount"
+        );
 
         DungeonStructs.Dungeon memory newDungeon = DungeonStructs.Dungeon({
             id: _dungeonId,
@@ -236,7 +241,10 @@ contract DungeonComponent {
      * @param _dungeonId ID của dungeon
      * @param _isActive Có hoạt động không
      */
-    function setDungeonActive(uint256 _dungeonId, bool _isActive) external onlyAuthorized {
+    function setDungeonActive(
+        uint256 _dungeonId,
+        bool _isActive
+    ) external onlyAuthorized {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
         dungeons[_dungeonId].isActive = _isActive;
         dungeons[_dungeonId].updatedAt = block.timestamp;
@@ -247,10 +255,54 @@ contract DungeonComponent {
      * @param _dungeonId ID của dungeon
      * @param _isPaused Có bị tạm dừng không
      */
-    function setDungeonPaused(uint256 _dungeonId, bool _isPaused) external onlyAuthorized {
+    function setDungeonPaused(
+        uint256 _dungeonId,
+        bool _isPaused
+    ) external onlyAuthorized {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
         dungeons[_dungeonId].isPaused = _isPaused;
         dungeons[_dungeonId].updatedAt = block.timestamp;
+    }
+
+    /**
+     * @notice Xóa dungeon
+     * @param _dungeonId ID của dungeon cần xóa
+     * @return success Có thành công không
+     */
+    function deleteDungeon(
+        uint256 _dungeonId
+    ) external onlyAuthorized returns (bool) {
+        require(dungeonExists[_dungeonId], "Dungeon does not exist");
+
+        // Kiểm tra xem có session nào đang chạy (chưa completed) không
+        // Lưu ý: Chỉ kiểm tra các session liên quan đến dungeon này
+        // Nếu có session chưa hoàn thành, không cho phép xóa
+        // (Có thể bỏ qua kiểm tra này nếu muốn cho phép xóa ngay cả khi có session đang chạy)
+
+        // Xóa dungeon khỏi array dungeonIds
+        uint256[] storage ids = dungeonIds;
+        for (uint256 i = 0; i < ids.length; i++) {
+            if (ids[i] == _dungeonId) {
+                // Di chuyển phần tử cuối lên vị trí cần xóa
+                if (i < ids.length - 1) {
+                    ids[i] = ids[ids.length - 1];
+                }
+                ids.pop();
+                break;
+            }
+        }
+
+        // Xóa dungeon khỏi mapping
+        delete dungeons[_dungeonId];
+
+        // Set flag tồn tại = false
+        dungeonExists[_dungeonId] = false;
+
+        // Giảm count
+        dungeonCount--;
+
+        emit DungeonDeleted(_dungeonId);
+        return true;
     }
 
     // ============ DUNGEON SESSION FUNCTIONS ============
@@ -414,7 +466,10 @@ contract DungeonComponent {
      * @param _sessionId ID của phiên chơi
      * @return success Có thành công không
      */
-    function claimDungeonRewards(uint256 _sessionId, address playerAddress) external onlyAuthorized returns (bool) {
+    function claimDungeonRewards(
+        uint256 _sessionId,
+        address playerAddress
+    ) external onlyAuthorized returns (bool) {
         require(
             dungeonSessions[_sessionId].sessionId > 0,
             "Session does not exist"

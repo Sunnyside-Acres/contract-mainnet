@@ -142,6 +142,12 @@ interface IDungeon {
      */
     function setDungeonPaused(uint256 _dungeonId, bool _isPaused) external;
 
+    /**
+     * @notice Deletes a dungeon
+     * @param _dungeonId ID of the dungeon to delete
+     */
+    function deleteDungeon(uint256 _dungeonId) external;
+
     // ============ DUNGEON SESSION FUNCTIONS ============
 
     /**
@@ -218,7 +224,10 @@ interface IDungeon {
      */
     function getSessionBattleData(
         uint256 _sessionId
-    ) external view returns (uint256[] memory playerDamages, uint256[] memory monsterHPs);
+    )
+        external
+        view
+        returns (uint256[] memory playerDamages, uint256[] memory monsterHPs);
 
     // ============ BETTING FUNCTIONS ============
 
@@ -249,7 +258,5 @@ interface IDungeon {
      * @param _to Address to withdraw to
      * @return success Whether withdrawal was successful
      */
-    function emergencyWithdraw(
-        address payable _to
-    ) external returns (bool);
+    function emergencyWithdraw(address payable _to) external returns (bool);
 }
