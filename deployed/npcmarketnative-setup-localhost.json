@@ -1,0 +1,68 @@
+{
+  "network": "localhost",
+  "chainId": 31337,
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "timestamp": "2025-11-03T13:35:58.090Z",
+  "marketsSetup": 3,
+  "markets": [
+    {
+      "npcId": 1,
+      "name": "General Store",
+      "minTransactionAmount": "1000000000000000",
+      "maxTransactionAmount": "10000000000000000000",
+      "items": [
+        {
+          "itemId": 1,
+          "limitPerUser": 100,
+          "pricePerUnit": "10000000000000000"
+        },
+        {
+          "itemId": 2,
+          "limitPerUser": 50,
+          "pricePerUnit": "20000000000000000"
+        },
+        {
+          "itemId": 3,
+          "limitPerUser": 0,
+          "pricePerUnit": "5000000000000000"
+        }
+      ]
+    },
+    {
+      "npcId": 2,
+      "name": "Blacksmith",
+      "minTransactionAmount": "10000000000000000",
+      "maxTransactionAmount": "50000000000000000000",
+      "items": [
+        {
+          "itemId": 4,
+          "limitPerUser": 20,
+          "pricePerUnit": "100000000000000000"
+        },
+        {
+          "itemId": 5,
+          "limitPerUser": 10,
+          "pricePerUnit": "200000000000000000"
+        }
+      ]
+    },
+    {
+      "npcId": 3,
+      "name": "Alchemist Shop",
+      "minTransactionAmount": "5000000000000000",
+      "maxTransactionAmount": "20000000000000000000",
+      "items": [
+        {
+          "itemId": 6,
+          "limitPerUser": 200,
+          "pricePerUnit": "1000000000000000"
+        },
+        {
+          "itemId": 7,
+          "limitPerUser": 100,
+          "pricePerUnit": "2000000000000000"
+        }
+      ]
+    }
+  ]
+}

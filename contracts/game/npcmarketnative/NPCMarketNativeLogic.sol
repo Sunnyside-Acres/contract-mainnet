@@ -15,18 +15,18 @@ import "../../struct/Player.sol";
 /**
  * @title NPCMarketNativeLogic
  * @author RYG.Labs
- * @notice Logic contract for NPC Market system using native token (ETH)
- * @dev Manages all gameplay mechanics for buying and selling items with NPCs using ETH
+ * @notice Logic contract for NPC Market system using native token (SEI/ETH) - BUY ONLY
+ * @dev Manages buying items from NPCs using native token - proceeds go to treasury wallet
  *
  * Key Features:
- * - Manage NPC markets with ETH payments
- * - Buy items from NPCs with per-user limits
- * - Sell items to NPCs for ETH
+ * - Buy items from NPCs for native token (SEI/ETH) (BUY ONLY - no selling)
+ * - Players pay ETH when buying items from NPCs
+ * - ETH proceeds are transferred directly to treasury wallet
+ * - Treasury wallet address is set by admin
  * - Track player transaction history
  * - Manage prices and trade limits in wei
- * - Daily purchase limit resets
+ * - Daily buy limit resets
  * - Reentrancy protection
- * - Emergency withdrawal functionality
  */
 contract NPCMarketNativeLogic {
     /// @notice World contract for access control
@@ -56,20 +56,13 @@ contract NPCMarketNativeLogic {
     /// @notice Tracks last reset day for each NPC market
     mapping(uint256 => uint256) public lastResetDay;
 
+    /// @notice Treasury wallet address where ETH proceeds from sales are sent
+    address public treasuryWallet;
+
     // ============ EVENTS ============
 
-    /// @notice Emitted when a player purchases items from an NPC with ETH
+    /// @notice Emitted when a player buys items from an NPC for ETH
     event ItemPurchasedWithETH(
-        address indexed player,
-        uint256 indexed npcId,
-        uint256 indexed itemId,
-        uint256 quantity,
-        uint256 totalPrice,
-        uint256 transactionId
-    );
-
-    /// @notice Emitted when a player sells items to an NPC for ETH
-    event ItemSoldForETH(
         address indexed player,
         uint256 indexed npcId,
         uint256 indexed itemId,
@@ -109,11 +102,11 @@ contract NPCMarketNativeLogic {
     /// @notice Emitted when market state changes
     event MarketStateChanged(uint256 indexed npcId, bool isActive);
 
-    /// @notice Emitted when emergency withdrawal is executed
-    event EmergencyWithdraw(
-        address indexed admin,
-        uint256 amount,
-        uint256 timestamp
+    /// @notice Emitted when treasury wallet is updated
+    event TreasuryWalletUpdated(
+        address indexed oldWallet,
+        address indexed newWallet,
+        address indexed admin
     );
 
     /// @notice Emitted when user purchases are reset
@@ -172,16 +165,31 @@ contract NPCMarketNativeLogic {
         address _npcMarketProxy,
         address _itemProxy,
         address _inventoryProxy,
-        address _playerProxy
+        address _playerProxy,
+        address _treasuryWallet
     ) {
         world = IWorld(_world);
         npcMarketProxy = NPCMarketNativeComponent(_npcMarketProxy);
         itemProxy = IItemComponent(_itemProxy);
         inventoryProxy = IInventoryComponent(_inventoryProxy);
         playerProxy = IPlayerComponent(_playerProxy);
+        require(_treasuryWallet != address(0), "Treasury wallet cannot be zero address");
+        treasuryWallet = _treasuryWallet;
     }
 
     // ============ WRITE FUNCTIONS (EXTERNAL) ============
+
+    /**
+     * @notice Sets the treasury wallet address (admin only)
+     * @dev Updates where ETH proceeds from item sales are sent
+     * @param _treasuryWallet Address of the new treasury wallet
+     */
+    function setTreasuryWallet(address _treasuryWallet) external onlyAdmin {
+        require(_treasuryWallet != address(0), "Treasury wallet cannot be zero address");
+        address oldWallet = treasuryWallet;
+        treasuryWallet = _treasuryWallet;
+        emit TreasuryWalletUpdated(oldWallet, _treasuryWallet, msg.sender);
+    }
 
     /**
      * @dev Creates a new NPC Market (admin only)
@@ -231,11 +239,12 @@ contract NPCMarketNativeLogic {
     /**
      * @notice Adds an item to the NPC Market (admin only)
      * @dev Validates input parameters and checks if item exists before adding to market
+     * @dev NOTE: This system only supports BUY (players buy items from NPC)
      * @param _npcId The ID of the NPC market
      * @param _itemId The ID of the item to add
      * @param _limitPerUser Purchase limit per user (0 = unlimited)
      * @param _pricePerUnit Price per unit in wei
-     * @param _isSelling Whether NPC is selling (true) or buying (false) this item
+     * @param _isSelling Must be true (NPC is selling to player)
      *
      * Requirements:
      * - Caller must be admin
@@ -243,6 +252,7 @@ contract NPCMarketNativeLogic {
      * - Valid Item ID (> 0)
      * - Price must be greater than 0
      * - Item must exist in the system
+     * - _isSelling must be true (system only supports BUY)
      *
      * Emits {ItemAddedToMarket} event
      */
@@ -256,17 +266,19 @@ contract NPCMarketNativeLogic {
         require(_npcId > 0, "Invalid NPC ID");
         require(_itemId > 0, "Invalid Item ID");
         require(_pricePerUnit > 0, "Price must be greater than 0");
+        require(_isSelling, "System only supports BUY - NPC must be selling (isSelling must be true)");
 
         // Kiểm tra item tồn tại
         ItemStructs.Item memory itemData = itemProxy.getItem(_itemId);
         require(itemData.id > 0, "Item does not exist");
 
+        // _isSelling must be true for BUY-only system
         npcMarketProxy.addItemToMarket(
             _npcId,
             _itemId,
             _limitPerUser,
             _pricePerUnit,
-            _isSelling
+            true // Always true - NPC is selling to player
         );
 
         emit ItemAddedToMarket(
@@ -274,7 +286,7 @@ contract NPCMarketNativeLogic {
             _itemId,
             _limitPerUser,
             _pricePerUnit,
-            _isSelling
+            true // Always true - NPC is selling to player (BUY-only system)
         );
     }
 
@@ -355,11 +367,12 @@ contract NPCMarketNativeLogic {
     }
 
     /**
-     * @notice Allows a player to purchase items from an NPC with ETH
+     * @notice Allows a player to buy items from an NPC for native token (SEI/ETH)
      * @dev Processes a buy transaction with reentrancy protection
+     * @dev ETH proceeds are sent directly to treasury wallet
      * @param _npcId The ID of the NPC market
-     * @param _itemId The ID of the item to purchase
-     * @param _quantity The quantity to purchase
+     * @param _itemId The ID of the item to buy
+     * @param _quantity The quantity to buy
      * @return transactionId ID of the transaction
      *
      * Requirements:
@@ -367,20 +380,21 @@ contract NPCMarketNativeLogic {
      * - Quantity must be between 1 and MAX_TRANSACTION_AMOUNT
      * - Market must be open
      * - Item must be available and NPC must be selling it
-     * - Player must not exceed purchase limit for this item
-     * - Player must send enough ETH
      * - Player must be initialized
+     * - Player must send enough ETH (msg.value >= totalPrice)
      * - Item must not be banned
+     * - Treasury wallet must be set
      *
      * Process:
      * 1. Validates all input parameters and market state
      * 2. Checks item availability and selling status
-     * 3. Verifies user purchase limit
+     * 3. Verifies player sent enough ETH
      * 4. Calculates total price with overflow protection
-     * 5. Validates ETH amount sent
-     * 6. Adds item to player's inventory
-     * 7. Tracks purchase history
-     * 8. Records transaction
+     * 5. Adds items to player's inventory
+     * 6. Sends ETH to treasury wallet
+     * 7. Refunds excess ETH if any
+     * 8. Tracks purchase history
+     * 9. Records transaction
      *
      * Emits {ItemPurchasedWithETH} event
      */
@@ -399,6 +413,7 @@ contract NPCMarketNativeLogic {
             _quantity <= MAX_TRANSACTION_AMOUNT,
             "Quantity exceeds maximum"
         );
+        require(treasuryWallet != address(0), "Treasury wallet not set");
 
         // Check if market is open
         require(npcMarketProxy.isMarketOpen(_npcId), "Market is closed");
@@ -409,16 +424,14 @@ contract NPCMarketNativeLogic {
         require(marketItem.active, "Item not available in market");
         require(marketItem.isSelling, "NPC is not selling this item");
 
-        // Check user purchase limit
-        require(
-            npcMarketProxy.canUserPurchaseMore(
-                _npcId,
-                _itemId,
-                player,
-                _quantity
-            ),
-            "Purchase limit exceeded for this user"
-        );
+        // Check if player exists
+        Player memory playerData = playerProxy.getPlayer(player);
+        require(playerData.level > 0, "Player not initialized");
+
+        // Validate item exists and is not banned
+        ItemStructs.Item memory itemData = itemProxy.getItem(_itemId);
+        require(itemData.id > 0, "Item does not exist");
+        require(!itemData.isBanned, "Item is banned");
 
         // Calculate total price (check for overflow)
         uint256 totalPrice = marketItem.pricePerUnit * _quantity;
@@ -427,54 +440,28 @@ contract NPCMarketNativeLogic {
             "Price overflow"
         );
 
-        // Check if player exists
-        Player memory playerData = playerProxy.getPlayer(player);
-        require(playerData.level > 0, "Player not initialized");
+        // Check if player sent enough ETH
+        require(msg.value >= totalPrice, "Insufficient ETH sent");
 
-        // Validate ETH amount sent
-        require(msg.value >= totalPrice, "Not enough ETH sent");
-
-        // Get market info for validation
-        (
-            ,
-            ,
-            ,
-            ,
-            uint256 minTransactionAmount,
-            uint256 maxTransactionAmount,
-            ,
-
-        ) = npcMarketProxy.getNPCMarketInfo(_npcId);
-
-        require(
-            msg.value >= minTransactionAmount,
-            "Below minimum transaction amount"
-        );
-        require(
-            msg.value <= maxTransactionAmount,
-            "Above maximum transaction amount"
-        );
-
-        // Validate item exists and is not banned
-        ItemStructs.Item memory itemData = itemProxy.getItem(_itemId);
-        require(itemData.id > 0, "Item does not exist");
-        require(!itemData.isBanned, "Item is banned");
+        // Check purchase limit
+        if (marketItem.limitPerUser > 0) {
+            uint256 purchased = npcMarketProxy.getUserPurchases(_npcId, _itemId, player);
+            require(
+                purchased + _quantity <= marketItem.limitPerUser,
+                "Purchase limit exceeded"
+            );
+        }
 
         // Process transaction
-        // 1. Add item to player inventory
-        InventoryItem memory currentItem = inventoryProxy.getItem(
+        // 1. Add items to player inventory
+        InventoryItem memory playerItem = inventoryProxy.getItem(
             player,
             _itemId
         );
-        uint256 newQuantity = currentItem.quantity + _quantity;
-
-        inventoryProxy.setItem(
-            player,
-            _itemId,
-            newQuantity,
-            currentItem.durability,
-            currentItem.expiration
-        );
+        uint256 newQuantity = playerItem.quantity + _quantity;
+        uint256 durability = playerItem.durability > 0 ? playerItem.durability : 0; // Keep existing durability or 0
+        uint256 expiration = 0; // Items from NPC don't expire
+        inventoryProxy.setItem(player, _itemId, newQuantity, durability, expiration);
 
         // 2. Track user purchase
         npcMarketProxy.addUserPurchase(_npcId, _itemId, player, _quantity);
@@ -490,137 +477,19 @@ contract NPCMarketNativeLogic {
             true // isBuy
         );
 
-        // 4. Refund excess ETH if any
+        // 4. Send ETH to treasury wallet
+        // Note: Players pay ETH when buying items, proceeds go to treasury wallet
+        (bool transferSuccess, ) = payable(treasuryWallet).call{value: totalPrice}("");
+        require(transferSuccess, "ETH transfer to treasury failed");
+
+        // 5. Refund excess ETH if any
         if (msg.value > totalPrice) {
-            uint256 refundAmount = msg.value - totalPrice;
-            (bool refundSuccess, ) = payable(player).call{value: refundAmount}(
-                ""
-            );
-            require(refundSuccess, "Refund failed");
+            uint256 refund = msg.value - totalPrice;
+            (bool refundSuccess, ) = payable(player).call{value: refund}("");
+            require(refundSuccess, "ETH refund failed");
         }
 
         emit ItemPurchasedWithETH(
-            player,
-            _npcId,
-            _itemId,
-            _quantity,
-            totalPrice,
-            transactionId
-        );
-        return transactionId;
-    }
-
-    /**
-     * @notice Allows a player to sell items to an NPC for ETH
-     * @dev Processes a sell transaction with reentrancy protection
-     * @param _npcId The ID of the NPC market
-     * @param _itemId The ID of the item to sell
-     * @param _quantity The quantity to sell
-     * @return transactionId ID of the transaction
-     *
-     * Requirements:
-     * - Valid NPC ID (> 0) and Item ID (> 0)
-     * - Quantity must be between 1 and MAX_TRANSACTION_AMOUNT
-     * - Market must be open
-     * - Item must be available and NPC must be buying it
-     * - Player must be initialized
-     * - Player must have enough items in inventory
-     * - Item must not be banned
-     *
-     * Process:
-     * 1. Validates all input parameters and market state
-     * 2. Checks item availability and buying status
-     * 3. Verifies player has enough items
-     * 4. Calculates total price with overflow protection
-     * 5. Removes items from player's inventory
-     * 6. Sends ETH to player
-     * 7. Tracks sale history
-     * 8. Records transaction
-     *
-     * Emits {ItemSoldForETH} event
-     */
-    function sellItemToNPC(
-        uint256 _npcId,
-        uint256 _itemId,
-        uint256 _quantity
-    ) external nonReentrant returns (uint256) {
-        address player = msg.sender;
-
-        // Validate inputs
-        require(_npcId > 0, "Invalid NPC ID");
-        require(_itemId > 0, "Invalid Item ID");
-        require(_quantity > 0, "Quantity must be greater than 0");
-        require(
-            _quantity <= MAX_TRANSACTION_AMOUNT,
-            "Quantity exceeds maximum"
-        );
-
-        // Check if market is open
-        require(npcMarketProxy.isMarketOpen(_npcId), "Market is closed");
-
-        // Get market item
-        NPCMarketNativeStructs.MarketItemView memory marketItem = npcMarketProxy
-            .getMarketItem(_npcId, _itemId);
-        require(marketItem.active, "Item not available in market");
-        require(!marketItem.isSelling, "NPC is not buying this item");
-
-        // Check if player exists and has enough items
-        Player memory playerData = playerProxy.getPlayer(player);
-        require(playerData.level > 0, "Player not initialized");
-
-        // Validate item exists and is not banned
-        ItemStructs.Item memory itemData = itemProxy.getItem(_itemId);
-        require(itemData.id > 0, "Item does not exist");
-        require(!itemData.isBanned, "Item is banned");
-
-        InventoryItem memory playerItem = inventoryProxy.getItem(
-            player,
-            _itemId
-        );
-        require(playerItem.quantity >= _quantity, "Not enough items to sell");
-
-        // Calculate total price (check for overflow)
-        uint256 totalPrice = marketItem.pricePerUnit * _quantity;
-        require(
-            totalPrice / _quantity == marketItem.pricePerUnit,
-            "Price overflow"
-        );
-
-        // Check if contract has enough ETH
-        require(
-            address(this).balance >= totalPrice,
-            "Insufficient contract balance"
-        );
-
-        // Process transaction
-        // 1. Remove item from player inventory
-        inventoryProxy.setItem(
-            player,
-            _itemId,
-            playerItem.quantity - _quantity,
-            playerItem.durability,
-            playerItem.expiration
-        );
-
-        // 2. Track user sale
-        npcMarketProxy.addUserPurchase(_npcId, _itemId, player, _quantity);
-
-        // 3. Record transaction
-        uint256 transactionId = npcMarketProxy.recordTransaction(
-            player,
-            _npcId,
-            _itemId,
-            _quantity,
-            marketItem.pricePerUnit,
-            totalPrice,
-            false // isBuy
-        );
-
-        // 4. Send ETH to player
-        (bool transferSuccess, ) = payable(player).call{value: totalPrice}("");
-        require(transferSuccess, "ETH transfer failed");
-
-        emit ItemSoldForETH(
             player,
             _npcId,
             _itemId,
@@ -658,29 +527,6 @@ contract NPCMarketNativeLogic {
         npcMarketProxy.resetUserPurchases(_npcId, _itemId, _user);
 
         emit UserPurchasesReset(_npcId, _itemId, _user);
-    }
-
-    /**
-     * @notice Emergency withdrawal of all ETH (admin only)
-     * @dev Allows admin to withdraw all ETH in case of emergency
-     * @param _to Address to receive the ETH
-     * @return success Whether withdrawal was successful
-     */
-    function emergencyWithdraw(
-        address payable _to
-    ) external onlyAdmin nonReentrant returns (bool) {
-        require(_to != address(0), "Invalid recipient address");
-
-        uint256 contractBalance = address(this).balance;
-        require(contractBalance > 0, "No funds to withdraw");
-
-        // Chuyển toàn bộ ETH trong contract (sử dụng call() thay vì transfer())
-        (bool success, ) = _to.call{value: contractBalance}("");
-        require(success, "Transfer failed");
-
-        emit EmergencyWithdraw(msg.sender, contractBalance, block.timestamp);
-
-        return true;
     }
 
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============
@@ -766,11 +612,11 @@ contract NPCMarketNativeLogic {
     }
 
     /**
-     * @notice Calculates the total price to buy items from the NPC
+     * @notice Calculates the total price when buying items from the NPC
      * @dev Multiplies the item's market price by the quantity
      * @param _npcId The ID of the NPC market
      * @param _itemId The ID of the item
-     * @param _quantity The quantity to purchase
+     * @param _quantity The quantity to buy
      * @return totalPrice The total price in wei
      *
      * Requirements:
@@ -784,32 +630,9 @@ contract NPCMarketNativeLogic {
     ) external view returns (uint256 totalPrice) {
         NPCMarketNativeStructs.MarketItemView memory marketItem = npcMarketProxy
             .getMarketItem(_npcId, _itemId);
-        require(marketItem.active && marketItem.isSelling, "Item not for sale");
-        return marketItem.pricePerUnit * _quantity;
-    }
-
-    /**
-     * @notice Calculates the total price when selling items to the NPC
-     * @dev Multiplies the item's market price by the quantity
-     * @param _npcId The ID of the NPC market
-     * @param _itemId The ID of the item
-     * @param _quantity The quantity to sell
-     * @return totalPrice The total price in wei
-     *
-     * Requirements:
-     * - Item must be active in the market
-     * - NPC must be buying this item
-     */
-    function calculateSellPrice(
-        uint256 _npcId,
-        uint256 _itemId,
-        uint256 _quantity
-    ) external view returns (uint256 totalPrice) {
-        NPCMarketNativeStructs.MarketItemView memory marketItem = npcMarketProxy
-            .getMarketItem(_npcId, _itemId);
         require(
-            marketItem.active && !marketItem.isSelling,
-            "Item not accepted for purchase"
+            marketItem.active && marketItem.isSelling,
+            "Item not available for purchase"
         );
         return marketItem.pricePerUnit * _quantity;
     }
@@ -927,7 +750,7 @@ contract NPCMarketNativeLogic {
      * @param _player The address of the player
      * @param _npcId The ID of the NPC market
      * @param _itemId The ID of the item to buy
-     * @param _quantity The quantity to purchase
+     * @param _quantity The quantity to buy
      * @return canBuy True if the player can make the purchase, false otherwise
      * @return reason Explanation if the purchase cannot be made (empty if successful)
      */
@@ -959,16 +782,12 @@ contract NPCMarketNativeLogic {
                 return (false, "NPC is not selling this item");
             }
 
-            // Check user limit
-            if (
-                !npcMarketProxy.canUserPurchaseMore(
-                    _npcId,
-                    _itemId,
-                    _player,
-                    _quantity
-                )
-            ) {
-                return (false, "Purchase limit exceeded for this user");
+            // Check purchase limit
+            if (marketItem.limitPerUser > 0) {
+                uint256 purchased = npcMarketProxy.getUserPurchases(_npcId, _itemId, _player);
+                if (purchased + _quantity > marketItem.limitPerUser) {
+                    return (false, "Purchase limit exceeded for this user");
+                }
             }
 
             // Check price calculation
@@ -977,81 +796,14 @@ contract NPCMarketNativeLogic {
                 return (false, "Price overflow");
             }
 
-            return (true, "");
-        } catch {
-            return (false, "Item not found in market");
-        }
-    }
-
-    /**
-     * @notice Checks if a player can sell an item
-     * @dev Validates all requirements for a sale without executing the transaction
-     * @param _player The address of the player
-     * @param _npcId The ID of the NPC market
-     * @param _itemId The ID of the item to sell
-     * @param _quantity The quantity to sell
-     * @return canSell True if the player can make the sale, false otherwise
-     * @return reason Explanation if the sale cannot be made (empty if successful)
-     */
-    function canPlayerSellItem(
-        address _player,
-        uint256 _npcId,
-        uint256 _itemId,
-        uint256 _quantity
-    ) external view returns (bool canSell, string memory reason) {
-        // Check if market is open
-        if (!npcMarketProxy.isMarketOpen(_npcId)) {
-            return (false, "Market is closed");
-        }
-
-        // Check if player exists
-        Player memory playerData = playerProxy.getPlayer(_player);
-        if (playerData.level == 0) {
-            return (false, "Player not initialized");
-        }
-
-        // Check player's inventory
-        InventoryItem memory playerItem = inventoryProxy.getItem(
-            _player,
-            _itemId
-        );
-        if (playerItem.quantity < _quantity) {
-            return (false, "Not enough items to sell");
-        }
-
-        // Check market item
-        try npcMarketProxy.getMarketItem(_npcId, _itemId) returns (
-            NPCMarketNativeStructs.MarketItemView memory marketItem
-        ) {
-            if (!marketItem.active) {
-                return (false, "Item not accepted by market");
-            }
-            if (marketItem.isSelling) {
-                return (false, "NPC is not buying this item");
+            // Check treasury wallet is set
+            if (treasuryWallet == address(0)) {
+                return (false, "Treasury wallet not set");
             }
 
-            // Check user sell limit
-            if (
-                !npcMarketProxy.canUserPurchaseMore(
-                    _npcId,
-                    _itemId,
-                    _player,
-                    _quantity
-                )
-            ) {
-                return (false, "Sell limit exceeded for this user");
-            }
-
-            // Check price calculation
-            uint256 totalPrice = marketItem.pricePerUnit * _quantity;
-            if (totalPrice / _quantity != marketItem.pricePerUnit) {
-                return (false, "Price overflow");
-            }
-
-            // Check if contract has enough ETH
-            if (address(this).balance < totalPrice) {
-                return (false, "Insufficient contract balance");
-            }
+            // Note: Player needs to send ETH when buying items
+            // This function doesn't check player's ETH balance,
+            // the actual transaction will check via msg.value
 
             return (true, "");
         } catch {
