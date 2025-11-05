@@ -97,8 +97,12 @@ async function main() {
   );
   const npcMarketNativeComponent = await NPCMarketNativeComponent.deploy();
   await npcMarketNativeComponent.waitForDeployment();
-  const npcMarketNativeComponentAddress = await npcMarketNativeComponent.getAddress();
-  console.log("✅ NPCMarketNativeComponent deployed to:", npcMarketNativeComponentAddress);
+  const npcMarketNativeComponentAddress =
+    await npcMarketNativeComponent.getAddress();
+  console.log(
+    "✅ NPCMarketNativeComponent deployed to:",
+    npcMarketNativeComponentAddress
+  );
 
   // 9. Skip GachaComponent (không tồn tại)
   console.log("\n9️⃣ Skipping GachaComponent (contract không tồn tại)...");
@@ -152,6 +156,14 @@ async function main() {
   await referralComponent.waitForDeployment();
   const referralComponentAddress = await referralComponent.getAddress();
   console.log("✅ ReferralComponent deployed to:", referralComponentAddress);
+
+  // 15. Deploy DungeonComponent
+  console.log("\n1️⃣5️⃣ Deploying DungeonComponent...");
+  const DungeonComponent = await ethers.getContractFactory("DungeonComponent");
+  const dungeonComponent = await DungeonComponent.deploy();
+  await dungeonComponent.waitForDeployment();
+  const dungeonComponentAddress = await dungeonComponent.getAddress();
+  console.log("✅ DungeonComponent deployed to:", dungeonComponentAddress);
 
   // === PHASE 3: DEPLOY PROXIES (PHỤ THUỘC WORLD + COMPONENTS) ===
   console.log("\n📦 PHASE 3: Deploying Proxies...");
@@ -242,7 +254,9 @@ async function main() {
 
   // 20.1. Deploy NPCMarketNativeProxy
   console.log("\n2️⃣0️⃣.1️⃣ Deploying NPCMarketNativeProxy...");
-  const NPCMarketNativeProxy = await ethers.getContractFactory("NPCMarketNativeProxy");
+  const NPCMarketNativeProxy = await ethers.getContractFactory(
+    "NPCMarketNativeProxy"
+  );
   const npcMarketNativeProxy = await NPCMarketNativeProxy.deploy(
     worldAddress,
     deployer.address,
@@ -250,7 +264,10 @@ async function main() {
   );
   await npcMarketNativeProxy.waitForDeployment();
   const npcMarketNativeProxyAddress = await npcMarketNativeProxy.getAddress();
-  console.log("✅ NPCMarketNativeProxy deployed to:", npcMarketNativeProxyAddress);
+  console.log(
+    "✅ NPCMarketNativeProxy deployed to:",
+    npcMarketNativeProxyAddress
+  );
 
   // 21. Skip GachaProxy (không tồn tại)
   console.log("\n2️⃣1️⃣ Skipping GachaProxy (contract không tồn tại)...");
@@ -315,6 +332,18 @@ async function main() {
   await referralProxy.waitForDeployment();
   const referralProxyAddress = await referralProxy.getAddress();
   console.log("✅ ReferralProxy deployed to:", referralProxyAddress);
+
+  // 27. Deploy DungeonProxy
+  console.log("\n2️⃣7️⃣ Deploying DungeonProxy...");
+  const DungeonProxy = await ethers.getContractFactory("DungeonProxy");
+  const dungeonProxy = await DungeonProxy.deploy(
+    worldAddress,
+    deployer.address,
+    dungeonComponentAddress
+  );
+  await dungeonProxy.waitForDeployment();
+  const dungeonProxyAddress = await dungeonProxy.getAddress();
+  console.log("✅ DungeonProxy deployed to:", dungeonProxyAddress);
 
   // === PHASE 4: DEPLOY LOGIC CONTRACTS (PHỤ THUỘC WORLD + PROXIES) ===
   console.log("\n📦 PHASE 4: Deploying Logic Contracts...");
@@ -411,7 +440,9 @@ async function main() {
 
   // 33.1. Deploy NPCMarketNativeLogic (world, npcMarketNativeProxy, itemProxy, inventoryProxy, playerProxy, treasuryWallet)
   console.log("\n3️⃣3️⃣.1️⃣ Deploying NPCMarketNativeLogic...");
-  const NPCMarketNativeLogic = await ethers.getContractFactory("NPCMarketNativeLogic");
+  const NPCMarketNativeLogic = await ethers.getContractFactory(
+    "NPCMarketNativeLogic"
+  );
   const treasuryWallet = process.env.TREASURY_WALLET || deployer.address;
   const npcMarketNativeLogic = await NPCMarketNativeLogic.deploy(
     worldAddress,
@@ -423,7 +454,10 @@ async function main() {
   );
   await npcMarketNativeLogic.waitForDeployment();
   const npcMarketNativeLogicAddress = await npcMarketNativeLogic.getAddress();
-  console.log("✅ NPCMarketNativeLogic deployed to:", npcMarketNativeLogicAddress);
+  console.log(
+    "✅ NPCMarketNativeLogic deployed to:",
+    npcMarketNativeLogicAddress
+  );
 
   // Note: Proxy không cần upgrade vì Logic gọi Component trực tiếp, không qua Proxy
   // Proxy trỏ đến Component và giữ nguyên Component address
@@ -500,6 +534,19 @@ async function main() {
   const referralLogicAddress = await referralLogic.getAddress();
   console.log("✅ ReferralLogic deployed to:", referralLogicAddress);
 
+  // 40. Deploy DungeonLogic (world, dungeonProxy, inventoryComponent, playerComponent)
+  console.log("\n4️⃣0️⃣ Deploying DungeonLogic...");
+  const DungeonLogic = await ethers.getContractFactory("DungeonLogic");
+  const dungeonLogic = await DungeonLogic.deploy(
+    worldAddress,
+    dungeonProxyAddress,
+    inventoryProxyAddress,
+    playerProxyAddress
+  );
+  await dungeonLogic.waitForDeployment();
+  const dungeonLogicAddress = await dungeonLogic.getAddress();
+  console.log("✅ DungeonLogic deployed to:", dungeonLogicAddress);
+
   // === PHASE 5: CONFIGURE WORLD CONTRACT ===
   console.log("\n⚙️ PHASE 5: Configuring World Contract...");
 
@@ -518,6 +565,7 @@ async function main() {
     { name: "CraftingLogic", address: craftingLogicAddress },
     { name: "RaisingLogic", address: raisingLogicAddress },
     { name: "ReferralLogic", address: referralLogicAddress },
+    { name: "DungeonLogic", address: dungeonLogicAddress },
   ];
 
   for (const logic of logicContracts) {
@@ -553,6 +601,7 @@ async function main() {
       CraftingComponent: craftingComponentAddress,
       RaisingComponent: raisingComponentAddress,
       ReferralComponent: referralComponentAddress,
+      DungeonComponent: dungeonComponentAddress,
 
       // Proxies
       PlayerProxy: playerProxyAddress,
@@ -568,6 +617,7 @@ async function main() {
       CraftingProxy: craftingProxyAddress,
       RaisingProxy: raisingProxyAddress,
       ReferralProxy: referralProxyAddress,
+      DungeonProxy: dungeonProxyAddress,
 
       // Logic Contracts
       PlayerLogic: playerLogicAddress,
@@ -583,6 +633,7 @@ async function main() {
       CraftingLogic: craftingLogicAddress,
       RaisingLogic: raisingLogicAddress,
       ReferralLogic: referralLogicAddress,
+      DungeonLogic: dungeonLogicAddress,
     },
     deploymentOrder: [
       "World",
@@ -599,6 +650,7 @@ async function main() {
       "CraftingComponent",
       "RaisingComponent",
       "ReferralComponent",
+      "DungeonComponent",
       "PlayerProxy",
       "ItemProxy",
       "WeatherProxy",
@@ -612,6 +664,7 @@ async function main() {
       "CraftingProxy",
       "RaisingProxy",
       "ReferralProxy",
+      "DungeonProxy",
       "PlayerLogic",
       "ItemLogic",
       "WeatherLogic",
@@ -625,6 +678,7 @@ async function main() {
       "CraftingLogic",
       "RaisingLogic",
       "ReferralLogic",
+      "DungeonLogic",
     ],
   };
 
@@ -644,7 +698,7 @@ async function main() {
   // === SUMMARY ===
   console.log("\n🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!");
   console.log("=".repeat(50));
-  console.log(`📊 Tổng số contracts đã deploy: 36 contracts`);
+  console.log(`📊 Tổng số contracts đã deploy: 40 contracts`);
   console.log(
     `🌐 Network: ${network.name} (Chain ID: ${Number(network.chainId)})`
   );
@@ -652,9 +706,9 @@ async function main() {
   console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
   console.log("\n📋 Contract Categories:");
   console.log(`   • Core: 1 contract`);
-  console.log(`   • Components: 13 contracts`);
-  console.log(`   • Proxies: 13 contracts`);
-  console.log(`   • Logic: 13 contracts`);
+  console.log(`   • Components: 14 contracts`);
+  console.log(`   • Proxies: 14 contracts`);
+  console.log(`   • Logic: 14 contracts`);
   console.log("\n🎮 Game Systems (Đã deploy):");
   console.log(`   • Player Management`);
   console.log(`   • Item System`);
@@ -669,6 +723,7 @@ async function main() {
   console.log(`   • Crafting System`);
   console.log(`   • Raising/Livestock`);
   console.log(`   • Referral System`);
+  console.log(`   • Dungeon System`);
   console.log("\n⚠️ Game Systems (Bị bỏ qua - thiếu contracts):");
   console.log(`   • Fishing System (thiếu Component + Proxy)`);
   console.log(`   • Gacha System (thiếu Component + Proxy)`);

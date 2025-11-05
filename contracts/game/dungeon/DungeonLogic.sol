@@ -12,18 +12,21 @@ import "../../struct/Player.sol";
 /**
  * @title DungeonLogic
  * @author RYG.Labs
- * @notice Logic contract cho hệ thống Dungeon
- * @dev Xử lý các logic phức tạp và tương tác với các hệ thống khác
+ * @notice Logic contract for Dungeon system
+ * @dev Handles complex logic and interactions with other systems
  */
 contract DungeonLogic {
-    /// @notice Address của World contract
+    /// @notice World contract address
     address public world;
-    /// @notice Address của DungeonComponent
+    /// @notice DungeonComponent address
     address public dungeonProxy;
-    /// @notice Address của InventoryComponent
+    /// @notice InventoryComponent address
     address public inventoryComponent;
-    /// @notice Address của PlayerComponent
+    /// @notice PlayerComponent address
     address public playerComponent;
+
+    /// @notice Contract owner (has withdrawal rights)
+    address public owner;
 
     /// @notice Reentrancy guard
     bool private _locked;
@@ -82,16 +85,29 @@ contract DungeonLogic {
     );
 
     event EmergencyWithdraw(
-        address indexed admin,
+        address indexed owner,
         uint256 amount,
         uint256 timestamp
     );
 
     event DungeonDeleted(uint256 indexed dungeonId);
 
-    /// @notice Chỉ cho phép admin truy cập
+    event ETHReceived(address indexed sender, uint256 amount);
+
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
+
+    /// @notice Only allows admin access
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
+        _;
+    }
+
+    /// @notice Only allows owner access
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not authorized as owner");
         _;
     }
 
@@ -105,10 +121,10 @@ contract DungeonLogic {
 
     /**
      * @notice Constructor
-     * @param _world Address của World contract
-     * @param _dungeonProxy Address của DungeonComponent proxy
-     * @param _inventoryComponent Address của InventoryComponent
-     * @param _playerComponent Address của PlayerComponent
+     * @param _world World contract address
+     * @param _dungeonProxy DungeonComponent proxy address
+     * @param _inventoryComponent InventoryComponent address
+     * @param _playerComponent PlayerComponent address
      */
     constructor(
         address _world,
@@ -120,30 +136,26 @@ contract DungeonLogic {
         dungeonProxy = _dungeonProxy;
         inventoryComponent = _inventoryComponent;
         playerComponent = _playerComponent;
+        owner = msg.sender;
     }
 
     // ============ WRITE FUNCTIONS (EXTERNAL) ============
 
     /**
-     * @notice Tạo dungeon mới (chỉ admin)
-     * @dev Validate input parameters và tạo dungeon trong component
-     * @param _dungeonId ID duy nhất của dungeon
-     * @param _name Tên dungeon
-     * @param _description Mô tả dungeon
-     * @param _dungeonType Loại dungeon
-     * @param _difficulty Mức độ khó
-     * @param _levelRequirement Cấp độ tối thiểu của người chơi
-     * @param _energyCost Chi phí năng lượng để vào
-     * @param _sunlightCost Chi phí ánh sáng để vào
-     * @param _sunnyCost Chi phí sunny để vào
-     * @param _itemRequirements Vật phẩm yêu cầu để vào
-     * @param _cooldownTime Thời gian chờ giữa các lần thử (giây)
-     * @return dungeonId ID của dungeon vừa tạo
-     *
-     * Quy trình:
-     * 1. Validate input parameters
-     * 2. Tạo dungeon trong component
-     * 3. Emit DungeonCreated event
+     * @notice Create new dungeon (admin only)
+     * @dev Validates input parameters and creates dungeon in component
+     * @param _dungeonId Unique dungeon ID
+     * @param _name Dungeon name
+     * @param _description Dungeon description
+     * @param _dungeonType Dungeon type
+     * @param _difficulty Difficulty level
+     * @param _levelRequirement Minimum player level
+     * @param _energyCost Energy cost to enter
+     * @param _sunlightCost Sunlight cost to enter
+     * @param _sunnyCost Sunny cost to enter
+     * @param _itemRequirements Item requirements to enter
+     * @param _cooldownTime Cooldown time between attempts (seconds)
+     * @return dungeonId ID of the created dungeon
      */
     function createDungeon(
         uint256 _dungeonId,
@@ -160,7 +172,6 @@ contract DungeonLogic {
         uint256 _minBetAmount,
         uint256 _maxBetAmount
     ) external onlyAdmin returns (uint256) {
-        // Validate input
         require(_dungeonId > 0, "Dungeon ID must be greater than 0");
         require(bytes(_name).length > 0, "Dungeon name cannot be empty");
         require(bytes(_name).length <= 64, "Dungeon name too long");
@@ -174,7 +185,6 @@ contract DungeonLogic {
         );
         require(_cooldownTime > 0, "Cooldown time must be greater than 0");
 
-        // Validate item requirements
         for (uint256 i = 0; i < _itemRequirements.length; i++) {
             require(
                 _itemRequirements[i].itemId > 0,
@@ -186,7 +196,6 @@ contract DungeonLogic {
             );
         }
 
-        // Tạo dungeon thông qua component
         uint256 dungeonId = DungeonComponent(dungeonProxy).createDungeon(
             _dungeonId,
             _name,
@@ -208,12 +217,12 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Thêm màn mới vào dungeon (chỉ admin)
-     * @dev Validate input và thêm màn vào dungeon
-     * @param _dungeonId ID của dungeon
-     * @param _stageNumber Số màn
-     * @param _rewardMultiplier Hệ số nhân thưởng (basis points, ví dụ: 2000 = 0.2x)
-     * @return success Có thành công không
+     * @notice Add new stage to dungeon (admin only)
+     * @dev Validates input and adds stage to dungeon
+     * @param _dungeonId Dungeon ID
+     * @param _stageNumber Stage number
+     * @param _rewardMultiplier Reward multiplier (basis points, e.g., 2000 = 0.2x)
+     * @return success Whether the operation succeeded
      */
     function addDungeonStage(
         uint256 _dungeonId,
@@ -244,9 +253,9 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Bật/tắt dungeon (chỉ admin)
-     * @param _dungeonId ID của dungeon
-     * @param _isActive Có hoạt động không
+     * @notice Enable/disable dungeon (admin only)
+     * @param _dungeonId Dungeon ID
+     * @param _isActive Whether dungeon is active
      */
     function setDungeonActive(
         uint256 _dungeonId,
@@ -256,9 +265,9 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Tạm dừng/tiếp tục dungeon (chỉ admin)
-     * @param _dungeonId ID của dungeon
-     * @param _isPaused Có bị tạm dừng không
+     * @notice Pause/resume dungeon (admin only)
+     * @param _dungeonId Dungeon ID
+     * @param _isPaused Whether dungeon is paused
      */
     function setDungeonPaused(
         uint256 _dungeonId,
@@ -268,9 +277,9 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Xóa dungeon (chỉ admin)
-     * @param _dungeonId ID của dungeon cần xóa
-     * @return success Có thành công không
+     * @notice Delete dungeon (admin only)
+     * @param _dungeonId Dungeon ID to delete
+     * @return success Whether the operation succeeded
      */
     function deleteDungeon(
         uint256 _dungeonId
@@ -285,8 +294,8 @@ contract DungeonLogic {
     // ============ READ FUNCTIONS (EXTERNAL) ============
 
     /**
-     * @notice Lấy thông tin dungeon
-     * @param _dungeonId ID của dungeon
+     * @notice Get dungeon information
+     * @param _dungeonId Dungeon ID
      * @return dungeon Dungeon struct
      */
     function getDungeon(
@@ -296,58 +305,53 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Lấy tất cả dungeon IDs
-     * @return Array của tất cả dungeon IDs
+     * @notice Get all dungeon IDs
+     * @return Array of all dungeon IDs
      */
     function getAllDungeonIds() external view returns (uint256[] memory) {
         return DungeonComponent(dungeonProxy).getAllDungeonIds();
     }
 
     /**
-     * @notice Kiểm tra dungeon có tồn tại không
-     * @param _dungeonId ID của dungeon
-     * @return exists Có tồn tại không
+     * @notice Check if dungeon exists
+     * @param _dungeonId Dungeon ID
+     * @return exists Whether dungeon exists
      */
     function dungeonExists(uint256 _dungeonId) external view returns (bool) {
         return DungeonComponent(dungeonProxy).exists(_dungeonId);
     }
 
     /**
-     * @notice Kiểm tra người chơi có đủ item requirements để vào dungeon không
-     * @param _player Address của người chơi
-     * @param _dungeonId ID của dungeon
-     * @return hasRequirements Có đủ requirements không
+     * @notice Check if player has sufficient item requirements to enter dungeon
+     * @param _player Player address
+     * @param _dungeonId Dungeon ID
+     * @return hasRequirements Whether player has sufficient requirements
      */
     function checkItemRequirements(
         address _player,
         uint256 _dungeonId
     ) external view returns (bool) {
-        // Lấy thông tin dungeon
         DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
             .getDungeon(_dungeonId);
 
-        // Kiểm tra từng item requirement
         for (uint256 i = 0; i < dungeon.itemRequirements.length; i++) {
             DungeonStructs.ItemRequirement memory requirement = dungeon
                 .itemRequirements[i];
 
-            // Kiểm tra người chơi có item không
             if (
                 !InventoryComponent(inventoryComponent).exists(
                     _player,
-                    requirement.itemId
+                    uint256(requirement.itemId)
                 )
             ) {
                 return false;
             }
 
-            // Lấy thông tin item hiện tại
             InventoryItem memory playerItem = InventoryComponent(
                 inventoryComponent
-            ).getItem(_player, requirement.itemId);
+            ).getItem(_player, uint256(requirement.itemId));
 
-            // Kiểm tra số lượng
-            if (playerItem.quantity < requirement.quantity) {
+            if (playerItem.quantity < uint256(requirement.quantity)) {
                 return false;
             }
         }
@@ -356,38 +360,38 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Kiểm tra người chơi có đủ resources (energy, sunlight, sunny) để vào dungeon không
-     * @param _player Address của người chơi
-     * @param _dungeonId ID của dungeon
-     * @return hasResources Có đủ resources không
+     * @notice Check if player has sufficient resources (energy, sunlight, sunny) to enter dungeon
+     * @param _player Player address
+     * @param _dungeonId Dungeon ID
+     * @return hasResources Whether player has sufficient resources
      */
     function checkResourceRequirements(
         address _player,
         uint256 _dungeonId
     ) external view returns (bool) {
-        // Lấy thông tin dungeon
         DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
             .getDungeon(_dungeonId);
 
-        // Lấy thông tin player
         Player memory player = PlayerComponent(playerComponent).getPlayer(
             _player
         );
 
-        // Kiểm tra energy (mana)
-        if (dungeon.energyCost > 0 && player.mana < dungeon.energyCost) {
-            return false;
-        }
-
-        // Kiểm tra sunlight
         if (
-            dungeon.sunlightCost > 0 && player.sunlight < dungeon.sunlightCost
+            dungeon.energyCost > 0 && player.mana < uint256(dungeon.energyCost)
         ) {
             return false;
         }
 
-        // Kiểm tra sunny
-        if (dungeon.sunnyCost > 0 && player.sunny < dungeon.sunnyCost) {
+        if (
+            dungeon.sunlightCost > 0 &&
+            player.sunlight < uint256(dungeon.sunlightCost)
+        ) {
+            return false;
+        }
+
+        if (
+            dungeon.sunnyCost > 0 && player.sunny < uint256(dungeon.sunnyCost)
+        ) {
             return false;
         }
 
@@ -395,22 +399,20 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Kiểm tra người chơi có đủ tất cả requirements (items + resources) để vào dungeon không
-     * @param _player Address của người chơi
-     * @param _dungeonId ID của dungeon
-     * @return hasAllRequirements Có đủ tất cả requirements không
+     * @notice Check if player has all requirements (items + resources) to enter dungeon
+     * @param _player Player address
+     * @param _dungeonId Dungeon ID
+     * @return hasAllRequirements Whether player has all requirements
      */
     function checkAllRequirements(
         address _player,
         uint256 _dungeonId
     ) external view returns (bool) {
-        // Kiểm tra item requirements
         bool hasItems = this.checkItemRequirements(_player, _dungeonId);
         if (!hasItems) {
             return false;
         }
 
-        // Kiểm tra resource requirements
         bool hasResources = this.checkResourceRequirements(_player, _dungeonId);
         if (!hasResources) {
             return false;
@@ -422,11 +424,11 @@ contract DungeonLogic {
     // ============ DUNGEON SESSION FUNCTIONS ============
 
     /**
-     * @notice Bắt đầu phiên chơi dungeon (người chơi gọi)
-     * @dev Người chơi gọi hàm này để bắt đầu chơi dungeon
-     * @param _dungeonId ID của dungeon
-     * @param _stageNumber Số màn muốn chơi
-     * @return sessionId ID của phiên chơi mới
+     * @notice Start dungeon session (called by player)
+     * @dev Player calls this function to start playing dungeon
+     * @param _dungeonId Dungeon ID
+     * @param _stageNumber Stage number to play
+     * @return sessionId ID of the new session
      */
     function startDungeon(
         uint256 _dungeonId,
@@ -437,7 +439,6 @@ contract DungeonLogic {
         require(_dungeonId > 0, "Dungeon ID must be greater than 0");
         require(_stageNumber > 0, "Stage number must be greater than 0");
 
-        // Lấy thông tin dungeon
         DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
             .getDungeon(_dungeonId);
 
@@ -449,13 +450,8 @@ contract DungeonLogic {
             );
         }
 
-        // Kiểm tra equipment items
         _validateEquipmentItems(_equipmentItemIds, _equipmentQuantities);
-
-        // Kiểm tra và trừ item requirements
         _checkAndDeductRequirements(dungeon);
-
-        // Kiểm tra và trừ energy, sunlight, sunny
         _checkAndDeductResources(dungeon);
 
         uint256 sessionId = DungeonComponent(dungeonProxy).startDungeonSession(
@@ -478,16 +474,16 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Kết thúc phiên chơi dungeon (admin gọi)
-     * @dev Admin gọi hàm này sau khi client check xong
-     * @param _sessionId ID của phiên chơi
-     * @param _isCompleted Phiên có hoàn thành không
-     * @param _rewardItemIds ID các vật phẩm thưởng
-     * @param _rewardQuantities Số lượng các vật phẩm thưởng
-     * @param _playerDamages Damage của người chơi trong các vòng
-     * @param _monsterHPs Máu của quái trong các vòng
-     * @param _sunlightReward Thưởng sunlight
-     * @param _sunnyReward Thưởng sunny
+     * @notice End dungeon session (called by admin)
+     * @dev Admin calls this function after client validation
+     * @param _sessionId Session ID
+     * @param _isCompleted Whether session is completed
+     * @param _rewardItemIds Reward item IDs
+     * @param _rewardQuantities Reward item quantities
+     * @param _playerDamages Player damages in rounds
+     * @param _monsterHPs Monster HPs in rounds
+     * @param _sunlightReward Sunlight reward
+     * @param _sunnyReward Sunny reward
      */
     function endDungeon(
         uint256 _sessionId,
@@ -522,7 +518,7 @@ contract DungeonLogic {
         emit DungeonSessionEnded(
             _sessionId,
             msg.sender,
-            0, // dungeonId sẽ được lấy từ session
+            0,
             _isCompleted,
             _rewardItemIds,
             _rewardQuantities,
@@ -534,10 +530,10 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Claim phần thưởng từ phiên chơi (người chơi gọi)
-     * @dev Người chơi gọi hàm này để nhận phần thưởng
-     * @param _sessionId ID của phiên chơi
-     * @return success Có thành công không
+     * @notice Claim rewards from session (called by player)
+     * @dev Player calls this function to receive rewards
+     * @param _sessionId Session ID
+     * @return success Whether the operation succeeded
      */
     function claimRewards(
         uint256 _sessionId
@@ -548,32 +544,24 @@ contract DungeonLogic {
             dungeonProxy
         ).getDungeonSession(_sessionId);
 
-        // Kiểm tra session tồn tại
         require(session.sessionId > 0, "Session does not exist");
-
-        // Kiểm tra người chơi có phải chủ sở hữu session không
         require(session.player == msg.sender, "Not the session owner");
-
-        // Kiểm tra session đã được claim chưa
         require(!session.isClaimed, "Rewards already claimed");
-
-        // Kiểm tra session có hoàn thành không (chỉ claim được khi hoàn thành)
         require(
             session.isCompleted,
             "Session not completed - no rewards to claim"
         );
 
-        // Cộng sunlight và sunny nếu có
         if (session.sunlightReward > 0) {
             PlayerComponent(playerComponent).addSunlight(
                 msg.sender,
-                session.sunlightReward
+                uint256(session.sunlightReward)
             );
         }
         if (session.sunnyReward > 0) {
             PlayerComponent(playerComponent).addSunny(
                 msg.sender,
-                session.sunnyReward
+                uint256(session.sunnyReward)
             );
         }
 
@@ -583,8 +571,8 @@ contract DungeonLogic {
             );
 
             for (uint256 i = 0; i < session.rewardItemIds.length; i++) {
-                uint256 itemId = session.rewardItemIds[i];
-                uint256 addQty = session.rewardQuantities[i];
+                uint256 itemId = uint256(session.rewardItemIds[i]);
+                uint256 addQty = uint256(session.rewardQuantities[i]);
 
                 require(addQty > 0, "Invalid reward quantity");
                 require(addQty <= MAX_QUANTITY, "Exceeds max quantity");
@@ -626,14 +614,22 @@ contract DungeonLogic {
             }
         }
 
-        // Xử lý bet rewards nếu có
-        if (session.hasBet && session.isCompleted) {
-            // Tính toán reward dựa trên rewardMultiplier
-            uint256 betReward = (session.betAmount * session.rewardMultiplier) /
-                10000;
+        bool claimSuccess = DungeonComponent(dungeonProxy).claimDungeonRewards(
+            _sessionId,
+            msg.sender
+        );
+        require(claimSuccess, "Failed to claim dungeon rewards");
 
-            // Chuyển tiền thưởng cho người chơi (sử dụng call() thay vì transfer())
+        if (session.hasBet && session.isCompleted) {
+            uint256 betReward = (session.betAmount *
+                uint256(session.rewardMultiplier)) / 10000;
+
             if (betReward > 0) {
+                require(
+                    address(this).balance >= betReward,
+                    "Insufficient contract balance"
+                );
+
                 (bool transferSuccess, ) = payable(msg.sender).call{
                     value: betReward
                 }("");
@@ -649,26 +645,31 @@ contract DungeonLogic {
             }
         }
 
-        bool claimSuccess = DungeonComponent(dungeonProxy).claimDungeonRewards(
-            _sessionId,
-            msg.sender
+        uint256[] memory eventRewardItemIds = new uint256[](
+            session.rewardItemIds.length
+        );
+        uint256[] memory eventRewardQuantities = new uint256[](
+            session.rewardQuantities.length
         );
 
-        if (claimSuccess) {
-            emit DungeonRewardsClaimed(
-                _sessionId,
-                msg.sender,
-                session.rewardItemIds,
-                session.rewardQuantities
-            );
+        for (uint256 i = 0; i < session.rewardItemIds.length; i++) {
+            eventRewardItemIds[i] = uint256(session.rewardItemIds[i]);
+            eventRewardQuantities[i] = uint256(session.rewardQuantities[i]);
         }
 
-        return claimSuccess;
+        emit DungeonRewardsClaimed(
+            _sessionId,
+            msg.sender,
+            eventRewardItemIds,
+            eventRewardQuantities
+        );
+
+        return true;
     }
 
     /**
-     * @notice Lấy thông tin phiên chơi
-     * @param _sessionId ID của phiên chơi
+     * @notice Get session information
+     * @param _sessionId Session ID
      * @return session DungeonSession struct
      */
     function getDungeonSession(
@@ -678,9 +679,9 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Lấy danh sách phiên chơi của người chơi
-     * @param _player Address của người chơi
-     * @return sessionIds Array của session IDs
+     * @notice Get player's session list
+     * @param _player Player address
+     * @return sessionIds Array of session IDs
      */
     function getPlayerSessions(
         address _player
@@ -689,36 +690,35 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Lấy thông tin damage và HP của phiên chơi
-     * @param _sessionId ID của phiên chơi
-     * @return playerDamages Array damage của người chơi
-     * @return monsterHPs Array máu của quái
+     * @notice Get session damage and HP information
+     * @param _sessionId Session ID
+     * @return playerDamages Array of player damages
+     * @return monsterHPs Array of monster HPs
      */
     function getSessionBattleData(
         uint256 _sessionId
     )
         external
         view
-        returns (uint256[] memory playerDamages, uint256[] memory monsterHPs)
+        returns (uint32[] memory playerDamages, uint32[] memory monsterHPs)
     {
         return DungeonComponent(dungeonProxy).getSessionBattleData(_sessionId);
     }
 
     /**
-     * @notice Rút tiền khẩn cấp (chỉ admin)
-     * @dev Hàm này cho phép admin rút toàn bộ ETH trong contract trong trường hợp khẩn cấp
-     * @param _to Address nhận tiền
-     * @return success Có thành công không
+     * @notice Emergency withdraw (owner only)
+     * @dev Allows owner to withdraw all ETH from contract in emergency
+     * @param _to Recipient address
+     * @return success Whether the operation succeeded
      */
     function emergencyWithdraw(
         address payable _to
-    ) external onlyAdmin nonReentrant returns (bool) {
+    ) external onlyOwner nonReentrant returns (bool) {
         require(_to != address(0), "Invalid recipient address");
 
         uint256 contractBalance = address(this).balance;
         require(contractBalance > 0, "No funds to withdraw");
 
-        // Chuyển toàn bộ ETH trong contract (sử dụng call() thay vì transfer())
         (bool success, ) = _to.call{value: contractBalance}("");
         require(success, "Transfer failed");
 
@@ -727,10 +727,33 @@ contract DungeonLogic {
         return true;
     }
 
+    /**
+     * @notice Transfer contract ownership
+     * @dev Only current owner can transfer ownership
+     * @param _newOwner New owner address
+     */
+    function transferOwnership(address _newOwner) external onlyOwner {
+        require(_newOwner != address(0), "New owner cannot be zero address");
+        require(_newOwner != owner, "New owner must be different");
+
+        address previousOwner = owner;
+        owner = _newOwner;
+
+        emit OwnershipTransferred(previousOwner, _newOwner);
+    }
+
+    /**
+     * @notice Receive function to receive ETH
+     * @dev Allows contract to receive ETH directly for bet rewards
+     */
+    receive() external payable {
+        emit ETHReceived(msg.sender, msg.value);
+    }
+
     // ============ INTERNAL FUNCTIONS ============
 
     /**
-     * @notice Kiểm tra và trừ item requirements
+     * @notice Check and deduct item requirements
      * @param _dungeon Dungeon struct
      */
     function _checkAndDeductRequirements(
@@ -740,33 +763,29 @@ contract DungeonLogic {
             DungeonStructs.ItemRequirement memory requirement = _dungeon
                 .itemRequirements[i];
 
-            // Kiểm tra người chơi có item không
             require(
                 InventoryComponent(inventoryComponent).exists(
                     msg.sender,
-                    requirement.itemId
+                    uint256(requirement.itemId)
                 ),
                 "Player does not have required item"
             );
 
-            // Lấy thông tin item hiện tại
             InventoryItem memory playerItem = InventoryComponent(
                 inventoryComponent
-            ).getItem(msg.sender, requirement.itemId);
+            ).getItem(msg.sender, uint256(requirement.itemId));
 
-            // Kiểm tra số lượng
             require(
-                playerItem.quantity >= requirement.quantity,
+                playerItem.quantity >= uint256(requirement.quantity),
                 "Not enough required items"
             );
 
-            // Trừ item nếu isConsumed = true
             if (requirement.isConsumed) {
                 uint256 newQuantity = playerItem.quantity -
-                    requirement.quantity;
+                    uint256(requirement.quantity);
                 InventoryComponent(inventoryComponent).setItem(
                     msg.sender,
-                    requirement.itemId,
+                    uint256(requirement.itemId),
                     newQuantity,
                     playerItem.durability,
                     playerItem.expiration
@@ -776,54 +795,55 @@ contract DungeonLogic {
     }
 
     /**
-     * @notice Kiểm tra và trừ energy, sunlight, sunny
+     * @notice Check and deduct energy, sunlight, sunny
      * @param _dungeon Dungeon struct
      */
     function _checkAndDeductResources(
         DungeonStructs.Dungeon memory _dungeon
     ) internal {
-        // Lấy thông tin player
         Player memory player = PlayerComponent(playerComponent).getPlayer(
             msg.sender
         );
 
-        // Kiểm tra và trừ energy (nếu có)
         if (_dungeon.energyCost > 0) {
-            require(player.mana >= _dungeon.energyCost, "Not enough energy");
-            // Trừ energy thông qua PlayerComponent
-            uint256 newMana = player.mana - _dungeon.energyCost;
+            require(
+                player.mana >= uint256(_dungeon.energyCost),
+                "Not enough energy"
+            );
+            uint256 newMana = player.mana - uint256(_dungeon.energyCost);
             PlayerComponent(playerComponent).setMana(
                 msg.sender,
                 uint16(newMana)
             );
         }
 
-        // Kiểm tra và trừ sunlight
         if (_dungeon.sunlightCost > 0) {
             require(
-                player.sunlight >= _dungeon.sunlightCost,
+                player.sunlight >= uint256(_dungeon.sunlightCost),
                 "Not enough sunlight"
             );
             PlayerComponent(playerComponent).subtractSunlight(
                 msg.sender,
-                _dungeon.sunlightCost
+                uint256(_dungeon.sunlightCost)
             );
         }
 
-        // Kiểm tra và trừ sunny
         if (_dungeon.sunnyCost > 0) {
-            require(player.sunny >= _dungeon.sunnyCost, "Not enough sunny");
+            require(
+                player.sunny >= uint256(_dungeon.sunnyCost),
+                "Not enough sunny"
+            );
             PlayerComponent(playerComponent).subtractSunny(
                 msg.sender,
-                _dungeon.sunnyCost
+                uint256(_dungeon.sunnyCost)
             );
         }
     }
 
     /**
-     * @notice Kiểm tra equipment items
-     * @param _equipmentItemIds Array ID các equipment items
-     * @param _equipmentQuantities Array số lượng các equipment items
+     * @notice Validate equipment items
+     * @param _equipmentItemIds Array of equipment item IDs
+     * @param _equipmentQuantities Array of equipment item quantities
      */
     function _validateEquipmentItems(
         uint256[] memory _equipmentItemIds,
@@ -834,12 +854,10 @@ contract DungeonLogic {
             "Equipment arrays length mismatch"
         );
 
-        // Kiểm tra từng equipment item
         for (uint256 i = 0; i < _equipmentItemIds.length; i++) {
             require(_equipmentItemIds[i] > 0, "Invalid equipment item ID");
             require(_equipmentQuantities[i] > 0, "Invalid equipment quantity");
 
-            // Kiểm tra player có equipment item không
             require(
                 InventoryComponent(inventoryComponent).exists(
                     msg.sender,
@@ -848,12 +866,10 @@ contract DungeonLogic {
                 "Player does not have equipment item"
             );
 
-            // Lấy thông tin equipment item
             InventoryItem memory equipmentItem = InventoryComponent(
                 inventoryComponent
             ).getItem(msg.sender, _equipmentItemIds[i]);
 
-            // Kiểm tra số lượng
             require(
                 equipmentItem.quantity >= _equipmentQuantities[i],
                 "Not enough equipment items"
