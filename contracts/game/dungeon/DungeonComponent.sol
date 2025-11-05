@@ -407,7 +407,8 @@ contract DungeonComponent {
         uint256[] memory _playerDamages,
         uint256[] memory _monsterHPs,
         uint256 _sunlightReward,
-        uint256 _sunnyReward
+        uint256 _sunnyReward,
+        uint32 _stageNumber
     ) external onlyAuthorized {
         require(
             dungeonSessions[_sessionId].sessionId > 0,
@@ -434,8 +435,23 @@ contract DungeonComponent {
         DungeonStructs.DungeonSession storage session = dungeonSessions[
             _sessionId
         ];
+
+        // Tính rewardMultiplier dựa trên stageNumber
+        DungeonStructs.Dungeon storage dungeon = dungeons[uint256(session.dungeonId)];
+        bool stageExists = false;
+        uint32 rewardMultiplier = 0;
+        for (uint256 i = 0; i < dungeon.stages.length; i++) {
+            if (dungeon.stages[i].stageNumber == uint16(_stageNumber)) {
+                stageExists = true;
+                rewardMultiplier = dungeon.stages[i].rewardMultiplier;
+                break;
+            }
+        }
+        require(stageExists, "Stage does not exist");
+        
         session.endTime = uint64(block.timestamp);
         session.isCompleted = _isCompleted;
+        session.rewardMultiplier = rewardMultiplier;
 
         uint64[] memory convertedRewardItemIds = new uint64[](
             _rewardItemIds.length
@@ -463,6 +479,7 @@ contract DungeonComponent {
         session.monsterHPs = convertedMonsterHPs;
         session.sunlightReward = uint128(_sunlightReward);
         session.sunnyReward = uint128(_sunnyReward);
+        session.stageNumber = uint16(_stageNumber);
 
         DungeonStructs.PlayerDungeonProgress
             storage progress = playerDungeonProgress[session.player][

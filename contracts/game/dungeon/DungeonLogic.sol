@@ -66,7 +66,8 @@ contract DungeonLogic {
         uint256[] playerDamages,
         uint256[] monsterHPs,
         uint256 sunlightReward,
-        uint256 sunnyReward
+        uint256 sunnyReward,
+        uint16 stageNumber
     );
 
     event DungeonRewardsClaimed(
@@ -493,7 +494,8 @@ contract DungeonLogic {
         uint256[] memory _playerDamages,
         uint256[] memory _monsterHPs,
         uint256 _sunlightReward,
-        uint256 _sunnyReward
+        uint256 _sunnyReward,
+        uint16 _stageNumber
     ) external onlyAdmin {
         require(_sessionId > 0, "Session ID must be greater than 0");
         require(
@@ -521,7 +523,9 @@ contract DungeonLogic {
             _playerDamages,
             _monsterHPs,
             _sunlightReward,
-            _sunnyReward
+            _sunnyReward,
+            _stageNumber
+
         );
 
         emit DungeonSessionEnded(
@@ -534,7 +538,8 @@ contract DungeonLogic {
             _playerDamages,
             _monsterHPs,
             _sunlightReward,
-            _sunnyReward
+            _sunnyReward,
+            _stageNumber
         );
     }
 
@@ -632,8 +637,7 @@ contract DungeonLogic {
         // Xử lý bet rewards nếu có
         if (session.hasBet && session.isCompleted) {
             // Tính toán reward dựa trên rewardMultiplier
-            uint256 betReward = ((session.betAmount * session.rewardMultiplier) /
-                10000) + session.betAmount;
+            uint256 betReward = (session.betAmount * session.rewardMultiplier) / 10000;
 
             if (betReward > 0) {
                 require(
