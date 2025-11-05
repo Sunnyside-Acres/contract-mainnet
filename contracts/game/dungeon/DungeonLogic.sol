@@ -495,6 +495,7 @@ contract DungeonLogic {
         uint256 _sunlightReward,
         uint256 _sunnyReward
     ) external onlyAdmin {
+        require(_sessionId > 0, "Session ID must be greater than 0");
         require(
             _rewardItemIds.length == _rewardQuantities.length,
             "Arrays length mismatch"
@@ -503,6 +504,14 @@ contract DungeonLogic {
             _playerDamages.length == _monsterHPs.length,
             "Damage and HP arrays length mismatch"
         );
+
+        // Kiểm tra session đã end chưa
+        DungeonStructs.DungeonSession memory session = DungeonComponent(
+            dungeonProxy
+        ).getDungeonSession(_sessionId);
+        require(session.sessionId > 0, "Session does not exist");
+        require(!session.isCompleted, "Session already ended");
+        require(!session.isClaimed, "Session already claimed");
 
         DungeonComponent(dungeonProxy).endDungeonSession(
             _sessionId,
@@ -620,9 +629,11 @@ contract DungeonLogic {
         );
         require(claimSuccess, "Failed to claim dungeon rewards");
 
+        // Xử lý bet rewards nếu có
         if (session.hasBet && session.isCompleted) {
-            uint256 betReward = (session.betAmount *
-                uint256(session.rewardMultiplier)) / 10000;
+            // Tính toán reward dựa trên rewardMultiplier
+            uint256 betReward = ((session.betAmount * session.rewardMultiplier) /
+                10000) + session.betAmount;
 
             if (betReward > 0) {
                 require(

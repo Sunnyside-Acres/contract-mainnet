@@ -440,8 +440,8 @@ contract NPCMarketNativeLogic {
             "Price overflow"
         );
 
-        // Check if player sent enough ETH
-        require(msg.value >= totalPrice, "Insufficient ETH sent");
+        // Check if player sent enough SEI
+        require(msg.value >= totalPrice, "Insufficient SEI sent");
 
         // Check purchase limit
         if (marketItem.limitPerUser > 0) {
@@ -477,16 +477,16 @@ contract NPCMarketNativeLogic {
             true // isBuy
         );
 
-        // 4. Send ETH to treasury wallet
+        // 4. Send SEI to treasury wallet
         // Note: Players pay ETH when buying items, proceeds go to treasury wallet
         (bool transferSuccess, ) = payable(treasuryWallet).call{value: totalPrice}("");
-        require(transferSuccess, "ETH transfer to treasury failed");
+        require(transferSuccess, "SEI transfer to treasury failed");
 
-        // 5. Refund excess ETH if any
+        // 5. Refund excess SEI if any
         if (msg.value > totalPrice) {
             uint256 refund = msg.value - totalPrice;
             (bool refundSuccess, ) = payable(player).call{value: refund}("");
-            require(refundSuccess, "ETH refund failed");
+            require(refundSuccess, "SEI refund failed");
         }
 
         emit ItemPurchasedWithETH(
@@ -579,8 +579,8 @@ contract NPCMarketNativeLogic {
      * @return itemCount Total number of items in the market
      * @return minTransactionAmount Minimum transaction amount
      * @return maxTransactionAmount Maximum transaction amount
-     * @return totalEarnings Total ETH earned by NPC
-     * @return totalSpent Total ETH spent by NPC
+     * @return totalEarnings Total SEI earned by NPC
+     * @return totalSpent Total SEI spent by NPC
      */
     function getNPCMarketInfo(
         uint256 _npcId
@@ -612,7 +612,7 @@ contract NPCMarketNativeLogic {
     }
 
     /**
-     * @notice Calculates the total price when buying items from the NPC
+     * @notice Calculates the total price when buying items from the NPC for SEI
      * @dev Multiplies the item's market price by the quantity
      * @param _npcId The ID of the NPC market
      * @param _itemId The ID of the item
