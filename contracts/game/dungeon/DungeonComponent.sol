@@ -310,34 +310,20 @@ contract DungeonComponent {
      * @notice Start dungeon session (called by player)
      * @param _player Player address
      * @param _dungeonId Dungeon ID
-     * @param _stageNumber Stage number to play
      * @return sessionId ID of the new session
      */
     function startDungeonSession(
         address _player,
         uint256 _dungeonId,
-        uint256 _stageNumber,
         uint256 _betAmount,
         uint256[] memory _equipmentItemIds,
         uint256[] memory _equipmentQuantities
     ) external onlyAuthorized returns (uint256) {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
-        require(_stageNumber > 0, "Stage number must be greater than 0");
 
         DungeonStructs.Dungeon storage dungeon = dungeons[_dungeonId];
         require(dungeon.isActive, "Dungeon is not active");
         require(!dungeon.isPaused, "Dungeon is paused");
-
-        bool stageExists = false;
-        uint32 rewardMultiplier = 0;
-        for (uint256 i = 0; i < dungeon.stages.length; i++) {
-            if (dungeon.stages[i].stageNumber == uint16(_stageNumber)) {
-                stageExists = true;
-                rewardMultiplier = dungeon.stages[i].rewardMultiplier;
-                break;
-            }
-        }
-        require(stageExists, "Stage does not exist");
 
         sessionCount++;
         uint256 sessionId = sessionCount;
@@ -358,7 +344,7 @@ contract DungeonComponent {
                 sessionId: uint64(sessionId),
                 player: _player,
                 dungeonId: uint64(_dungeonId),
-                stageNumber: uint16(_stageNumber),
+                stageNumber: uint16(0),
                 startTime: uint64(block.timestamp),
                 endTime: uint64(0),
                 isCompleted: false,
@@ -366,7 +352,7 @@ contract DungeonComponent {
                 hasBet: _betAmount > 0,
                 rewardItemIds: new uint64[](0),
                 rewardQuantities: new uint32[](0),
-                rewardMultiplier: rewardMultiplier,
+                rewardMultiplier: 0,
                 playerDamages: new uint32[](0),
                 monsterHPs: new uint32[](0),
                 sunlightReward: uint128(0),
@@ -383,7 +369,7 @@ contract DungeonComponent {
             sessionId,
             _player,
             _dungeonId,
-            _stageNumber
+            0
         );
         return sessionId;
     }
@@ -398,6 +384,7 @@ contract DungeonComponent {
      * @param _monsterHPs Monster HPs in rounds
      * @param _sunlightReward Sunlight reward
      * @param _sunnyReward Sunny reward
+     * @param _stageNumber Stage number
      */
     function endDungeonSession(
         uint256 _sessionId,

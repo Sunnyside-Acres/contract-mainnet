@@ -424,21 +424,12 @@ contract DungeonLogic {
 
     // ============ DUNGEON SESSION FUNCTIONS ============
 
-    /**
-     * @notice Start dungeon session (called by player)
-     * @dev Player calls this function to start playing dungeon
-     * @param _dungeonId Dungeon ID
-     * @param _stageNumber Stage number to play
-     * @return sessionId ID of the new session
-     */
     function startDungeon(
         uint256 _dungeonId,
-        uint256 _stageNumber,
         uint256[] memory _equipmentItemIds,
         uint256[] memory _equipmentQuantities
     ) external payable returns (uint256) {
         require(_dungeonId > 0, "Dungeon ID must be greater than 0");
-        require(_stageNumber > 0, "Stage number must be greater than 0");
 
         DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
             .getDungeon(_dungeonId);
@@ -458,7 +449,6 @@ contract DungeonLogic {
         uint256 sessionId = DungeonComponent(dungeonProxy).startDungeonSession(
             msg.sender,
             _dungeonId,
-            _stageNumber,
             msg.value,
             _equipmentItemIds,
             _equipmentQuantities
@@ -468,7 +458,7 @@ contract DungeonLogic {
             sessionId,
             msg.sender,
             _dungeonId,
-            _stageNumber,
+            0,
             msg.value
         );
         return sessionId;
@@ -525,7 +515,6 @@ contract DungeonLogic {
             _sunlightReward,
             _sunnyReward,
             _stageNumber
-
         );
 
         emit DungeonSessionEnded(
