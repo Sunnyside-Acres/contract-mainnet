@@ -188,7 +188,6 @@ contract DungeonComponent {
         uint256 _rewardMultiplier
     ) external onlyAuthorized returns (bool) {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
-        require(_stageNumber > 0, "Stage number must be greater than 0");
         require(
             _rewardMultiplier > 0,
             "Reward multiplier must be greater than 0"
@@ -423,18 +422,20 @@ contract DungeonComponent {
             _sessionId
         ];
 
-        // Tính rewardMultiplier dựa trên stageNumber
-        DungeonStructs.Dungeon storage dungeon = dungeons[uint256(session.dungeonId)];
-        bool stageExists = false;
         uint32 rewardMultiplier = 0;
-        for (uint256 i = 0; i < dungeon.stages.length; i++) {
-            if (dungeon.stages[i].stageNumber == uint16(_stageNumber)) {
-                stageExists = true;
-                rewardMultiplier = dungeon.stages[i].rewardMultiplier;
-                break;
+        
+        if (_stageNumber > 0) {
+            DungeonStructs.Dungeon storage dungeon = dungeons[uint256(session.dungeonId)];
+            bool stageExists = false;
+            for (uint256 i = 0; i < dungeon.stages.length; i++) {
+                if (dungeon.stages[i].stageNumber == uint16(_stageNumber)) {
+                    stageExists = true;
+                    rewardMultiplier = dungeon.stages[i].rewardMultiplier;
+                    break;
+                }
             }
+            require(stageExists, "Stage does not exist");
         }
-        require(stageExists, "Stage does not exist");
         
         session.endTime = uint64(block.timestamp);
         session.isCompleted = _isCompleted;

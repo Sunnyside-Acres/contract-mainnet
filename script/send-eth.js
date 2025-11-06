@@ -19,7 +19,7 @@ async function main() {
     );
 
     // Địa chỉ nhận
-    const recipientAddress = "0xc8359a77f3d5bd40b0accf53467a8d88fa5d102d";
+    const recipientAddress = "0xf449977f501752e65026a4ca0acc7eaddd2c0248";
 
     // Lấy số tiền cần gửi từ command line argument hoặc sử dụng giá trị mặc định
     const amountArg = process.argv[2];

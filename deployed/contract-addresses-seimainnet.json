@@ -42,14 +42,14 @@
     "RaisingLogic": "0x6a9F52174368555FeE4DA273a5EF673298832b0A",
     "ReferralLogic": "0x8eb88A9aA4F7702B5D8bd158B472966F4ba3dc5B",
     "FishingLogic": "0x025Be4E2DC405b8BC27a6750A53B6E4750308Dd8",
-    "DungeonComponent": "0xD2F0Fe2A1A1A266f58A81713a56d0A0c586e10B6",
+    "DungeonComponent": "0x3b7A5D982618452d35A5A413A216CE2f409F7f5E",
     "DungeonProxy": "0xA7C7dF7C455474a0c9e7d0f699E2818694DC0F9B",
-    "DungeonLogic": "0xD19fb51d2cCf29A79eeaF8ccc762173E7028F538",
+    "DungeonLogic": "0x00Cf503E04741fc0db0eeE10B4a3690E162009f0",
     "NPCMarketNativeComponent": "0x0c297A60185Af77E813E80123ed5adC653673332",
     "NPCMarketNativeLogic": "0x0b5A2afd546C6e86299a5Ed9bdc8E1214dcf181C",
     "NPCMarketNativeProxy": "0x0bE3a6856d5c0c16A2D09044DE3f6B2b8785a937",
     "GachaLogic": "0x2aCDA504De7925e42c8AE5fed79D6884a65d92AB",
-    "OldDungeonComponent": "0x62f94039602096F0c3b46e9C954CFd38c5A64b49"
+    "OldDungeonComponent": "0xB538365D126D027Db191DE0d7AfEf78DE0e8A67e"
   },
   "deploymentOrder": [
     "World",
@@ -92,9 +92,9 @@
   ],
   "lastUpgrade": {
     "component": "DungeonComponent",
-    "oldAddress": "0x62f94039602096F0c3b46e9C954CFd38c5A64b49",
-    "newAddress": "0xD2F0Fe2A1A1A266f58A81713a56d0A0c586e10B6",
-    "timestamp": "2025-11-05T20:14:51.089Z",
+    "oldAddress": "0xB538365D126D027Db191DE0d7AfEf78DE0e8A67e",
+    "newAddress": "0x3b7A5D982618452d35A5A413A216CE2f409F7f5E",
+    "timestamp": "2025-11-05T20:41:41.100Z",
     "deployer": "0x40687047E55F8027940E95143317BFAd550A28D1",
     "network": "seimainnet",
     "chainId": 1329

@@ -230,7 +230,6 @@ contract DungeonLogic {
         uint256 _stageNumber,
         uint256 _rewardMultiplier
     ) external onlyAdmin returns (bool) {
-        require(_stageNumber > 0, "Stage number must be greater than 0");
         require(
             _rewardMultiplier > 0,
             "Reward multiplier must be greater than 0"
@@ -519,8 +518,8 @@ contract DungeonLogic {
 
         emit DungeonSessionEnded(
             _sessionId,
-            msg.sender,
-            0,
+            session.player,
+            uint256(session.dungeonId),
             _isCompleted,
             _rewardItemIds,
             _rewardQuantities,
