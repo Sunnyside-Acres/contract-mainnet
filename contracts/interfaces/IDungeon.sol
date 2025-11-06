@@ -21,6 +21,9 @@ interface IDungeon {
      * @param _sunnyCost Sunny cost to enter
      * @param _itemRequirements Required items for entry
      * @param _cooldownTime Cooldown time between attempts
+     * @param _minBetAmount Minimum bet amount
+     * @param _maxBetAmount Maximum bet amount
+     * @return dungeonId ID of the created dungeon
      */
     function createDungeon(
         uint256 _dungeonId,
@@ -33,8 +36,10 @@ interface IDungeon {
         uint256 _sunlightCost,
         uint256 _sunnyCost,
         DungeonStructs.ItemRequirement[] memory _itemRequirements,
-        uint256 _cooldownTime
-    ) external;
+        uint256 _cooldownTime,
+        uint256 _minBetAmount,
+        uint256 _maxBetAmount
+    ) external returns (uint256);
 
     /**
      * @notice Updates an existing dungeon
@@ -82,6 +87,13 @@ interface IDungeon {
      * @return Array of dungeon IDs
      */
     function getAllDungeonIds() external view returns (uint256[] memory);
+
+    /**
+     * @notice Check if dungeon exists
+     * @param _dungeonId Dungeon ID
+     * @return exists Whether dungeon exists
+     */
+    function exists(uint256 _dungeonId) external view returns (bool);
 
     /**
      * @notice Gets player's dungeon progress
@@ -154,14 +166,14 @@ interface IDungeon {
      * @notice Starts a dungeon session
      * @param _player Player address
      * @param _dungeonId ID of the dungeon
-     * @param _stageNumber Stage number to play
      * @param _betAmount Bet amount (0 if no bet)
+     * @param _equipmentItemIds Equipment item IDs
+     * @param _equipmentQuantities Equipment item quantities
      * @return sessionId ID of the new session
      */
     function startDungeonSession(
         address _player,
         uint256 _dungeonId,
-        uint256 _stageNumber,
         uint256 _betAmount,
         uint256[] memory _equipmentItemIds,
         uint256[] memory _equipmentQuantities
@@ -177,6 +189,7 @@ interface IDungeon {
      * @param _monsterHPs Monster HPs in rounds
      * @param _sunlightReward Sunlight reward
      * @param _sunnyReward Sunny reward
+     * @param _stageNumber Stage number
      */
     function endDungeonSession(
         uint256 _sessionId,
@@ -186,15 +199,20 @@ interface IDungeon {
         uint256[] memory _playerDamages,
         uint256[] memory _monsterHPs,
         uint256 _sunlightReward,
-        uint256 _sunnyReward
+        uint256 _sunnyReward,
+        uint32 _stageNumber
     ) external;
 
     /**
      * @notice Claims dungeon rewards
      * @param _sessionId ID of the session
+     * @param playerAddress Player address
      * @return success Whether claim was successful
      */
-    function claimDungeonRewards(uint256 _sessionId) external returns (bool);
+    function claimDungeonRewards(
+        uint256 _sessionId,
+        address playerAddress
+    ) external returns (bool);
 
     // ============ SESSION QUERY FUNCTIONS ============
 
@@ -227,7 +245,7 @@ interface IDungeon {
     )
         external
         view
-        returns (uint256[] memory playerDamages, uint256[] memory monsterHPs);
+        returns (uint32[] memory playerDamages, uint32[] memory monsterHPs);
 
     // ============ BETTING FUNCTIONS ============
 
