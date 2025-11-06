@@ -549,6 +549,7 @@ contract DungeonLogic {
         require(session.sessionId > 0, "Session does not exist");
         require(session.player == msg.sender, "Not the session owner");
         require(!session.isClaimed, "Rewards already claimed");
+        
         require(
             session.isCompleted,
             "Session not completed - no rewards to claim"

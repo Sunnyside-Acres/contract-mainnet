@@ -330,9 +330,11 @@ contract DungeonComponent {
         uint64[] memory convertedEquipmentItemIds = new uint64[](
             _equipmentItemIds.length
         );
+
         uint32[] memory convertedEquipmentQuantities = new uint32[](
             _equipmentQuantities.length
         );
+        
         for (uint256 i = 0; i < _equipmentItemIds.length; i++) {
             convertedEquipmentItemIds[i] = uint64(_equipmentItemIds[i]);
             convertedEquipmentQuantities[i] = uint32(_equipmentQuantities[i]);
@@ -364,12 +366,7 @@ contract DungeonComponent {
         dungeonSessions[sessionId] = newSession;
         playerSessions[_player].push(sessionId);
 
-        emit DungeonSessionStarted(
-            sessionId,
-            _player,
-            _dungeonId,
-            0
-        );
+        emit DungeonSessionStarted(sessionId, _player, _dungeonId, 0);
         return sessionId;
     }
 
@@ -423,9 +420,11 @@ contract DungeonComponent {
         ];
 
         uint32 rewardMultiplier = 0;
-        
+
         if (_stageNumber > 0) {
-            DungeonStructs.Dungeon storage dungeon = dungeons[uint256(session.dungeonId)];
+            DungeonStructs.Dungeon storage dungeon = dungeons[
+                uint256(session.dungeonId)
+            ];
             bool stageExists = false;
             for (uint256 i = 0; i < dungeon.stages.length; i++) {
                 if (dungeon.stages[i].stageNumber == uint16(_stageNumber)) {
@@ -436,10 +435,14 @@ contract DungeonComponent {
             }
             require(stageExists, "Stage does not exist");
         }
-        
+
         session.endTime = uint64(block.timestamp);
         session.isCompleted = _isCompleted;
         session.rewardMultiplier = rewardMultiplier;
+
+        if (!_isCompleted) {
+            session.isClaimed = true;
+        }
 
         uint64[] memory convertedRewardItemIds = new uint64[](
             _rewardItemIds.length
@@ -477,6 +480,7 @@ contract DungeonComponent {
         if (_isCompleted) {
             progress.successfulAttempts++;
         }
+
         progress.lastAttemptTime = uint64(block.timestamp);
 
         uint256[] memory eventRewardItemIds = new uint256[](
@@ -532,10 +536,12 @@ contract DungeonComponent {
             dungeonSessions[_sessionId].isCompleted,
             "Session not completed"
         );
+
         require(
             !dungeonSessions[_sessionId].isClaimed,
             "Rewards already claimed"
         );
+
         require(
             dungeonSessions[_sessionId].player == playerAddress,
             "Not your session"
