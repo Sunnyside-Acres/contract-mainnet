@@ -7,57 +7,57 @@ import "../../struct/Dungeon.sol";
 /**
  * @title DungeonProxy
  * @author RYG.Labs
- * @notice Proxy contract cho hệ thống Dungeon sử dụng delegatecall pattern
+ * @notice Proxy contract for Dungeon system using delegatecall pattern
  * @dev Delegates all calls to the implementation contract while maintaining storage
  */
 contract DungeonProxy {
-    /// @notice Address của World contract để kiểm soát quyền truy cập
+    /// @notice World contract address for access control
     address public world;
-    /// @notice Address của admin
+    /// @notice Admin address
     address public admin;
-    /// @notice Address của implementation logic contract
+    /// @notice Implementation logic contract address
     address public implementation;
 
-    /// @notice Mapping từ dungeon ID đến Dungeon struct
+    /// @notice Mapping from dungeon ID to Dungeon struct
     mapping(uint256 => DungeonStructs.Dungeon) public dungeons;
-    /// @notice Array của tất cả dungeon IDs
+    /// @notice Array of all dungeon IDs
     uint256[] public dungeonIds;
-    /// @notice Mapping để kiểm tra dungeon có tồn tại không
+    /// @notice Mapping to check if dungeon exists
     mapping(uint256 => bool) public dungeonExists;
-    /// @notice Tổng số dungeon đã tạo
+    /// @notice Total number of dungeons created
     uint256 public dungeonCount;
 
-    /// @notice Mapping từ player address đến dungeon progress
+    /// @notice Mapping from player address to dungeon progress
     mapping(address => mapping(uint256 => DungeonStructs.PlayerDungeonProgress))
         public playerDungeonProgress;
 
-    /// @notice Mapping từ session ID đến DungeonSession
+    /// @notice Mapping from session ID to DungeonSession
     mapping(uint256 => DungeonStructs.DungeonSession) public dungeonSessions;
-    /// @notice Mapping từ player address đến session IDs
+    /// @notice Mapping from player address to session IDs
     mapping(address => uint256[]) public playerSessions;
-    /// @notice Tổng số session đã tạo
+    /// @notice Total number of sessions created
     uint256 public sessionCount;
 
-    /// @notice Emitted khi implementation được upgrade
+    /// @notice Emitted when implementation is upgraded
     event ComponentUpdated(address indexed newImplementation);
 
-    /// @notice Chỉ cho phép admin truy cập
+    /// @notice Only allows admin access
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
         _;
     }
 
-    /// @notice Chỉ cho phép logic contracts được ủy quyền truy cập
+    /// @notice Only allows authorized logic contracts to access
     modifier onlyAuthorized() {
         require(IWorld(world).isLogicRegistered(msg.sender), "Unauthorized");
         _;
     }
 
     /**
-     * @notice Constructor để khởi tạo proxy
-     * @param _world Address của World contract
-     * @param _admin Address của admin
-     * @param _implementation Address của implementation ban đầu
+     * @notice Constructor to initialize proxy
+     * @param _world World contract address
+     * @param _admin Admin address
+     * @param _implementation Initial implementation address
      */
     constructor(address _world, address _admin, address _implementation) {
         world = _world;
@@ -67,7 +67,7 @@ contract DungeonProxy {
 
     /**
      * @notice Upgrade implementation contract
-     * @param newImplementation Address của implementation mới
+     * @param newImplementation New implementation address
      */
     function upgrade(address newImplementation) external onlyAdmin {
         implementation = newImplementation;

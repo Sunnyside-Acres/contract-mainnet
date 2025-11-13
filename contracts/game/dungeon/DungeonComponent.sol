@@ -7,36 +7,36 @@ import "../../interfaces/IWorld.sol";
 /**
  * @title DungeonComponent
  * @author RYG.Labs
- * @notice Component contract cho hệ thống Dungeon
- * @dev Chứa logic cơ bản để quản lý dungeons và player progress
+ * @notice Component contract for Dungeon system
+ * @dev Contains basic logic for managing dungeons and player progress
  */
 contract DungeonComponent {
-    /// @notice Address của World contract để kiểm soát quyền truy cập
+    /// @notice World contract address for access control
     address public world;
 
-    /// @notice Address của admin
+    /// @notice Admin address
     address public admin;
-    /// @notice Address của implementation logic contract
+    /// @notice Implementation logic contract address
     address public implementation;
 
-    /// @notice Mapping từ dungeon ID đến Dungeon struct
+    /// @notice Mapping from dungeon ID to Dungeon struct
     mapping(uint256 => DungeonStructs.Dungeon) public dungeons;
-    /// @notice Array của tất cả dungeon IDs
+    /// @notice Array of all dungeon IDs
     uint256[] public dungeonIds;
-    /// @notice Mapping để kiểm tra dungeon có tồn tại không
+    /// @notice Mapping to check if dungeon exists
     mapping(uint256 => bool) public dungeonExists;
-    /// @notice Tổng số dungeon đã tạo
+    /// @notice Total number of dungeons created
     uint256 public dungeonCount;
 
-    /// @notice Mapping từ player address đến dungeon progress
+    /// @notice Mapping from player address to dungeon progress
     mapping(address => mapping(uint256 => DungeonStructs.PlayerDungeonProgress))
         public playerDungeonProgress;
 
-    /// @notice Mapping từ session ID đến DungeonSession
+    /// @notice Mapping from session ID to DungeonSession
     mapping(uint256 => DungeonStructs.DungeonSession) public dungeonSessions;
-    /// @notice Mapping từ player address đến session IDs
+    /// @notice Mapping from player address to session IDs
     mapping(address => uint256[]) public playerSessions;
-    /// @notice Tổng số session đã tạo
+    /// @notice Total number of sessions created
     uint256 public sessionCount;
 
     /// @notice Events
@@ -82,26 +82,26 @@ contract DungeonComponent {
 
     event DungeonDeleted(uint256 indexed dungeonId);
 
-    /// @notice Chỉ cho phép logic contracts được ủy quyền truy cập
+    /// @notice Only allows authorized logic contracts to access
     modifier onlyAuthorized() {
         require(IWorld(world).isLogicRegistered(msg.sender), "Unauthorized");
         _;
     }
 
     /**
-     * @notice Tạo dungeon mới
-     * @param _dungeonId ID duy nhất của dungeon
-     * @param _name Tên dungeon
-     * @param _description Mô tả dungeon
-     * @param _dungeonType Loại dungeon
-     * @param _difficulty Mức độ khó
-     * @param _levelRequirement Cấp độ tối thiểu
-     * @param _energyCost Chi phí năng lượng
-     * @param _sunlightCost Chi phí ánh sáng
-     * @param _sunnyCost Chi phí sunny
-     * @param _itemRequirements Vật phẩm yêu cầu
-     * @param _cooldownTime Thời gian chờ giữa các lần thử
-     * @return dungeonId ID của dungeon vừa tạo
+     * @notice Create new dungeon
+     * @param _dungeonId Unique dungeon ID
+     * @param _name Dungeon name
+     * @param _description Dungeon description
+     * @param _dungeonType Dungeon type
+     * @param _difficulty Difficulty level
+     * @param _levelRequirement Minimum level
+     * @param _energyCost Energy cost
+     * @param _sunlightCost Sunlight cost
+     * @param _sunnyCost Sunny cost
+     * @param _itemRequirements Item requirements
+     * @param _cooldownTime Cooldown time between attempts
+     * @return dungeonId ID of the created dungeon
      */
     function createDungeon(
         uint256 _dungeonId,
@@ -133,25 +133,37 @@ contract DungeonComponent {
             "Min bet amount must be <= max bet amount"
         );
 
+        DungeonStructs.ItemRequirement[]
+            memory convertedItemRequirements = new DungeonStructs.ItemRequirement[](
+                _itemRequirements.length
+            );
+        for (uint256 i = 0; i < _itemRequirements.length; i++) {
+            convertedItemRequirements[i] = DungeonStructs.ItemRequirement({
+                itemId: uint64(_itemRequirements[i].itemId),
+                quantity: uint32(_itemRequirements[i].quantity),
+                isConsumed: _itemRequirements[i].isConsumed
+            });
+        }
+
         DungeonStructs.Dungeon memory newDungeon = DungeonStructs.Dungeon({
-            id: _dungeonId,
+            id: uint64(_dungeonId),
             name: _name,
             description: _description,
             dungeonType: _dungeonType,
             difficulty: _difficulty,
-            levelRequirement: _levelRequirement,
-            energyCost: _energyCost,
-            sunlightCost: _sunlightCost,
-            sunnyCost: _sunnyCost,
-            itemRequirements: _itemRequirements,
-            stages: new DungeonStructs.DungeonStage[](0), // Bắt đầu với mảng rỗng
-            cooldownTime: _cooldownTime,
+            levelRequirement: uint16(_levelRequirement),
+            energyCost: uint32(_energyCost),
+            sunlightCost: uint128(_sunlightCost),
+            sunnyCost: uint128(_sunnyCost),
+            itemRequirements: convertedItemRequirements,
+            stages: new DungeonStructs.DungeonStage[](0),
+            cooldownTime: uint32(_cooldownTime),
             minBetAmount: _minBetAmount,
             maxBetAmount: _maxBetAmount,
             isActive: true,
             isPaused: false,
-            createdAt: block.timestamp,
-            updatedAt: block.timestamp
+            createdAt: uint64(block.timestamp),
+            updatedAt: uint64(block.timestamp)
         });
 
         dungeons[_dungeonId] = newDungeon;
@@ -164,11 +176,11 @@ contract DungeonComponent {
     }
 
     /**
-     * @notice Thêm màn mới vào dungeon
-     * @param _dungeonId ID của dungeon
-     * @param _stageNumber Số màn
-     * @param _rewardMultiplier Hệ số nhân thưởng (basis points)
-     * @return success Có thành công không
+     * @notice Add new stage to dungeon
+     * @param _dungeonId Dungeon ID
+     * @param _stageNumber Stage number
+     * @param _rewardMultiplier Reward multiplier (basis points)
+     * @return success Whether the operation succeeded
      */
     function addDungeonStage(
         uint256 _dungeonId,
@@ -176,7 +188,6 @@ contract DungeonComponent {
         uint256 _rewardMultiplier
     ) external onlyAuthorized returns (bool) {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
-        require(_stageNumber > 0, "Stage number must be greater than 0");
         require(
             _rewardMultiplier > 0,
             "Reward multiplier must be greater than 0"
@@ -184,7 +195,6 @@ contract DungeonComponent {
 
         DungeonStructs.Dungeon storage dungeon = dungeons[_dungeonId];
 
-        // Kiểm tra màn đã tồn tại chưa
         for (uint256 i = 0; i < dungeon.stages.length; i++) {
             require(
                 dungeon.stages[i].stageNumber != _stageNumber,
@@ -194,22 +204,22 @@ contract DungeonComponent {
 
         DungeonStructs.DungeonStage memory newStage = DungeonStructs
             .DungeonStage({
-                stageNumber: _stageNumber,
-                rewardMultiplier: _rewardMultiplier,
+                stageNumber: uint16(_stageNumber),
+                rewardMultiplier: uint32(_rewardMultiplier),
                 isActive: true,
-                createdAt: block.timestamp
+                createdAt: uint64(block.timestamp)
             });
 
         dungeon.stages.push(newStage);
-        dungeon.updatedAt = block.timestamp;
+        dungeon.updatedAt = uint64(block.timestamp);
 
         emit DungeonStageAdded(_dungeonId, _stageNumber, _rewardMultiplier);
         return true;
     }
 
     /**
-     * @notice Lấy thông tin dungeon
-     * @param _dungeonId ID của dungeon
+     * @notice Get dungeon information
+     * @param _dungeonId Dungeon ID
      * @return dungeon Dungeon struct
      */
     function getDungeon(
@@ -220,26 +230,26 @@ contract DungeonComponent {
     }
 
     /**
-     * @notice Lấy tất cả dungeon IDs
-     * @return Array của tất cả dungeon IDs
+     * @notice Get all dungeon IDs
+     * @return Array of all dungeon IDs
      */
     function getAllDungeonIds() external view returns (uint256[] memory) {
         return dungeonIds;
     }
 
     /**
-     * @notice Kiểm tra dungeon có tồn tại không
-     * @param _dungeonId ID của dungeon
-     * @return exists Có tồn tại không
+     * @notice Check if dungeon exists
+     * @param _dungeonId Dungeon ID
+     * @return exists Whether dungeon exists
      */
     function exists(uint256 _dungeonId) external view returns (bool) {
         return dungeonExists[_dungeonId];
     }
 
     /**
-     * @notice Bật/tắt dungeon
-     * @param _dungeonId ID của dungeon
-     * @param _isActive Có hoạt động không
+     * @notice Enable/disable dungeon
+     * @param _dungeonId Dungeon ID
+     * @param _isActive Whether dungeon is active
      */
     function setDungeonActive(
         uint256 _dungeonId,
@@ -247,13 +257,13 @@ contract DungeonComponent {
     ) external onlyAuthorized {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
         dungeons[_dungeonId].isActive = _isActive;
-        dungeons[_dungeonId].updatedAt = block.timestamp;
+        dungeons[_dungeonId].updatedAt = uint64(block.timestamp);
     }
 
     /**
-     * @notice Tạm dừng/tiếp tục dungeon
-     * @param _dungeonId ID của dungeon
-     * @param _isPaused Có bị tạm dừng không
+     * @notice Pause/resume dungeon
+     * @param _dungeonId Dungeon ID
+     * @param _isPaused Whether dungeon is paused
      */
     function setDungeonPaused(
         uint256 _dungeonId,
@@ -261,29 +271,22 @@ contract DungeonComponent {
     ) external onlyAuthorized {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
         dungeons[_dungeonId].isPaused = _isPaused;
-        dungeons[_dungeonId].updatedAt = block.timestamp;
+        dungeons[_dungeonId].updatedAt = uint64(block.timestamp);
     }
 
     /**
-     * @notice Xóa dungeon
-     * @param _dungeonId ID của dungeon cần xóa
-     * @return success Có thành công không
+     * @notice Delete dungeon
+     * @param _dungeonId Dungeon ID to delete
+     * @return success Whether the operation succeeded
      */
     function deleteDungeon(
         uint256 _dungeonId
     ) external onlyAuthorized returns (bool) {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
 
-        // Kiểm tra xem có session nào đang chạy (chưa completed) không
-        // Lưu ý: Chỉ kiểm tra các session liên quan đến dungeon này
-        // Nếu có session chưa hoàn thành, không cho phép xóa
-        // (Có thể bỏ qua kiểm tra này nếu muốn cho phép xóa ngay cả khi có session đang chạy)
-
-        // Xóa dungeon khỏi array dungeonIds
         uint256[] storage ids = dungeonIds;
         for (uint256 i = 0; i < ids.length; i++) {
             if (ids[i] == _dungeonId) {
-                // Di chuyển phần tử cuối lên vị trí cần xóa
                 if (i < ids.length - 1) {
                     ids[i] = ids[ids.length - 1];
                 }
@@ -292,13 +295,8 @@ contract DungeonComponent {
             }
         }
 
-        // Xóa dungeon khỏi mapping
         delete dungeons[_dungeonId];
-
-        // Set flag tồn tại = false
         dungeonExists[_dungeonId] = false;
-
-        // Giảm count
         dungeonCount--;
 
         emit DungeonDeleted(_dungeonId);
@@ -308,88 +306,81 @@ contract DungeonComponent {
     // ============ DUNGEON SESSION FUNCTIONS ============
 
     /**
-     * @notice Bắt đầu phiên chơi dungeon (người chơi gọi)
-     * @param _player Address của người chơi
-     * @param _dungeonId ID của dungeon
-     * @param _stageNumber Số màn muốn chơi
-     * @return sessionId ID của phiên chơi mới
+     * @notice Start dungeon session (called by player)
+     * @param _player Player address
+     * @param _dungeonId Dungeon ID
+     * @return sessionId ID of the new session
      */
     function startDungeonSession(
         address _player,
         uint256 _dungeonId,
-        uint256 _stageNumber,
         uint256 _betAmount,
         uint256[] memory _equipmentItemIds,
         uint256[] memory _equipmentQuantities
     ) external onlyAuthorized returns (uint256) {
         require(dungeonExists[_dungeonId], "Dungeon does not exist");
-        require(_stageNumber > 0, "Stage number must be greater than 0");
 
         DungeonStructs.Dungeon storage dungeon = dungeons[_dungeonId];
         require(dungeon.isActive, "Dungeon is not active");
         require(!dungeon.isPaused, "Dungeon is paused");
 
-        // Kiểm tra màn có tồn tại không
-        bool stageExists = false;
-        uint256 rewardMultiplier = 0;
-        for (uint256 i = 0; i < dungeon.stages.length; i++) {
-            if (dungeon.stages[i].stageNumber == _stageNumber) {
-                stageExists = true;
-                rewardMultiplier = dungeon.stages[i].rewardMultiplier;
-                break;
-            }
-        }
-        require(stageExists, "Stage does not exist");
-
-        // Tạo session mới
         sessionCount++;
         uint256 sessionId = sessionCount;
 
+        uint64[] memory convertedEquipmentItemIds = new uint64[](
+            _equipmentItemIds.length
+        );
+
+        uint32[] memory convertedEquipmentQuantities = new uint32[](
+            _equipmentQuantities.length
+        );
+        
+        for (uint256 i = 0; i < _equipmentItemIds.length; i++) {
+            convertedEquipmentItemIds[i] = uint64(_equipmentItemIds[i]);
+            convertedEquipmentQuantities[i] = uint32(_equipmentQuantities[i]);
+        }
+
         DungeonStructs.DungeonSession memory newSession = DungeonStructs
             .DungeonSession({
-                sessionId: sessionId,
+                sessionId: uint64(sessionId),
                 player: _player,
-                dungeonId: _dungeonId,
-                stageNumber: _stageNumber,
-                startTime: block.timestamp,
-                endTime: 0,
+                dungeonId: uint64(_dungeonId),
+                stageNumber: uint16(0),
+                startTime: uint64(block.timestamp),
+                endTime: uint64(0),
                 isCompleted: false,
                 isClaimed: false,
-                rewardItemIds: new uint256[](0),
-                rewardQuantities: new uint256[](0),
-                rewardMultiplier: rewardMultiplier,
-                playerDamages: new uint256[](0),
-                monsterHPs: new uint256[](0),
-                sunlightReward: 0,
-                sunnyReward: 0,
-                betAmount: _betAmount,
                 hasBet: _betAmount > 0,
-                equipmentItemIds: _equipmentItemIds,
-                equipmentQuantities: _equipmentQuantities
+                rewardItemIds: new uint64[](0),
+                rewardQuantities: new uint32[](0),
+                rewardMultiplier: 0,
+                playerDamages: new uint32[](0),
+                monsterHPs: new uint32[](0),
+                sunlightReward: uint128(0),
+                sunnyReward: uint128(0),
+                betAmount: _betAmount,
+                equipmentItemIds: convertedEquipmentItemIds,
+                equipmentQuantities: convertedEquipmentQuantities
             });
 
         dungeonSessions[sessionId] = newSession;
         playerSessions[_player].push(sessionId);
 
-        emit DungeonSessionStarted(
-            sessionId,
-            _player,
-            _dungeonId,
-            _stageNumber
-        );
+        emit DungeonSessionStarted(sessionId, _player, _dungeonId, 0);
         return sessionId;
     }
 
     /**
-     * @notice Kết thúc phiên chơi dungeon (admin gọi)
-     * @param _sessionId ID của phiên chơi
-     * @param _isCompleted Phiên có hoàn thành không
-     * @param _rewardItemIds ID các vật phẩm thưởng
-     * @param _rewardQuantities Số lượng các vật phẩm thưởng
-     * @param _playerDamages Damage của người chơi trong các vòng
-     * @param _monsterHPs Máu của quái trong các vòng
-     * @param _sunlightReward Thưởng sunlight
-     * @param _sunnyReward Thưởng sunny
+     * @notice End dungeon session (called by admin)
+     * @param _sessionId Session ID
+     * @param _isCompleted Whether session is completed
+     * @param _rewardItemIds Reward item IDs
+     * @param _rewardQuantities Reward item quantities
+     * @param _playerDamages Player damages in rounds
+     * @param _monsterHPs Monster HPs in rounds
+     * @param _sunlightReward Sunlight reward
+     * @param _sunnyReward Sunny reward
+     * @param _stageNumber Stage number
      */
     function endDungeonSession(
         uint256 _sessionId,
@@ -399,7 +390,8 @@ contract DungeonComponent {
         uint256[] memory _playerDamages,
         uint256[] memory _monsterHPs,
         uint256 _sunlightReward,
-        uint256 _sunnyReward
+        uint256 _sunnyReward,
+        uint32 _stageNumber
     ) external onlyAuthorized {
         require(
             dungeonSessions[_sessionId].sessionId > 0,
@@ -414,7 +406,6 @@ contract DungeonComponent {
             "Session already claimed"
         );
 
-        // Validate array lengths
         require(
             _rewardItemIds.length == _rewardQuantities.length,
             "Reward arrays length mismatch"
@@ -427,44 +418,111 @@ contract DungeonComponent {
         DungeonStructs.DungeonSession storage session = dungeonSessions[
             _sessionId
         ];
-        session.endTime = block.timestamp;
-        session.isCompleted = _isCompleted;
-        session.rewardItemIds = _rewardItemIds;
-        session.rewardQuantities = _rewardQuantities;
-        session.playerDamages = _playerDamages;
-        session.monsterHPs = _monsterHPs;
-        session.sunlightReward = _sunlightReward;
-        session.sunnyReward = _sunnyReward;
 
-        // Cập nhật tiến độ người chơi
+        uint32 rewardMultiplier = 0;
+
+        if (_stageNumber > 0) {
+            DungeonStructs.Dungeon storage dungeon = dungeons[
+                uint256(session.dungeonId)
+            ];
+            bool stageExists = false;
+            for (uint256 i = 0; i < dungeon.stages.length; i++) {
+                if (dungeon.stages[i].stageNumber == uint16(_stageNumber)) {
+                    stageExists = true;
+                    rewardMultiplier = dungeon.stages[i].rewardMultiplier;
+                    break;
+                }
+            }
+            require(stageExists, "Stage does not exist");
+        }
+
+        session.endTime = uint64(block.timestamp);
+        session.isCompleted = _isCompleted;
+        session.rewardMultiplier = rewardMultiplier;
+
+        if (!_isCompleted) {
+            session.isClaimed = true;
+        }
+
+        uint64[] memory convertedRewardItemIds = new uint64[](
+            _rewardItemIds.length
+        );
+        uint32[] memory convertedRewardQuantities = new uint32[](
+            _rewardQuantities.length
+        );
+        uint32[] memory convertedPlayerDamages = new uint32[](
+            _playerDamages.length
+        );
+        uint32[] memory convertedMonsterHPs = new uint32[](_monsterHPs.length);
+
+        for (uint256 i = 0; i < _rewardItemIds.length; i++) {
+            convertedRewardItemIds[i] = uint64(_rewardItemIds[i]);
+            convertedRewardQuantities[i] = uint32(_rewardQuantities[i]);
+        }
+        for (uint256 i = 0; i < _playerDamages.length; i++) {
+            convertedPlayerDamages[i] = uint32(_playerDamages[i]);
+            convertedMonsterHPs[i] = uint32(_monsterHPs[i]);
+        }
+
+        session.rewardItemIds = convertedRewardItemIds;
+        session.rewardQuantities = convertedRewardQuantities;
+        session.playerDamages = convertedPlayerDamages;
+        session.monsterHPs = convertedMonsterHPs;
+        session.sunlightReward = uint128(_sunlightReward);
+        session.sunnyReward = uint128(_sunnyReward);
+        session.stageNumber = uint16(_stageNumber);
+
         DungeonStructs.PlayerDungeonProgress
             storage progress = playerDungeonProgress[session.player][
-                session.dungeonId
+                uint256(session.dungeonId)
             ];
         progress.totalAttempts++;
         if (_isCompleted) {
             progress.successfulAttempts++;
         }
-        progress.lastAttemptTime = block.timestamp;
+
+        progress.lastAttemptTime = uint64(block.timestamp);
+
+        uint256[] memory eventRewardItemIds = new uint256[](
+            session.rewardItemIds.length
+        );
+        uint256[] memory eventRewardQuantities = new uint256[](
+            session.rewardQuantities.length
+        );
+        uint256[] memory eventPlayerDamages = new uint256[](
+            session.playerDamages.length
+        );
+        uint256[] memory eventMonsterHPs = new uint256[](
+            session.monsterHPs.length
+        );
+
+        for (uint256 i = 0; i < session.rewardItemIds.length; i++) {
+            eventRewardItemIds[i] = uint256(session.rewardItemIds[i]);
+            eventRewardQuantities[i] = uint256(session.rewardQuantities[i]);
+        }
+        for (uint256 i = 0; i < session.playerDamages.length; i++) {
+            eventPlayerDamages[i] = uint256(session.playerDamages[i]);
+            eventMonsterHPs[i] = uint256(session.monsterHPs[i]);
+        }
 
         emit DungeonSessionEnded(
             _sessionId,
             session.player,
-            session.dungeonId,
+            uint256(session.dungeonId),
             _isCompleted,
-            _rewardItemIds,
-            _rewardQuantities,
-            _playerDamages,
-            _monsterHPs,
-            _sunlightReward,
-            _sunnyReward
+            eventRewardItemIds,
+            eventRewardQuantities,
+            eventPlayerDamages,
+            eventMonsterHPs,
+            uint256(session.sunlightReward),
+            uint256(session.sunnyReward)
         );
     }
 
     /**
-     * @notice Claim phần thưởng từ phiên chơi (người chơi gọi)
-     * @param _sessionId ID của phiên chơi
-     * @return success Có thành công không
+     * @notice Claim rewards from session (called by player)
+     * @param _sessionId Session ID
+     * @return success Whether the operation succeeded
      */
     function claimDungeonRewards(
         uint256 _sessionId,
@@ -478,10 +536,12 @@ contract DungeonComponent {
             dungeonSessions[_sessionId].isCompleted,
             "Session not completed"
         );
+
         require(
             !dungeonSessions[_sessionId].isClaimed,
             "Rewards already claimed"
         );
+
         require(
             dungeonSessions[_sessionId].player == playerAddress,
             "Not your session"
@@ -492,19 +552,31 @@ contract DungeonComponent {
         ];
         session.isClaimed = true;
 
+        uint256[] memory eventRewardItemIds = new uint256[](
+            session.rewardItemIds.length
+        );
+        uint256[] memory eventRewardQuantities = new uint256[](
+            session.rewardQuantities.length
+        );
+
+        for (uint256 i = 0; i < session.rewardItemIds.length; i++) {
+            eventRewardItemIds[i] = uint256(session.rewardItemIds[i]);
+            eventRewardQuantities[i] = uint256(session.rewardQuantities[i]);
+        }
+
         emit DungeonRewardsClaimed(
             _sessionId,
             msg.sender,
-            session.rewardItemIds,
-            session.rewardQuantities
+            eventRewardItemIds,
+            eventRewardQuantities
         );
 
         return true;
     }
 
     /**
-     * @notice Lấy thông tin phiên chơi
-     * @param _sessionId ID của phiên chơi
+     * @notice Get session information
+     * @param _sessionId Session ID
      * @return session DungeonSession struct
      */
     function getDungeonSession(
@@ -518,9 +590,9 @@ contract DungeonComponent {
     }
 
     /**
-     * @notice Lấy danh sách phiên chơi của người chơi
-     * @param _player Address của người chơi
-     * @return sessionIds Array của session IDs
+     * @notice Get player's session list
+     * @param _player Player address
+     * @return sessionIds Array of session IDs
      */
     function getPlayerSessions(
         address _player
@@ -529,17 +601,17 @@ contract DungeonComponent {
     }
 
     /**
-     * @notice Lấy thông tin damage và HP của phiên chơi
-     * @param _sessionId ID của phiên chơi
-     * @return playerDamages Array damage của người chơi
-     * @return monsterHPs Array máu của quái
+     * @notice Get session damage and HP information
+     * @param _sessionId Session ID
+     * @return playerDamages Array of player damages
+     * @return monsterHPs Array of monster HPs
      */
     function getSessionBattleData(
         uint256 _sessionId
     )
         external
         view
-        returns (uint256[] memory playerDamages, uint256[] memory monsterHPs)
+        returns (uint32[] memory playerDamages, uint32[] memory monsterHPs)
     {
         require(
             dungeonSessions[_sessionId].sessionId > 0,

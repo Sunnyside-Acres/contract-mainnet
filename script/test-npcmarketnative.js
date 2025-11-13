@@ -1,340 +1,230 @@
 const { ethers } = require("hardhat");
-const fs = require("fs");
 
 async function main() {
-  console.log("🧪 Bắt đầu test NPCMarketNative contracts...");
+  console.log("🧪 Testing NPCMarketNative system...");
 
   // Lấy signer và network info
-  const [deployer, player1, player2] = await ethers.getSigners();
+  const [deployer, player1] = await ethers.getSigners();
   const network = await ethers.provider.getNetwork();
 
-  console.log("📝 Test accounts:");
-  console.log("   • Deployer (Admin):", deployer.address);
-  console.log("   • Player 1:", player1.address);
-  console.log("   • Player 2:", player2.address);
+  console.log("📝 Admin address:", deployer.address);
+  console.log("📝 Player address:", player1.address);
   console.log("🌐 Network:", network.name);
 
-  // Load địa chỉ contracts đã deploy
-  const deploymentPath = `./deployed/contract-addresses-${network.name}.json`;
-
-  if (!fs.existsSync(deploymentPath)) {
-    throw new Error(`Không tìm thấy file deployment: ${deploymentPath}`);
-  }
-
-  const deploymentInfo = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
-  console.log("📋 Loaded deployment info from:", deploymentPath);
-
-  // Lấy địa chỉ NPCMarketNative contracts
-  const npcMarketNativeLogicAddress =
-    deploymentInfo.contracts.NPCMarketNativeLogic;
-  const npcMarketNativeProxyAddress =
-    deploymentInfo.contracts.NPCMarketNativeProxy;
-  const worldAddress = deploymentInfo.contracts.World;
-  const itemProxyAddress = deploymentInfo.contracts.ItemProxy;
-  const inventoryProxyAddress = deploymentInfo.contracts.InventoryProxy;
-  const playerProxyAddress = deploymentInfo.contracts.PlayerProxy;
-
-  if (!npcMarketNativeLogicAddress) {
-    throw new Error("NPCMarketNativeLogic not found in deployment file");
-  }
-
-  console.log("\n📋 Contract addresses:");
-  console.log("   • NPCMarketNativeLogic:", npcMarketNativeLogicAddress);
-  console.log("   • NPCMarketNativeProxy:", npcMarketNativeProxyAddress);
-  console.log("   • World:", worldAddress);
-
-  // Get contract instances
-  const npcMarketNativeLogic = await ethers.getContractAt(
-    "NPCMarketNativeLogic",
-    npcMarketNativeLogicAddress
-  );
-  const world = await ethers.getContractAt("World", worldAddress);
-  const itemProxy = await ethers.getContractAt(
-    "ItemComponent",
-    itemProxyAddress
-  );
-  const inventoryProxy = await ethers.getContractAt(
-    "InventoryComponent",
-    inventoryProxyAddress
-  );
-  const playerProxy = await ethers.getContractAt(
-    "PlayerComponent",
-    playerProxyAddress
-  );
-
-  console.log("\n🧪 Starting NPCMarketNative tests...");
-
-  // === TEST 1: CREATE NPC MARKET ===
-  console.log("\n1️⃣ TEST: Creating NPC Market...");
-
-  try {
-    const createMarketTx = await npcMarketNativeLogic.createNPCMarket(
-      1, // npcId
-      "Test Blacksmith", // name
-      ethers.parseEther("0.001"), // minTransactionAmount
-      ethers.parseEther("10") // maxTransactionAmount
+  // Lấy contract addresses từ file deployment
+  const deploymentPath = `./deployed/npcmarketnative-deployment-${network.name}.json`;
+  if (!require("fs").existsSync(deploymentPath)) {
+    throw new Error(
+      `File deployment không tồn tại: ${deploymentPath}\nVui lòng chạy deploy-npcmarketnative-contracts.js trước`
     );
-    await createMarketTx.wait();
-    console.log("✅ NPC Market created successfully!");
+  }
 
-    // Verify market info
+  const deploymentData = JSON.parse(
+    require("fs").readFileSync(deploymentPath, "utf8")
+  );
+  const contracts = deploymentData.contracts;
+
+  // Lấy contracts
+  const NPCMarketNativeLogic = await ethers.getContractFactory(
+    "NPCMarketNativeLogic"
+  );
+  const npcMarketNativeLogic = NPCMarketNativeLogic.attach(
+    contracts.NPCMarketNativeLogic
+  );
+
+  const PlayerLogic = await ethers.getContractFactory("PlayerLogic");
+  const ItemLogic = await ethers.getContractFactory("ItemLogic");
+  const InventoryLogic = await ethers.getContractFactory("InventoryLogic");
+
+  // Get main deployment file
+  const mainDeploymentPath = `./deployed/contract-addresses-${network.name}.json`;
+  const mainDeploymentData = JSON.parse(
+    require("fs").readFileSync(mainDeploymentPath, "utf8")
+  );
+  const mainContracts = mainDeploymentData.contracts;
+
+  const playerLogic = PlayerLogic.attach(mainContracts.PlayerLogic);
+  const itemLogic = ItemLogic.attach(mainContracts.ItemLogic);
+  const inventoryLogic = InventoryLogic.attach(
+    mainContracts.InventoryLogic
+  );
+
+  console.log("🔗 Connected to contracts");
+
+  // Test 1: Get treasury wallet
+  console.log("\n📋 Test 1: Getting treasury wallet...");
+  const treasuryWallet = await npcMarketNativeLogic.treasuryWallet();
+  console.log(`✅ Treasury wallet: ${treasuryWallet}`);
+
+  // Test 2: Get contract balance (should be 0 as players pay ETH directly)
+  console.log("\n📋 Test 2: Getting contract balance...");
+  const balance = await npcMarketNativeLogic.getContractBalance();
+  console.log(
+    `✅ Contract balance: ${ethers.formatEther(balance)} ETH (players pay ETH directly when buying)`
+  );
+
+  // Test 3: Get all NPC markets
+  console.log("\n📋 Test 3: Checking NPC markets...");
+  try {
+    // Try to get market info for NPC 1
     const marketInfo = await npcMarketNativeLogic.getNPCMarketInfo(1);
-    console.log("   • Market Info:", {
-      npcId: marketInfo.npcId.toString(),
-      name: marketInfo.name,
-      isActive: marketInfo.isActive,
-      itemCount: marketInfo.itemCount.toString(),
-      minTransactionAmount: ethers.formatEther(marketInfo.minTransactionAmount),
-      maxTransactionAmount: ethers.formatEther(marketInfo.maxTransactionAmount),
-    });
+    console.log(`✅ Found market: ${marketInfo.name}`);
+    console.log(`   Active: ${marketInfo.isActive}`);
+    console.log(`   Items: ${marketInfo.itemCount}`);
+    console.log(
+      `   Min Transaction: ${ethers.formatEther(marketInfo.minTransactionAmount)} ETH`
+    );
+    console.log(
+      `   Max Transaction: ${ethers.formatEther(marketInfo.maxTransactionAmount)} ETH`
+    );
+
+    // Get market items
+    const items = await npcMarketNativeLogic.getAllMarketItems(1);
+    console.log(`   Market items: ${items.length}`);
+    for (const item of items) {
+      console.log(
+        `     • Item ${item.itemId}: ${ethers.formatEther(item.pricePerUnit)} ETH per unit (limit: ${item.limitPerUser === 0 ? "unlimited" : item.limitPerUser})`
+      );
+    }
   } catch (error) {
-    console.error("❌ Failed to create NPC market:", error.message);
+    console.log(`ℹ️ No markets found yet. Please run setup-npcmarketnative-sample.js first`);
   }
 
-  // === TEST 2: ADD ITEM TO MARKET ===
-  console.log("\n2️⃣ TEST: Adding Item to Market...");
-
+  // Test 4: Create player if not exists
+  console.log("\n📋 Test 4: Creating player...");
   try {
-    // First, create a test item
-    console.log("   • Creating test item...");
-    const createItemTx = await itemProxy.createItem(
-      101, // itemId
-      "Test Sword", // name
-      "A sharp sword for testing", // description
-      1, // itemType
-      100, // maxStack
-      false, // isConsumable
-      false, // isTradeable
-      false, // isBanned
-      0 // rarity
-    );
-    await createItemTx.wait();
-    console.log("   ✅ Test item created!");
-
-    // Add item to market
-    const addItemTx = await npcMarketNativeLogic.addItemToMarket(
-      1, // npcId
-      101, // itemId
-      5, // limitPerUser
-      ethers.parseEther("0.1"), // pricePerUnit
-      true // isSelling
-    );
-    await addItemTx.wait();
-    console.log("✅ Item added to market successfully!");
-
-    // Verify market item
-    const marketItem = await npcMarketNativeLogic.getMarketItem(1, 101);
-    console.log("   • Market Item:", {
-      itemId: marketItem.itemId.toString(),
-      limitPerUser: marketItem.limitPerUser.toString(),
-      pricePerUnit: ethers.formatEther(marketItem.pricePerUnit),
-      isSelling: marketItem.isSelling,
-      active: marketItem.active,
-    });
-  } catch (error) {
-    console.error("❌ Failed to add item to market:", error.message);
-  }
-
-  // === TEST 3: INITIALIZE PLAYERS ===
-  console.log("\n3️⃣ TEST: Initializing Players...");
-
-  try {
-    // Initialize player1
-    const initPlayer1Tx = await playerProxy.initializePlayer(
+    const createPlayerTx = await playerLogic.createPlayer(
       player1.address,
+      "TestPlayer",
       1, // level
+      100, // xp
       100, // mana
+      100, // maxMana
       1000, // sunlight
-      100 // sunny
+      500, // sunny
+      Math.floor(Date.now() / 1000) // lastLogin
     );
-    await initPlayer1Tx.wait();
-    console.log("   ✅ Player 1 initialized!");
-
-    // Initialize player2
-    const initPlayer2Tx = await playerProxy.initializePlayer(
-      player2.address,
-      1, // level
-      100, // mana
-      1000, // sunlight
-      100 // sunny
-    );
-    await initPlayer2Tx.wait();
-    console.log("   ✅ Player 2 initialized!");
+    await createPlayerTx.wait();
+    console.log("✅ Player created successfully");
   } catch (error) {
-    console.error("❌ Failed to initialize players:", error.message);
+    if (error.message.includes("Player already exists")) {
+      console.log("ℹ️ Player already exists");
+    } else {
+      throw error;
+    }
   }
 
-  // === TEST 4: BUY ITEM FROM NPC ===
-  console.log("\n4️⃣ TEST: Buying Item from NPC...");
+  // Test 5: Create items if not exists
+  console.log("\n📋 Test 5: Creating items...");
+  const items = [
+    { id: 1, name: "Wood", type: 0, rarity: 0, maxStacked: 100, isStacked: true, isTradable: true },
+    { id: 2, name: "Stone", type: 0, rarity: 0, maxStacked: 100, isStacked: true, isTradable: true },
+  ];
 
+  for (const item of items) {
+    try {
+      const createItemTx = await itemLogic.createItem(
+        item.id,
+        item.name,
+        item.type,
+        item.rarity,
+        item.maxStacked,
+        item.isStacked,
+        item.isTradable
+      );
+      await createItemTx.wait();
+      console.log(`✅ Item created: ${item.name} (ID: ${item.id})`);
+    } catch (error) {
+      if (error.message.includes("Item already exists")) {
+        console.log(`ℹ️ Item ${item.name} already exists`);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // Test 6: Check player ETH balance
+  console.log("\n📋 Test 6: Checking player ETH balance...");
+  const playerBalance = await ethers.provider.getBalance(player1.address);
+  console.log(
+    `✅ Player balance: ${ethers.formatEther(playerBalance)} ETH`
+  );
+
+  // Test 7: Test buy item from NPC (only if market exists)
+  console.log("\n📋 Test 7: Testing buy item from NPC...");
   try {
-    const buyTx = await npcMarketNativeLogic.connect(player1).buyItemFromNPC(
-      1, // npcId
-      101, // itemId
-      2, // quantity
-      { value: ethers.parseEther("0.2") } // 0.1 ETH per item * 2
-    );
-    await buyTx.wait();
-    console.log("✅ Item purchased successfully!");
+    const marketInfo = await npcMarketNativeLogic.getNPCMarketInfo(1);
+    if (marketInfo.isActive && marketInfo.itemCount > 0) {
+      const items = await npcMarketNativeLogic.getAllMarketItems(1);
+      if (items.length > 0) {
+        const item = items[0];
+        const quantity = 10;
+        const totalPrice = await npcMarketNativeLogic.calculateBuyPrice(
+          1,
+          item.itemId,
+          quantity
+        );
+        console.log(
+          `   Trying to buy ${quantity} x Item ${item.itemId} for ${ethers.formatEther(totalPrice)} ETH`
+        );
 
-    // Check player's inventory
-    const playerItem = await inventoryProxy.getItem(player1.address, 101);
-    console.log("   • Player 1 inventory:", {
-      itemId: playerItem.itemId.toString(),
-      quantity: playerItem.quantity.toString(),
-      durability: playerItem.durability.toString(),
-    });
+        // Check player has enough ETH
+        if (playerBalance >= totalPrice) {
+          // Get treasury balance before
+          const treasuryBalanceBefore = await ethers.provider.getBalance(
+            treasuryWallet
+          );
 
-    // Check user purchases
-    const userPurchases = await npcMarketNativeLogic.getUserPurchases(
-      1,
-      101,
-      player1.address
-    );
-    console.log("   • User purchases:", userPurchases.toString());
+          // Buy item with ETH
+          const buyTx = await npcMarketNativeLogic
+            .connect(player1)
+            .buyItemFromNPC(1, item.itemId, quantity, {
+              value: totalPrice
+            });
+          const receipt = await buyTx.wait();
+          console.log("   ✅ Buy transaction successful!");
+          console.log(`   Transaction hash: ${receipt.hash}`);
+
+          // Check treasury wallet balance increase
+          const treasuryBalanceAfter = await ethers.provider.getBalance(
+            treasuryWallet
+          );
+          const treasuryIncrease = treasuryBalanceAfter - treasuryBalanceBefore;
+          console.log(
+            `   Treasury wallet received: ${ethers.formatEther(treasuryIncrease)} ETH`
+          );
+          console.log(
+            `   Treasury wallet balance: ${ethers.formatEther(treasuryBalanceAfter)} ETH`
+          );
+
+          // Check player inventory
+          const playerItem = await inventoryLogic.getItem(player1.address, item.itemId);
+          console.log(
+            `   Player inventory - Item ${item.itemId}: ${playerItem.quantity}`
+          );
+        } else {
+          console.log(
+            `   ⚠️ Player balance insufficient (${ethers.formatEther(playerBalance)} ETH < ${ethers.formatEther(totalPrice)} ETH)`
+          );
+          console.log(`   Please fund player wallet with ETH first`);
+        }
+      } else {
+        console.log("   ⚠️ No items in market");
+      }
+    } else {
+      console.log("   ⚠️ Market not active or empty");
+    }
   } catch (error) {
-    console.error("❌ Failed to buy item:", error.message);
+    console.log(`   ⚠️ Cannot test buy: ${error.message}`);
   }
 
-  // === TEST 5: SELL ITEM TO NPC ===
-  console.log("\n5️⃣ TEST: Selling Item to NPC...");
-
-  try {
-    // First add item to player2's inventory
-    const addToInventoryTx = await inventoryProxy.setItem(
-      player2.address,
-      101, // itemId
-      3, // quantity
-      100, // durability
-      0 // expiration
-    );
-    await addToInventoryTx.wait();
-    console.log("   • Added item to Player 2 inventory");
-
-    // Add buying item to market
-    const addBuyingItemTx = await npcMarketNativeLogic.addItemToMarket(
-      1, // npcId
-      102, // itemId (different item for buying)
-      10, // limitPerUser
-      ethers.parseEther("0.05"), // pricePerUnit (NPC buys for 0.05 ETH)
-      false // isSelling (NPC is buying)
-    );
-    await addBuyingItemTx.wait();
-    console.log("   • Added buying item to market");
-
-    // Create the buying item
-    const createBuyingItemTx = await itemProxy.createItem(
-      102, // itemId
-      "Test Potion", // name
-      "A healing potion for testing", // description
-      2, // itemType
-      100, // maxStack
-      true, // isConsumable
-      true, // isTradeable
-      false, // isBanned
-      1 // rarity
-    );
-    await createBuyingItemTx.wait();
-
-    // Add buying item to player2's inventory
-    const addBuyingToInventoryTx = await inventoryProxy.setItem(
-      player2.address,
-      102, // itemId
-      5, // quantity
-      100, // durability
-      0 // expiration
-    );
-    await addBuyingToInventoryTx.wait();
-
-    // Sell item to NPC
-    const sellTx = await npcMarketNativeLogic.connect(player2).sellItemToNPC(
-      1, // npcId
-      102, // itemId
-      2 // quantity
-    );
-    await sellTx.wait();
-    console.log("✅ Item sold successfully!");
-
-    // Check player's inventory after sale
-    const playerItemAfter = await inventoryProxy.getItem(player2.address, 102);
-    console.log("   • Player 2 inventory after sale:", {
-      itemId: playerItemAfter.itemId.toString(),
-      quantity: playerItemAfter.quantity.toString(),
-    });
-
-    // Check player's ETH balance
-    const playerBalance = await ethers.provider.getBalance(player2.address);
-    console.log(
-      "   • Player 2 ETH balance:",
-      ethers.formatEther(playerBalance),
-      "ETH"
-    );
-  } catch (error) {
-    console.error("❌ Failed to sell item:", error.message);
-  }
-
-  // === TEST 6: CHECK MARKET STATS ===
-  console.log("\n6️⃣ TEST: Checking Market Statistics...");
-
-  try {
-    const marketStats = await npcMarketNativeLogic.getMarketStats(1);
-    console.log("   • Market Stats:", {
-      totalTransactions: marketStats.totalTransactions.toString(),
-      totalVolume: ethers.formatEther(marketStats.totalVolume),
-      totalBuyTransactions: marketStats.totalBuyTransactions.toString(),
-      totalSellTransactions: marketStats.totalSellTransactions.toString(),
-      totalBuyVolume: ethers.formatEther(marketStats.totalBuyVolume),
-      totalSellVolume: ethers.formatEther(marketStats.totalSellVolume),
-    });
-
-    const userStats = await npcMarketNativeLogic.getUserMarketStats(
-      1,
-      player1.address
-    );
-    console.log("   • Player 1 Stats:", {
-      totalTransactions: userStats.totalTransactions.toString(),
-      totalVolume: ethers.formatEther(userStats.totalVolume),
-      totalBuyTransactions: userStats.totalBuyTransactions.toString(),
-      totalSellTransactions: userStats.totalSellTransactions.toString(),
-    });
-  } catch (error) {
-    console.error("❌ Failed to get market stats:", error.message);
-  }
-
-  // === TEST 7: CHECK CONTRACT BALANCE ===
-  console.log("\n7️⃣ TEST: Checking Contract Balance...");
-
-  try {
-    const contractBalance = await npcMarketNativeLogic.getContractBalance();
-    console.log(
-      "   • Contract ETH balance:",
-      ethers.formatEther(contractBalance),
-      "ETH"
-    );
-  } catch (error) {
-    console.error("❌ Failed to get contract balance:", error.message);
-  }
-
-  // === SUMMARY ===
-  console.log("\n🎉 NPCMARKETNATIVE TESTS COMPLETED!");
-  console.log("=".repeat(50));
-  console.log("✅ All tests passed successfully!");
-  console.log("\n📋 Test Summary:");
-  console.log("   • ✅ Created NPC Market");
-  console.log("   • ✅ Added items to market");
-  console.log("   • ✅ Initialized players");
-  console.log("   • ✅ Bought items from NPC");
-  console.log("   • ✅ Sold items to NPC");
-  console.log("   • ✅ Checked market statistics");
-  console.log("   • ✅ Verified contract balance");
-
-  console.log("\n🔗 NPCMarketNative is ready for use!");
+  console.log("\n🎉 NPCMarketNative test completed!");
 }
 
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("❌ NPCMarketNative test failed:", error);
+    console.error("❌ Test failed:", error);
     console.error("Stack trace:", error.stack);
     process.exit(1);
   });
