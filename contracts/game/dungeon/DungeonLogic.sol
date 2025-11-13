@@ -444,6 +444,7 @@ contract DungeonLogic {
         _validateEquipmentItems(_equipmentItemIds, _equipmentQuantities);
         _checkAndDeductRequirements(dungeon);
         _checkAndDeductResources(dungeon);
+        _deductEquipmentItems(_equipmentItemIds, _equipmentQuantities);
 
         uint256 sessionId = DungeonComponent(dungeonProxy).startDungeonSession(
             msg.sender,
@@ -549,7 +550,7 @@ contract DungeonLogic {
         require(session.sessionId > 0, "Session does not exist");
         require(session.player == msg.sender, "Not the session owner");
         require(!session.isClaimed, "Rewards already claimed");
-        
+
         require(
             session.isCompleted,
             "Session not completed - no rewards to claim"
@@ -626,7 +627,8 @@ contract DungeonLogic {
         // Xử lý bet rewards nếu có
         if (session.hasBet && session.isCompleted) {
             // Tính toán reward dựa trên rewardMultiplier
-            uint256 betReward = (session.betAmount * session.rewardMultiplier) / 10000;
+            uint256 betReward = (session.betAmount * session.rewardMultiplier) /
+                10000;
 
             if (betReward > 0) {
                 require(
@@ -877,6 +879,47 @@ contract DungeonLogic {
             require(
                 equipmentItem.quantity >= _equipmentQuantities[i],
                 "Not enough equipment items"
+            );
+        }
+    }
+
+    /**
+     * @notice Deduct equipment items from player's inventory
+     * @dev Assumes validation (existence, quantity) has already been done
+     * @param _equipmentItemIds Array of equipment item IDs
+     * @param _equipmentQuantities Array of equipment item quantities
+     */
+    function _deductEquipmentItems(
+        uint256[] memory _equipmentItemIds,
+        uint256[] memory _equipmentQuantities
+    ) internal {
+        InventoryComponent inventory = InventoryComponent(inventoryComponent);
+
+        for (uint256 i = 0; i < _equipmentItemIds.length; i++) {
+            uint256 itemId = _equipmentItemIds[i];
+            uint256 deductQty = _equipmentQuantities[i];
+
+            // If the minus amount is 0, skip it to save gas
+            if (deductQty == 0) {
+                continue;
+            }
+
+            // Get current item
+            InventoryItem memory currentItem = inventory.getItem(
+                msg.sender,
+                itemId
+            );
+
+            // Calculate new quantity
+            uint256 newQuantity = currentItem.quantity - deductQty;
+
+            // Update items in inventory
+            inventory.setItem(
+                msg.sender,
+                itemId,
+                newQuantity,
+                currentItem.durability,
+                currentItem.expiration
             );
         }
     }
