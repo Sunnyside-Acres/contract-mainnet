@@ -444,6 +444,13 @@ async function main() {
     "NPCMarketNativeLogic"
   );
   const treasuryWallet = process.env.TREASURY_WALLET || deployer.address;
+  console.log(
+    "🏦 NPCMarketNative Treasury Wallet:",
+    treasuryWallet,
+    process.env.TREASURY_WALLET
+      ? "(from TREASURY_WALLET env)"
+      : "(fallback to deployer)"
+  );
   const npcMarketNativeLogic = await NPCMarketNativeLogic.deploy(
     worldAddress,
     npcMarketNativeProxyAddress,
@@ -583,6 +590,9 @@ async function main() {
     chainId: Number(network.chainId),
     deployer: deployer.address,
     timestamp: new Date().toISOString(),
+    treasuryWallets: {
+      NPCMarketNative: treasuryWallet,
+    },
     contracts: {
       // Core
       World: worldAddress,
@@ -704,6 +714,7 @@ async function main() {
   );
   console.log(`👤 Deployer: ${deployer.address}`);
   console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
+  console.log(`🏦 Treasury Wallet (NPCMarketNative): ${treasuryWallet}`);
   console.log("\n📋 Contract Categories:");
   console.log(`   • Core: 1 contract`);
   console.log(`   • Components: 14 contracts`);
