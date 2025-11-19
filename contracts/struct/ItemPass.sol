@@ -5,3 +5,4 @@ struct ItemPassStruct {
     uint64 beginTime;
     uint64 endTime;
 }
+ 
