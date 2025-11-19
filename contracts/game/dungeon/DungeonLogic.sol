@@ -8,6 +8,7 @@ import "../inventory/InventoryComponent.sol";
 import "../player/PlayerComponent.sol";
 import "../../struct/Inventory.sol";
 import "../../struct/Player.sol";
+import "../../interfaces/IItemPass.sol";
 
 /**
  * @title DungeonLogic
@@ -34,6 +35,7 @@ contract DungeonLogic {
     /// @dev Maximum quantity allowed per item stack
     uint256 constant MAX_QUANTITY = 1000000;
 
+    IItemPassLogic public itemPassLogic;
     /// @notice Events
     event DungeonCreated(
         uint256 indexed dungeonId,
@@ -131,12 +133,14 @@ contract DungeonLogic {
         address _world,
         address _dungeonProxy,
         address _inventoryComponent,
-        address _playerComponent
+        address _playerComponent,
+        address _itemPassLogicAddress
     ) {
         world = _world;
         dungeonProxy = _dungeonProxy;
         inventoryComponent = _inventoryComponent;
         playerComponent = _playerComponent;
+        itemPassLogic = IItemPassLogic(_itemPassLogicAddress);
         owner = msg.sender;
     }
 
@@ -291,6 +295,11 @@ contract DungeonLogic {
         return success;
     }
 
+    // Set ItemPassLogic address
+    function setItemPassLogic(address _newAddress) external {
+        itemPassLogic = IItemPassLogic(_newAddress);
+    }
+
     // ============ READ FUNCTIONS (EXTERNAL) ============
 
     /**
@@ -440,10 +449,13 @@ contract DungeonLogic {
                 "Bet amount out of range"
             );
         }
+        bool hasPass = itemPassLogic.checkActiveItemPass(msg.sender);
 
         _validateEquipmentItems(_equipmentItemIds, _equipmentQuantities);
-        _checkAndDeductRequirements(dungeon);
-        _checkAndDeductResources(dungeon);
+        if (!hasPass) {
+            _checkAndDeductRequirements(dungeon);
+            _checkAndDeductResources(dungeon);
+        }
         _deductEquipmentItems(_equipmentItemIds, _equipmentQuantities);
 
         uint256 sessionId = DungeonComponent(dungeonProxy).startDungeonSession(

@@ -7,21 +7,14 @@ import "../../interfaces/IItem.sol";
 import "../../struct/ItemPass.sol";
 import "../../struct/Inventory.sol";
 import "../../struct/Item.sol";
+import "../../interfaces/IItemPass.sol";
 
 contract ItemPassLogic {
-    /// @notice Reference to the World contract that manages system authorization
     IWorld public world;
-
-    /// @notice Inventory component contract
     IInventoryComponent public inventoryProxy;
-
-    /// @notice Item component contract
     IItemComponent public itemProxy;
+    IItemPassComponent public itemPassProxy;
 
-    /// @notice Mapping lưu trữ thông tin ItemPass của từng người chơi
-    mapping(address => ItemPassStruct) public listPassActive; // để qua component
-
-    /// @notice Sự kiện được bắn ra khi kích hoạt thành công
     event ItemPassActivated(
         address indexed player,
         uint256 itemId,
@@ -29,50 +22,53 @@ contract ItemPassLogic {
         uint256 endTime
     );
 
-    constructor(address _world, address _inventoryProxy, address _itemProxy) {
+    constructor(
+        address _world,
+        address _inventoryProxy,
+        address _itemProxy,
+        address _itemPassProxy
+    ) {
         world = IWorld(_world);
         inventoryProxy = IInventoryComponent(_inventoryProxy);
         itemProxy = IItemComponent(_itemProxy);
+        itemPassProxy = IItemPassComponent(_itemPassProxy);
     }
 
-    /**
-     * @notice Kích hoạt Item Pass cho người chơi
-     * @dev Kiểm tra số lượng item, trừ item và cập nhật thời gian active
-     * @param _itemId ID của vật phẩm dùng để kích hoạt
-     */
     function activeItemPass(uint256 _itemId) external {
         address player = msg.sender;
 
+        // Get item from inventory to check a quantity
         InventoryItem memory userItem = inventoryProxy.getItem(player, _itemId);
-
         require(userItem.quantity > 0, "ItemPass: Insufficient item quantity");
 
+        // Get information duration from Item attribute
         uint64 duration = uint64(
             itemProxy.getItemAttribute(
                 _itemId,
                 ItemStructs.Attribute.GrowthRate
             )
         );
-
         require(duration > 0, "ItemPass: Item has no duration attribute");
 
-        ItemPassStruct storage pass = listPassActive[player];
+        // Get current pass from Component
+        ItemPassStruct memory pass = itemPassProxy.getPass(player);
         uint64 currentTime = uint64(block.timestamp);
 
+        uint64 newBeginTime;
+        uint64 newEndTime;
+
+        // Calculator logic time
         if (pass.endTime < currentTime) {
-            // Trường hợp 1: Chưa có pass hoặc pass cũ đã hết hạn
-            // beginTime là thời gian hiện tại
-            pass.beginTime = currentTime;
-            // endTime là hiện tại + duration
-            pass.endTime = currentTime + duration;
+            // Old Pass expired or not yet -> Reset
+            newBeginTime = currentTime;
+            newEndTime = currentTime + duration;
         } else {
-            // Trường hợp 2: Pass đang còn hiệu lực -> Cộng dồn thời gian
-            // beginTime giữ nguyên
-            // endTime được cộng thêm duration vào thời gian kết thúc cũ
-            pass.endTime += duration;
+            // Pass is stilling valid -> cumulative
+            newBeginTime = pass.beginTime;
+            newEndTime = pass.endTime + duration;
         }
 
-        // Giảm số lượng đi 1, giữ nguyên durability và expiration cũ
+        // Deduct item in Inventory
         inventoryProxy.setItem(
             player,
             _itemId,
@@ -81,25 +77,20 @@ contract ItemPassLogic {
             userItem.expiration
         );
 
-        emit ItemPassActivated(player, _itemId, pass.beginTime, pass.endTime);
+        // Save new data into Component
+        itemPassProxy.setPass(player, newBeginTime, newEndTime);
+
+        emit ItemPassActivated(player, _itemId, newBeginTime, newEndTime);
     }
 
-    /**
-     * @notice Lấy thông tin Pass hiện tại của người chơi
-     * @param _player The address of the player
-     */
     function getItemPass(
         address _player
     ) external view returns (ItemPassStruct memory) {
-        return listPassActive[_player];
+        return itemPassProxy.getPass(_player);
     }
 
-    /**
-     * @notice check player has active item pass
-     * @param _player The address of the player
-     */
     function checkActiveItemPass(address _player) external view returns (bool) {
-        ItemPassStruct storage pass = listPassActive[_player];
+        ItemPassStruct memory pass = itemPassProxy.getPass(_player);
         uint64 currentTime = uint64(block.timestamp);
         return pass.endTime > currentTime;
     }
