@@ -98,8 +98,6 @@ contract ItemPassLogic {
     }
 
     function checkActiveItemPass(address _player) external view returns (bool) {
-        ItemPassStruct memory pass = itemPassProxy.getPass(_player);
-        uint64 currentTime = uint64(block.timestamp);
-        return pass.endTime > currentTime;
+        return itemPassProxy.checkActiveItemPass(_player);
     }
 }

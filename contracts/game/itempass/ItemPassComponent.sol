@@ -39,7 +39,7 @@ contract ItemPassComponent {
             beginTime: _beginTime,
             endTime: _endTime
         });
-        
+
         emit PassUpdated(_player, _beginTime, _endTime);
     }
 
@@ -47,7 +47,17 @@ contract ItemPassComponent {
      * @notice Get information Pass
      * @dev Logic can this function to get information about pass of player
      */
-    function getPass(address _player) external view returns (ItemPassStruct memory) {
+    function getPass(
+        address _player
+    ) external view returns (ItemPassStruct memory) {
         return listPassActive[_player];
+    }
+
+    /**
+     * @notice Check if a player has an active item pass
+     * @param _player ///
+     */
+    function checkActiveItemPass(address _player) external view returns (bool) {
+        return listPassActive[_player].endTime > uint64(block.timestamp);
     }
 }
