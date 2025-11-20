@@ -8,23 +8,52 @@ import "../../interfaces/IPlayer.sol";
 import "../../struct/Inventory.sol";
 import "../../struct/Player.sol";
 
+/**
+ * @title InventoryLogic
+ * @notice Handles inventory management operations for players
+ * @dev Manages adding, transferring, and trading items between players
+ */
 contract InventoryLogic {
     IWorld public world;
     IInventoryComponent public inventoryProxy;
     IItemComponent public itemProxy;
     IPlayerComponent public playerProxy;
 
+    /**
+     * @notice Emitted when an item is added to a player's inventory
+     * @param player Address of the player receiving the item
+     * @param itemId ID of the item being added
+     * @param quantity Amount of items added
+     */
     event ItemAdded(
         address indexed player,
         uint256 indexed itemId,
         uint256 quantity
     );
+
+    /**
+     * @notice Emitted when an item is transferred from one player to another
+     * @param player Address of the player sending the item
+     * @param to Address of the player receiving the item
+     * @param itemId ID of the item being transferred
+     */
     event ItemTransferred(
         address indexed player,
         address indexed to,
         uint256 indexed itemId
     );
 
+    /**
+     * @notice Emitted when admin facilitates a trade between two players
+     * @param player1 Address of the first player
+     * @param player2 Address of the second player
+     * @param item1Ids Array of item IDs from player1
+     * @param item1Amounts Array of item amounts from player1
+     * @param item2Ids Array of item IDs from player2
+     * @param item2Amounts Array of item amounts from player2
+     * @param player1Sunlight Amount of sunlight player1 is trading
+     * @param player2Sunlight Amount of sunlight player2 is trading
+     */
     event AdminTrading(
         address indexed player1,
         address indexed player2,
@@ -49,6 +78,13 @@ contract InventoryLogic {
         _;
     }
 
+    /**
+     * @notice Initializes the InventoryLogic contract
+     * @param _world Address of the World contract
+     * @param _inventoryProxy Address of the Inventory proxy contract
+     * @param _itemProxy Address of the Item proxy contract
+     * @param _playerProxy Address of the Player proxy contract
+     */
     constructor(
         address _world,
         address _inventoryProxy,
@@ -61,26 +97,30 @@ contract InventoryLogic {
         playerProxy = IPlayerComponent(_playerProxy);
     }
 
+    /// @dev Maximum quantity allowed per item stack
     uint256 constant MAX_QUANTITY = 1000000;
 
+    /**
+     * @notice Adds items to a player's inventory (admin only)
+     * @dev Validates player and item existence before adding
+     * @param _player Address of the player to receive items
+     * @param _itemId ID of the item to add
+     * @param _quantity Amount of items to add
+     */
     function addItem(
         address _player,
         uint256 _itemId,
         uint256 _quantity
     ) external onlyAdmin {
-        // Validate input
         require(_player != address(0), "Invalid player address");
         require(_quantity > 0, "Quantity must be greater than 0");
         require(_quantity <= MAX_QUANTITY, "Quantity exceeds maximum limit");
 
-        // Check if item exists in game
         require(itemProxy.exists(_itemId), "Item does not exist in game");
 
-        // Check if player exists
         Player memory playerData = playerProxy.getPlayer(_player);
         require(playerData.level > 0, "Player not initialized");
 
-        // Check if item already exists in player's inventory
         bool itemExists = inventoryProxy.exists(_player, _itemId);
 
         uint256 newQuantity;
@@ -88,31 +128,25 @@ contract InventoryLogic {
         uint256 expiration;
 
         if (itemExists) {
-            // Get current item data
             InventoryItem memory currentItem = inventoryProxy.getItem(
                 _player,
                 _itemId
             );
 
-            // Calculate new quantity with overflow check
             newQuantity = currentItem.quantity + _quantity;
             require(newQuantity >= currentItem.quantity, "Quantity overflow");
             require(newQuantity <= MAX_QUANTITY, "Exceeds maximum quantity");
 
-            // Keep existing values
             durability = currentItem.durability;
             expiration = currentItem.expiration;
         } else {
-            // Item doesn't exist, set new quantity directly
             newQuantity = _quantity;
             require(newQuantity <= MAX_QUANTITY, "Exceeds maximum quantity");
 
-            // Set default values for new item
             durability = 100;
             expiration = 0;
         }
 
-        // Update inventory
         IInventoryComponent(address(inventoryProxy)).setItem(
             _player,
             _itemId,
@@ -124,12 +158,18 @@ contract InventoryLogic {
         emit ItemAdded(_player, _itemId, _quantity);
     }
 
+    /**
+     * @notice Transfers items from sender to recipient
+     * @dev Both sender and recipient must be initialized players
+     * @param to Address of the recipient player
+     * @param itemId ID of the item to transfer
+     * @param quantity Amount of items to transfer
+     */
     function transferItem(
         address to,
         uint256 itemId,
         uint256 quantity
     ) external {
-        // Validate input
         require(to != address(0), "Invalid recipient address");
         require(to != msg.sender, "Cannot transfer to self");
         require(quantity > 0, "Quantity must be greater than 0");
@@ -137,14 +177,12 @@ contract InventoryLogic {
 
         address player = msg.sender;
 
-        // Check if both players exist
         Player memory senderData = playerProxy.getPlayer(player);
         require(senderData.level > 0, "Sender not initialized");
 
         Player memory recipientData = playerProxy.getPlayer(to);
         require(recipientData.level > 0, "Recipient not initialized");
 
-        // Check sender's item
         InventoryItem memory senderItem = inventoryProxy.getItem(
             player,
             itemId
@@ -155,14 +193,11 @@ contract InventoryLogic {
             "Item does not exist in sender's inventory"
         );
 
-        // Calculate new quantities with checks
         uint256 senderNewQuantity = senderItem.quantity - quantity;
 
-        // Get recipient's current item
         InventoryItem memory recipientItem = inventoryProxy.getItem(to, itemId);
         uint256 recipientNewQuantity = recipientItem.quantity + quantity;
 
-        // Check for recipient's quantity overflow
         require(
             recipientNewQuantity >= recipientItem.quantity,
             "Recipient quantity overflow"
@@ -172,7 +207,6 @@ contract InventoryLogic {
             "Recipient exceeds maximum quantity"
         );
 
-        // Update sender's inventory
         IInventoryComponent(address(inventoryProxy)).setItem(
             player,
             itemId,
@@ -181,9 +215,7 @@ contract InventoryLogic {
             senderItem.expiration
         );
 
-        // Update recipient's inventory
         if (recipientItem.quantity > 0) {
-            // Keep recipient's existing durability and expiration
             IInventoryComponent(address(inventoryProxy)).setItem(
                 to,
                 itemId,
@@ -192,7 +224,6 @@ contract InventoryLogic {
                 recipientItem.expiration
             );
         } else {
-            // Use sender's durability and expiration for new item
             IInventoryComponent(address(inventoryProxy)).setItem(
                 to,
                 itemId,
@@ -205,6 +236,18 @@ contract InventoryLogic {
         emit ItemTransferred(player, to, itemId);
     }
 
+    /**
+     * @notice Facilitates a trade between two players (admin only)
+     * @dev Exchanges items and sunlight between two players atomically
+     * @param _player1 Address of the first player
+     * @param _player2 Address of the second player
+     * @param _item1Ids Array of item IDs from player1
+     * @param _item1Amounts Array of item amounts from player1
+     * @param _item2Ids Array of item IDs from player2
+     * @param _item2Amounts Array of item amounts from player2
+     * @param _player1Sunlight Amount of sunlight player1 is trading
+     * @param _player2Sunlight Amount of sunlight player2 is trading
+     */
     function adminTrading(
         address _player1,
         address _player2,
@@ -215,7 +258,6 @@ contract InventoryLogic {
         uint256 _player1Sunlight,
         uint256 _player2Sunlight
     ) external onlyAdmin {
-        // Validate input
         require(_player1 != address(0), "Invalid player1 address");
         require(_player2 != address(0), "Invalid player2 address");
         require(_player1 != _player2, "Cannot trade with self");
@@ -232,14 +274,12 @@ contract InventoryLogic {
             "At least one item must be traded"
         );
 
-        // Check if both players exist
         Player memory player1Data = playerProxy.getPlayer(_player1);
         require(player1Data.level > 0, "Player1 not initialized");
 
         Player memory player2Data = playerProxy.getPlayer(_player2);
         require(player2Data.level > 0, "Player2 not initialized");
 
-        // Validate and check player1's items
         for (uint256 i = 0; i < _item1Ids.length; i++) {
             require(
                 _item1Amounts[i] > 0,
@@ -268,7 +308,6 @@ contract InventoryLogic {
             );
         }
 
-        // Validate and check player2's items
         for (uint256 i = 0; i < _item2Ids.length; i++) {
             require(
                 _item2Amounts[i] > 0,
@@ -297,7 +336,6 @@ contract InventoryLogic {
             );
         }
 
-        // Check sunlight availability
         require(
             player1Data.sunlight >= _player1Sunlight,
             "Player1 does not have enough sunlight"
@@ -307,7 +345,6 @@ contract InventoryLogic {
             "Player2 does not have enough sunlight"
         );
 
-        // Lưu trữ thông tin item gốc trước khi thay đổi
         InventoryItem[] memory player1OriginalItems = new InventoryItem[](
             _item1Ids.length
         );
@@ -329,7 +366,6 @@ contract InventoryLogic {
             );
         }
 
-        // Process player1's items (remove items being traded away)
         for (uint256 i = 0; i < _item1Ids.length; i++) {
             InventoryItem memory player1Item = inventoryProxy.getItem(
                 _player1,
@@ -346,7 +382,6 @@ contract InventoryLogic {
             );
         }
 
-        // Process player2's items (remove items being traded away)
         for (uint256 i = 0; i < _item2Ids.length; i++) {
             InventoryItem memory player2Item = inventoryProxy.getItem(
                 _player2,
@@ -363,7 +398,6 @@ contract InventoryLogic {
             );
         }
 
-        // Add player2's items to player1's inventory
         for (uint256 i = 0; i < _item2Ids.length; i++) {
             InventoryItem memory player1ExistingItem = inventoryProxy.getItem(
                 _player1,
@@ -382,7 +416,6 @@ contract InventoryLogic {
             );
 
             if (player1ExistingItem.quantity > 0) {
-                // Keep player1's existing durability and expiration
                 IInventoryComponent(address(inventoryProxy)).setItem(
                     _player1,
                     _item2Ids[i],
@@ -391,7 +424,6 @@ contract InventoryLogic {
                     player1ExistingItem.expiration
                 );
             } else {
-                // Use player2's original durability and expiration for new item
                 IInventoryComponent(address(inventoryProxy)).setItem(
                     _player1,
                     _item2Ids[i],
@@ -402,7 +434,6 @@ contract InventoryLogic {
             }
         }
 
-        // Add player1's items to player2's inventory
         for (uint256 i = 0; i < _item1Ids.length; i++) {
             InventoryItem memory player2ExistingItem = inventoryProxy.getItem(
                 _player2,
@@ -421,7 +452,6 @@ contract InventoryLogic {
             );
 
             if (player2ExistingItem.quantity > 0) {
-                // Keep player2's existing durability and expiration
                 IInventoryComponent(address(inventoryProxy)).setItem(
                     _player2,
                     _item1Ids[i],
@@ -430,7 +460,6 @@ contract InventoryLogic {
                     player2ExistingItem.expiration
                 );
             } else {
-                // Use player1's original durability and expiration for new item
                 IInventoryComponent(address(inventoryProxy)).setItem(
                     _player2,
                     _item1Ids[i],
@@ -441,7 +470,6 @@ contract InventoryLogic {
             }
         }
 
-        // Update sunlight for both players
         if (_player1Sunlight > 0) {
             playerProxy.subtractSunlight(_player1, _player1Sunlight);
             playerProxy.addSunlight(_player2, _player1Sunlight);
@@ -463,6 +491,12 @@ contract InventoryLogic {
         );
     }
 
+    /**
+     * @notice Retrieves a specific item from a player's inventory
+     * @param _playerAddress Address of the player
+     * @param _itemId ID of the item to retrieve
+     * @return InventoryItem struct containing item details
+     */
     function getItem(
         address _playerAddress,
         uint256 _itemId
@@ -470,12 +504,22 @@ contract InventoryLogic {
         return inventoryProxy.getItem(_playerAddress, _itemId);
     }
 
+    /**
+     * @notice Retrieves all items from a player's inventory
+     * @param _playerAddress Address of the player
+     * @return Array of InventoryItem structs
+     */
     function getInventory(
         address _playerAddress
     ) external view returns (InventoryItem[] memory) {
         return inventoryProxy.getItems(_playerAddress);
     }
 
+    /**
+     * @notice Cleans up all items for a specific player (admin only)
+     * @dev Removes all items from the player's inventory
+     * @param _player Address of the player whose items will be cleaned up
+     */
     function cleanupPlayerItems(address _player) external onlyAdmin {
         inventoryProxy.cleanupPlayerItems(_player);
     }

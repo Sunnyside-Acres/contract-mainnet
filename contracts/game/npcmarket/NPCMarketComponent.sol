@@ -4,15 +4,36 @@ pragma solidity ^0.8.28;
 import "../../interfaces/IWorld.sol";
 import "../../struct/NPCMarket.sol";
 
+/**
+ * @title NPCMarketComponent
+ * @dev Component contract for NPC Market system - manages market data and inventory
+ * @notice This contract stores and manages all NPC market-related data including items, prices, and user purchase limits
+ *
+ * Key Features:
+ * - Create and manage NPC markets
+ * - Add/update/remove items from markets
+ * - Track user purchase limits per item
+ * - Manage item prices and availability
+ * - Support both buying from and selling to NPCs
+ */
 contract NPCMarketComponent {
+    /// @notice Address of the World contract for access control
     address public world;
+    /// @notice Address of the admin
     address public admin;
+    /// @notice Address of the implementation logic contract
     address public implementation;
 
+    /// @notice Mapping from NPC ID to NPCMarket struct
     mapping(uint256 => NPCMarket) public npcMarkets;
 
+    /// @notice Emitted when the implementation contract is upgraded
     event ComponentUpdated(address indexed newImplementation);
+
+    /// @notice Emitted when a new NPC market is created
     event NPCMarketCreated(uint256 indexed npcId, string name);
+
+    /// @notice Emitted when an item is added to a market
     event ItemAddedToMarket(
         uint256 indexed npcId,
         uint256 indexed itemId,
@@ -20,19 +41,33 @@ contract NPCMarketComponent {
         uint256 pricePerUnit,
         bool isSelling
     );
+
+    /// @notice Emitted when an item's details are updated in a market
     event ItemUpdatedInMarket(
         uint256 indexed npcId,
         uint256 indexed itemId,
         uint256 newQuantity,
         uint256 newPrice
     );
+
+    /// @notice Emitted when an item is removed from a market
     event ItemRemovedFromMarket(uint256 indexed npcId, uint256 indexed itemId);
 
+    /**
+     * @dev Modifier to restrict access to authorized logic contracts only
+     * @notice Reverts if caller is not a registered logic contract
+     */
     modifier onlyAuthorized() {
         require(IWorld(world).isLogicRegistered(msg.sender), "Unauthorized");
         _;
     }
 
+    /**
+     * @dev Creates a new NPC market
+     * @notice Initializes a market for a specific NPC
+     * @param _npcId ID of the NPC
+     * @param _name Name of the market/NPC
+     */
     function createNPCMarket(
         uint256 _npcId,
         string memory _name
@@ -47,6 +82,15 @@ contract NPCMarketComponent {
         emit NPCMarketCreated(_npcId, _name);
     }
 
+    /**
+     * @dev Adds an item to an NPC market
+     * @notice Sets up an item for buying or selling in the market
+     * @param _npcId ID of the NPC market
+     * @param _itemId ID of the item to add
+     * @param _limitPerUser Maximum quantity per user (0 = unlimited)
+     * @param _pricePerUnit Price per unit in Sunny tokens
+     * @param _isSelling Whether the NPC is selling (true) or buying (false) this item
+     */
     function addItemToMarket(
         uint256 _npcId,
         uint256 _itemId,
@@ -63,7 +107,7 @@ contract NPCMarketComponent {
             "Item already exists in market"
         );
 
-        // Thêm item vào market
+        // Add item to market
         npcMarkets[_npcId].items[_itemId].itemId = _itemId;
         npcMarkets[_npcId].items[_itemId].limitPerUser = _limitPerUser;
         npcMarkets[_npcId].items[_itemId].pricePerUnit = _pricePerUnit;
@@ -71,7 +115,7 @@ contract NPCMarketComponent {
         npcMarkets[_npcId].items[_itemId].active = true;
         npcMarkets[_npcId].items[_itemId].lastPriceUpdate = block.timestamp;
 
-        // Thêm itemId vào danh sách để iterate
+        // Add itemId to list for iteration
         npcMarkets[_npcId].itemIds.push(_itemId);
 
         emit ItemAddedToMarket(
@@ -83,7 +127,14 @@ contract NPCMarketComponent {
         );
     }
 
-    // Function để update item
+    /**
+     * @dev Updates an item's details in the market
+     * @notice Modifies price and purchase limit for an existing market item
+     * @param _npcId ID of the NPC market
+     * @param _itemId ID of the item to update
+     * @param _newLimitPerUser New maximum quantity per user
+     * @param _newPrice New price per unit
+     */
     function updateItemInMarket(
         uint256 _npcId,
         uint256 _itemId,
@@ -106,7 +157,12 @@ contract NPCMarketComponent {
         emit ItemUpdatedInMarket(_npcId, _itemId, _newLimitPerUser, _newPrice);
     }
 
-    // Function để xóa item khỏi market
+    /**
+     * @dev Removes an item from the market
+     * @notice Marks item as inactive and removes from item list
+     * @param _npcId ID of the NPC market
+     * @param _itemId ID of the item to remove
+     */
     function removeItemFromMarket(
         uint256 _npcId,
         uint256 _itemId
@@ -119,10 +175,10 @@ contract NPCMarketComponent {
             "Item not found in market"
         );
 
-        // Đánh dấu item không active
+        // Mark item as inactive
         npcMarkets[_npcId].items[_itemId].active = false;
 
-        // Xóa itemId khỏi danh sách
+        // Remove itemId from list
         uint256[] storage itemIds = npcMarkets[_npcId].itemIds;
         for (uint256 i = 0; i < itemIds.length; i++) {
             if (itemIds[i] == _itemId) {
@@ -135,7 +191,12 @@ contract NPCMarketComponent {
         emit ItemRemovedFromMarket(_npcId, _itemId);
     }
 
-    // Function để lấy thông tin item cụ thể trong market
+    /**
+     * @dev Gets detailed information about a specific market item
+     * @param _npcId ID of the NPC market
+     * @param _itemId ID of the item
+     * @return MarketItemView struct with item details
+     */
     function getMarketItem(
         uint256 _npcId,
         uint256 _itemId
@@ -182,7 +243,11 @@ contract NPCMarketComponent {
         return items;
     }
 
-    // Function để lấy danh sách itemIds
+    /**
+     * @dev Gets all item IDs in a market
+     * @param _npcId ID of the NPC market
+     * @return Array of item IDs
+     */
     function getMarketItemIds(
         uint256 _npcId
     ) external view returns (uint256[] memory) {
@@ -190,7 +255,14 @@ contract NPCMarketComponent {
         return npcMarkets[_npcId].itemIds;
     }
 
-    // Function để lấy thông tin NPC market
+    /**
+     * @dev Gets basic information about an NPC market
+     * @param _npcId ID of the NPC market
+     * @return npcId ID of the NPC
+     * @return name Name of the market
+     * @return isActive Whether the market is active
+     * @return itemCount Number of items in the market
+     */
     function getNPCMarketInfo(
         uint256 _npcId
     )
@@ -212,13 +284,24 @@ contract NPCMarketComponent {
         );
     }
 
-    // Function để kiểm tra market có mở không
+    /**
+     * @dev Checks if a market is currently open/active
+     * @param _npcId ID of the NPC market
+     * @return True if market is active, false otherwise
+     */
     function isMarketOpen(uint256 _npcId) external view returns (bool) {
         NPCMarket storage market = npcMarkets[_npcId];
         return market.isActive;
     }
 
-    // Function để track user purchases
+    /**
+     * @dev Tracks user purchases for limit enforcement
+     * @notice Increments the purchase count for a specific user and item
+     * @param _npcId ID of the NPC market
+     * @param _itemId ID of the item
+     * @param _user Address of the user
+     * @param _quantity Quantity purchased to add
+     */
     function addUserPurchase(
         uint256 _npcId,
         uint256 _itemId,
@@ -234,7 +317,13 @@ contract NPCMarketComponent {
         npcMarkets[_npcId].items[_itemId].userPurchases[_user] += _quantity;
     }
 
-    // Function để lấy số lượng đã mua của user
+    /**
+     * @dev Gets the total quantity purchased by a user
+     * @param _npcId ID of the NPC market
+     * @param _itemId ID of the item
+     * @param _user Address of the user
+     * @return Total quantity purchased by the user
+     */
     function getUserPurchases(
         uint256 _npcId,
         uint256 _itemId,
@@ -249,7 +338,15 @@ contract NPCMarketComponent {
         return npcMarkets[_npcId].items[_itemId].userPurchases[_user];
     }
 
-    // Function để kiểm tra xem user có thể mua thêm không
+    /**
+     * @dev Checks if a user can purchase additional quantity
+     * @notice Verifies against per-user purchase limit
+     * @param _npcId ID of the NPC market
+     * @param _itemId ID of the item
+     * @param _user Address of the user
+     * @param _additionalQuantity Quantity user wants to purchase
+     * @return True if user can purchase, false otherwise
+     */
     function canUserPurchaseMore(
         uint256 _npcId,
         uint256 _itemId,
@@ -261,7 +358,7 @@ contract NPCMarketComponent {
 
         uint256 limitPerUser = npcMarkets[_npcId].items[_itemId].limitPerUser;
 
-        // Nếu limit = 0, không giới hạn
+        // If limit = 0, unlimited
         if (limitPerUser == 0) return true;
 
         uint256 currentPurchases = npcMarkets[_npcId]
@@ -270,7 +367,13 @@ contract NPCMarketComponent {
         return (currentPurchases + _additionalQuantity) <= limitPerUser;
     }
 
-    // Function để reset user purchases (admin only)
+    /**
+     * @dev Resets user purchase count for a specific item
+     * @notice Admin function to reset purchase limits
+     * @param _npcId ID of the NPC market
+     * @param _itemId ID of the item
+     * @param _user Address of the user
+     */
     function resetUserPurchases(
         uint256 _npcId,
         uint256 _itemId,

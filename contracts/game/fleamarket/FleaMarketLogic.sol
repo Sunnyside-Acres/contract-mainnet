@@ -12,14 +12,16 @@ import "../../struct/Player.sol";
 
 /**
  * @title FleaMarketLogic
- * @dev Logic contract cho Flea Market - cho phép người chơi mua bán item
+ * @author RYG.Labs
+ * @notice Logic contract for the Flea Market - allows players to buy and sell items
+ * @dev Implements peer-to-peer item trading mechanics
  *
- * Tính năng chính:
- * - List item lên market với nhiều lệnh khác nhau cho cùng một item
- * - Mua item từ listing cụ thể hoặc tự động chọn giá tốt nhất
- * - Quản lý inventory: trừ item khi list, trả lại khi cancel
- * - Bulk purchase từ nhiều listing
- * - Thống kê và báo cáo thị trường
+ * Key Features:
+ * - List items on the market with multiple orders for the same item
+ * - Purchase items from specific listings or automatically select best price
+ * - Inventory management: deduct items when listing, return when cancelling
+ * - Bulk purchase from multiple listings
+ * - Market statistics and reporting
  */
 contract FleaMarketLogic {
     IWorld public world;
@@ -106,19 +108,20 @@ contract FleaMarketLogic {
     // ============ WRITE FUNCTIONS (EXTERNAL) ============
 
     /**
-     * @dev Đăng bán item lên flea market - cho phép nhiều lệnh cho cùng một item
-     * @param _itemId ID của item muốn bán
-     * @param _quantity Số lượng item muốn bán trong lệnh này
-     * @param _price Giá bán cho mỗi item (sunlight)
-     * @param _duration Thời gian hiệu lực của lệnh (giây)
+     * @notice List an item for sale on the flea market - allows multiple orders for the same item
+     * @dev Items are deducted from inventory immediately upon listing
+     * @param _itemId The ID of the item to sell
+     * @param _quantity The quantity of items to sell in this order
+     * @param _price The selling price per item (in sunlight)
+     * @param _duration The validity period of the order (in seconds)
      *
-     * Quy trình:
+     * Process:
      * 1. Validate input parameters
-     * 2. Kiểm tra người chơi và item tồn tại
-     * 3. Kiểm tra đủ item trong inventory
-     * 4. Trừ item khỏi inventory ngay lập tức
-     * 5. Tạo listing với ID duy nhất
-     * 6. Emit event ItemListed
+     * 2. Check that player and item exist
+     * 3. Check sufficient items in inventory
+     * 4. Deduct items from inventory immediately
+     * 5. Create listing with unique ID
+     * 6. Emit ItemListed event
      */
     function listItem(
         uint256 _itemId,
@@ -183,18 +186,19 @@ contract FleaMarketLogic {
     }
 
     /**
-     * @dev Mua item từ flea market - mỗi lần mua chỉ mua từ một listing cụ thể
-     * @param _listingId ID của listing cụ thể muốn mua
-     * @param _quantity Số lượng item muốn mua từ listing này
+     * @notice Purchase an item from the flea market - each purchase is from a specific listing
+     * @dev Handles sunlight transfer and inventory updates
+     * @param _listingId The ID of the specific listing to purchase from
+     * @param _quantity The quantity of items to purchase from this listing
      *
-     * Quy trình:
-     * 1. Validate input và kiểm tra người mua
-     * 2. Kiểm tra listing còn hoạt động và chưa hết hạn
-     * 3. Kiểm tra đủ số lượng và không mua của chính mình
-     * 4. Tính toán chi phí và kiểm tra đủ sunlight
-     * 5. Trừ sunlight từ người mua, cộng cho người bán
-     * 6. Xử lý giao dịch và cập nhật inventory
-     * 7. Thêm vào lịch sử giao dịch
+     * Process:
+     * 1. Validate input and check buyer
+     * 2. Check that listing is active and not expired
+     * 3. Check sufficient quantity and prevent self-purchase
+     * 4. Calculate cost and check sufficient sunlight
+     * 5. Deduct sunlight from buyer, add to seller
+     * 6. Process transaction and update inventory
+     * 7. Add to transaction history
      */
     function purchaseItem(uint256 _listingId, uint256 _quantity) external {
         address buyer = msg.sender;

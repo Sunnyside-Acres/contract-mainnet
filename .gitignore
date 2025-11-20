@@ -13,6 +13,8 @@
 .pnp.*
 
 node_modules
+# script
+frontend
 .env
 
 # Hardhat files

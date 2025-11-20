@@ -4,50 +4,76 @@ pragma solidity ^0.8.28;
 import "../../interfaces/IWorld.sol";
 import "../../struct/Weather.sol";
 
+/**
+ * @title WeatherProxy
+ * @author RYG.Labs
+ * @notice Proxy contract for the Weather system using delegatecall pattern
+ * @dev Delegates all calls to the implementation contract while maintaining storage
+ */
 contract WeatherProxy {
+    /// @notice Address of the World contract for access control
     address public world;
+    /// @notice Address of the admin
     address public admin;
+    /// @notice Address of the implementation logic contract
     address public implementation;
 
-    // Thông tin thời tiết hiện tại
+    /// @notice Current weather information
     WeatherStructs.Weather public currentWeather;
 
-    // Các thông số cấu hình
-    uint256 public constant MIN_DURATION = 15 * 60; // 15 phút (tính bằng giây)
-    uint256 public constant MAX_DURATION = 60 * 60; // 1 tiếng (tính bằng giây)
-    uint256 public constant HOUR_DURATION = 60 * 60; // 1 tiếng
-    uint256 public constant HOUR_AND_HALF_DURATION = 90 * 60; // 1 tiếng 30 phút
+    /// @notice Minimum duration for weather (15 minutes in seconds)
+    uint256 public constant MIN_DURATION = 15 * 60;
+    /// @notice Maximum duration for weather (1 hour in seconds)
+    uint256 public constant MAX_DURATION = 60 * 60;
+    /// @notice Duration of 1 hour in seconds
+    uint256 public constant HOUR_DURATION = 60 * 60;
+    /// @notice Duration of 1.5 hours in seconds
+    uint256 public constant HOUR_AND_HALF_DURATION = 90 * 60;
 
-    // Sự kiện
+    /// @notice Emitted when weather is updated
     event WeatherUpdated(
         WeatherStructs.WeatherState newState,
         uint256 startTime,
         uint256 duration
     );
 
+    /// @notice Emitted when the implementation is upgraded
     event ComponentUpdated(address indexed newImplementation);
 
+    /// @notice Restricts access to admin only
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
         _;
     }
 
+    /// @notice Restricts access to authorized logic contracts only
     modifier onlyAuthorized() {
         require(IWorld(world).isLogicRegistered(msg.sender), "Unauthorized");
         _;
     }
 
+    /**
+     * @notice Constructor to initialize the proxy
+     * @param _world The address of the World contract
+     * @param _admin The address of the admin
+     * @param _implementation The address of the initial implementation
+     */
     constructor(address _world, address _admin, address _implementation) {
         world = _world;
         admin = _admin;
         implementation = _implementation;
     }
 
+    /**
+     * @notice Upgrade the implementation contract
+     * @param newImplementation The address of the new implementation
+     */
     function upgrade(address newImplementation) external onlyAdmin {
         implementation = newImplementation;
         emit ComponentUpdated(newImplementation);
     }
 
+    /// @notice Fallback function that delegates all calls to the implementation
     fallback() external onlyAuthorized {
         address impl = implementation;
         require(impl != address(0), "No implementation set");

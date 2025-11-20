@@ -13,37 +13,49 @@ import "../../struct/Player.sol";
 
 /**
  * @title NPCMarketLogic
- * @dev Logic contract cho hệ thống NPC Market - cho phép người chơi mua bán item với NPC
+ * @dev Logic contract for NPC Market system - enables player trading with NPCs
+ * @notice This contract manages all gameplay mechanics for buying and selling items with NPCs
  *
- * Tính năng chính:
- * - Quản lý market của các NPC
- * - Mua item từ NPC với giới hạn per user
- * - Bán item cho NPC
- * - Theo dõi lịch sử giao dịch của người chơi
- * - Quản lý giá cả và giới hạn mua bán
+ * Key Features:
+ * - Manage NPC markets
+ * - Buy items from NPCs with per-user limits
+ * - Sell items to NPCs
+ * - Track player transaction history
+ * - Manage prices and trade limits
+ * - Daily purchase limit resets
+ * - Reentrancy protection
  */
 contract NPCMarketLogic {
+    /// @notice World contract for access control
     IWorld public world;
+    /// @notice NPC Market component for market data
     INPCMarketComponent public npcMarketProxy;
+    /// @notice Item component for item information
     IItemComponent public itemProxy;
+    /// @notice Inventory component for player inventory management
     IInventoryComponent public inventoryProxy;
+    /// @notice Player component for player data and currency
     IPlayerComponent public playerProxy;
 
     // ============ CONSTANTS ============
 
+    /// @notice Maximum amount allowed per transaction
     uint256 public constant MAX_TRANSACTION_AMOUNT = 1000000;
+
+    /// @notice Number of seconds in a day for daily reset calculations
+    uint256 public constant SECONDS_PER_DAY = 86400;
 
     // ============ STATE VARIABLES ============
 
-    // Reentrancy guard
+    /// @dev Reentrancy guard flag
     bool private _locked;
 
-    // Daily reset tracking
-    mapping(uint256 => uint256) public lastResetDay; // npcId => last reset day
-    uint256 public constant SECONDS_PER_DAY = 86400;
+    /// @notice Tracks last reset day for each NPC market
+    mapping(uint256 => uint256) public lastResetDay;
 
     // ============ EVENTS ============
 
+    /// @notice Emitted when a player purchases items from an NPC
     event ItemPurchased(
         address indexed player,
         uint256 indexed npcId,
@@ -52,6 +64,7 @@ contract NPCMarketLogic {
         uint256 totalPrice
     );
 
+    /// @notice Emitted when a player sells items to an NPC
     event ItemSold(
         address indexed player,
         uint256 indexed npcId,
@@ -60,10 +73,13 @@ contract NPCMarketLogic {
         uint256 totalPrice
     );
 
+    /// @notice Emitted when a market's state changes
     event MarketStateChanged(uint256 indexed npcId, bool isOpen);
 
+    /// @notice Emitted when a new NPC market is created
     event NPCMarketCreated(uint256 indexed npcId, string name);
 
+    /// @notice Emitted when an item is added to a market
     event ItemAddedToMarket(
         uint256 indexed npcId,
         uint256 indexed itemId,
@@ -72,6 +88,7 @@ contract NPCMarketLogic {
         bool isSelling
     );
 
+    /// @notice Emitted when an item's details are updated in a market
     event ItemUpdatedInMarket(
         uint256 indexed npcId,
         uint256 indexed itemId,
@@ -79,14 +96,17 @@ contract NPCMarketLogic {
         uint256 pricePerUnit
     );
 
+    /// @notice Emitted when an item is removed from a market
     event ItemRemovedFromMarket(uint256 indexed npcId, uint256 indexed itemId);
 
+    /// @notice Emitted when a user's purchase history is reset
     event UserPurchasesReset(
         uint256 indexed npcId,
         uint256 indexed itemId,
         address indexed user
     );
 
+    /// @notice Emitted when daily reset is executed
     event DailyResetExecuted(
         uint256 indexed npcId,
         uint256 itemCount,
@@ -95,6 +115,10 @@ contract NPCMarketLogic {
 
     // ============ MODIFIERS ============
 
+    /**
+     * @dev Prevents reentrancy attacks
+     * @notice Locks the contract during execution
+     */
     modifier nonReentrant() {
         require(!_locked, "Reentrant call");
         _locked = true;
@@ -102,11 +126,19 @@ contract NPCMarketLogic {
         _locked = false;
     }
 
+    /**
+     * @dev Modifier to restrict access to admin only
+     * @notice Reverts if caller is not an admin
+     */
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
         _;
     }
 
+    /**
+     * @dev Modifier to restrict access to registered logic contracts only
+     * @notice Reverts if caller is not a registered logic contract
+     */
     modifier onlyInternal() {
         require(
             world.isLogicRegistered(msg.sender),
@@ -117,6 +149,14 @@ contract NPCMarketLogic {
 
     // ============ CONSTRUCTOR ============
 
+    /**
+     * @dev Initializes the NPCMarketLogic contract with required dependencies
+     * @param _world Address of the World contract
+     * @param _npcMarketProxy Address of the NPCMarketComponent proxy
+     * @param _itemProxy Address of the ItemComponent proxy
+     * @param _inventoryProxy Address of the InventoryComponent proxy
+     * @param _playerProxy Address of the PlayerComponent proxy
+     */
     constructor(
         address _world,
         address _npcMarketProxy,
@@ -134,14 +174,15 @@ contract NPCMarketLogic {
     // ============ WRITE FUNCTIONS (EXTERNAL) ============
 
     /**
-     * @dev Tạo NPC Market mới (chỉ admin)
-     * @param _npcId ID của NPC
-     * @param _name Tên của NPC Market
+     * @dev Creates a new NPC Market (admin only)
+     * @notice Initializes a new market for a specific NPC
+     * @param _npcId ID of the NPC
+     * @param _name Name of the NPC Market
      *
-     * Quy trình:
+     * Process:
      * 1. Validate input parameters
-     * 2. Tạo NPC Market trong component
-     * 3. Emit event NPCMarketCreated
+     * 2. Create NPC Market in component
+     * 3. Emit NPCMarketCreated event
      */
     function createNPCMarket(
         uint256 _npcId,
@@ -156,18 +197,22 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Thêm item vào NPC Market (chỉ admin)
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _limitPerUser Giới hạn mua bán per user (0 = không giới hạn)
-     * @param _pricePerUnit Giá per unit
-     * @param _isSelling NPC bán item (true) hay mua item (false)
+     * @notice Adds an item to the NPC Market (admin only)
+     * @dev Validates input parameters and checks if item exists before adding to market
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item to add
+     * @param _limitPerUser Purchase limit per user (0 = unlimited)
+     * @param _pricePerUnit Price per unit of the item
+     * @param _isSelling Whether NPC is selling (true) or buying (false) this item
      *
-     * Quy trình:
-     * 1. Validate input parameters
-     * 2. Kiểm tra item tồn tại
-     * 3. Thêm item vào market
-     * 4. Emit event ItemAddedToMarket
+     * Requirements:
+     * - Caller must be admin
+     * - Valid NPC ID (> 0)
+     * - Valid Item ID (> 0)
+     * - Price must be greater than 0
+     * - Item must exist in the system
+     *
+     * Emits {ItemAddedToMarket} event
      */
     function addItemToMarket(
         uint256 _npcId,
@@ -202,17 +247,21 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Cập nhật item trong NPC Market (chỉ admin)
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _limitPerUser Giới hạn mới per user
-     * @param _pricePerUnit Giá mới per unit
+     * @notice Updates an item's details in the NPC Market (admin only)
+     * @dev Validates input parameters before updating item information
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item to update
+     * @param _limitPerUser New purchase limit per user (0 = unlimited)
+     * @param _pricePerUnit New price per unit
      *
-     * Quy trình:
-     * 1. Validate input parameters
-     * 2. Kiểm tra item tồn tại trong market
-     * 3. Cập nhật thông tin item
-     * 4. Emit event ItemUpdatedInMarket
+     * Requirements:
+     * - Caller must be admin
+     * - Valid NPC ID (> 0)
+     * - Valid Item ID (> 0)
+     * - Price must be greater than 0
+     * - Item must already exist in the market
+     *
+     * Emits {ItemUpdatedInMarket} event
      */
     function updateItemInMarket(
         uint256 _npcId,
@@ -235,14 +284,17 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Xóa item khỏi NPC Market (chỉ admin)
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
+     * @notice Removes an item from the NPC Market (admin only)
+     * @dev Validates input parameters before removing item from market
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item to remove
      *
-     * Quy trình:
-     * 1. Validate input parameters
-     * 2. Xóa item khỏi market
-     * 3. Emit event ItemRemovedFromMarket
+     * Requirements:
+     * - Caller must be admin
+     * - Valid NPC ID (> 0)
+     * - Valid Item ID (> 0)
+     *
+     * Emits {ItemRemovedFromMarket} event
      */
     function removeItemFromMarket(
         uint256 _npcId,
@@ -257,19 +309,32 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Mua item từ NPC (người chơi gọi)
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item muốn mua
-     * @param _quantity Số lượng muốn mua
+     * @notice Allows a player to purchase items from an NPC
+     * @dev Processes a buy transaction with reentrancy protection
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item to purchase
+     * @param _quantity The quantity to purchase
      *
-     * Quy trình:
-     * 1. Validate input và kiểm tra market mở
-     * 2. Kiểm tra item có sẵn và NPC đang bán
-     * 3. Kiểm tra giới hạn mua của user
-     * 4. Tính toán giá và kiểm tra đủ currency
-     * 5. Trừ currency, thêm item vào inventory
-     * 6. Track purchase history
-     * 7. Emit event ItemPurchased
+     * Requirements:
+     * - Valid NPC ID (> 0) and Item ID (> 0)
+     * - Quantity must be between 1 and MAX_TRANSACTION_AMOUNT
+     * - Market must be open
+     * - Item must be available and NPC must be selling it
+     * - Player must not exceed purchase limit for this item
+     * - Player must have enough sunlight (currency)
+     * - Player must be initialized
+     * - Item must not be banned
+     *
+     * Process:
+     * 1. Validates all input parameters and market state
+     * 2. Checks item availability and selling status
+     * 3. Verifies user purchase limit
+     * 4. Calculates total price with overflow protection
+     * 5. Deducts currency from player
+     * 6. Adds item to player's inventory
+     * 7. Tracks purchase history
+     *
+     * Emits {ItemPurchased} event
      */
     function buyItemFromNPC(
         uint256 _npcId,
@@ -352,19 +417,31 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Bán item cho NPC (người chơi gọi)
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item muốn bán
-     * @param _quantity Số lượng muốn bán
+     * @notice Allows a player to sell items to an NPC
+     * @dev Processes a sell transaction with reentrancy protection
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item to sell
+     * @param _quantity The quantity to sell
      *
-     * Quy trình:
-     * 1. Validate input và kiểm tra market mở
-     * 2. Kiểm tra item có sẵn và NPC đang mua
-     * 3. Kiểm tra giới hạn bán của user
-     * 4. Kiểm tra đủ item trong inventory
-     * 5. Tính toán giá và trừ item, cộng currency
-     * 6. Track sale history
-     * 7. Emit event ItemSold
+     * Requirements:
+     * - Valid NPC ID (> 0) and Item ID (> 0)
+     * - Quantity must be between 1 and MAX_TRANSACTION_AMOUNT
+     * - Market must be open
+     * - Item must be available and NPC must be buying it
+     * - Player must be initialized
+     * - Player must have enough items in inventory
+     * - Item must not be banned
+     *
+     * Process:
+     * 1. Validates all input parameters and market state
+     * 2. Checks item availability and buying status
+     * 3. Verifies player has enough items
+     * 4. Calculates total price with overflow protection
+     * 5. Removes items from player's inventory
+     * 6. Adds currency to player
+     * 7. Tracks sale history
+     *
+     * Emits {ItemSold} event
      */
     function sellItemToNPC(
         uint256 _npcId,
@@ -435,15 +512,19 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Reset lịch sử mua bán của user (chỉ admin)
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _user Địa chỉ user
+     * @notice Resets a user's purchase history for a specific item (admin only)
+     * @dev Validates input parameters before resetting user's purchase record
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @param _user The address of the user to reset
      *
-     * Quy trình:
-     * 1. Validate input parameters
-     * 2. Reset purchase history của user
-     * 3. Emit event UserPurchasesReset
+     * Requirements:
+     * - Caller must be admin
+     * - Valid NPC ID (> 0)
+     * - Valid Item ID (> 0)
+     * - Valid user address (not zero address)
+     *
+     * Emits {UserPurchasesReset} event
      */
     function resetUserPurchases(
         uint256 _npcId,
@@ -460,15 +541,21 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Reset tất cả user purchases cho một item trong NPC market (chỉ admin)
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _users Mảng địa chỉ users cần reset
+     * @notice Resets purchase history for multiple users for a specific item (admin only)
+     * @dev Batch operation to reset multiple users' purchase records at once
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @param _users Array of user addresses to reset (max 100 users)
      *
-     * Quy trình:
-     * 1. Validate input parameters
-     * 2. Reset purchase history cho tất cả users trong mảng
-     * 3. Emit events cho mỗi user
+     * Requirements:
+     * - Caller must be admin
+     * - Valid NPC ID (> 0)
+     * - Valid Item ID (> 0)
+     * - Users array must not be empty
+     * - Users array length must not exceed 100
+     * - All user addresses must be valid (not zero address)
+     *
+     * Emits {UserPurchasesReset} event for each user
      */
     function resetMultipleUserPurchases(
         uint256 _npcId,
@@ -488,15 +575,24 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Reset tất cả user purchases cho tất cả items trong một NPC market (chỉ admin)
-     * @param _npcId ID của NPC
-     * @param _users Mảng địa chỉ users cần reset
+     * @notice Resets all user purchases for all items in an NPC market (admin only)
+     * @dev Batch operation to reset multiple users across all items in a market
+     * @param _npcId The ID of the NPC market
+     * @param _users Array of user addresses to reset (max 50 users)
      *
-     * Quy trình:
-     * 1. Validate input parameters
-     * 2. Lấy tất cả items trong market
-     * 3. Reset purchase history cho tất cả users trên tất cả items
-     * 4. Emit events cho mỗi user-item combination
+     * Requirements:
+     * - Caller must be admin
+     * - Valid NPC ID (> 0)
+     * - Users array must not be empty
+     * - Users array length must not exceed 50
+     * - NPC market must have at least one item
+     * - All user addresses must be valid (not zero address)
+     *
+     * Process:
+     * 1. Retrieves all items in the NPC market
+     * 2. Resets purchase history for all users on all items
+     *
+     * Emits {UserPurchasesReset} event for each user-item combination
      */
     function resetAllUserPurchasesForNPCMarket(
         uint256 _npcId,
@@ -524,15 +620,25 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Reset tất cả user purchases cho một item trên tất cả NPC markets (chỉ admin)
-     * @param _npcIds Mảng ID của các NPC
-     * @param _itemId ID của item
-     * @param _users Mảng địa chỉ users cần reset
+     * @notice Resets all user purchases for an item across multiple NPC markets (admin only)
+     * @dev Batch operation to reset multiple users for a specific item across multiple markets
+     * @param _npcIds Array of NPC market IDs (max 20 NPCs)
+     * @param _itemId The ID of the item
+     * @param _users Array of user addresses to reset (max 30 users)
      *
-     * Quy trình:
-     * 1. Validate input parameters
-     * 2. Reset purchase history cho tất cả users trên item này ở tất cả NPC markets
-     * 3. Emit events cho mỗi user-npc-item combination
+     * Requirements:
+     * - Caller must be admin
+     * - NPC IDs array must not be empty and not exceed 20
+     * - Valid Item ID (> 0)
+     * - Users array must not be empty and not exceed 30
+     * - All NPC IDs must be valid (> 0)
+     * - All user addresses must be valid (not zero address)
+     *
+     * Process:
+     * 1. Validates all input parameters
+     * 2. Resets purchase history for all users across all specified NPC markets
+     *
+     * Emits {UserPurchasesReset} event for each NPC-item-user combination
      */
     function resetAllUserPurchasesForItem(
         uint256[] calldata _npcIds,
@@ -560,15 +666,27 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Thực hiện daily reset cho một NPC market (chỉ admin)
-     * @param _npcId ID của NPC
-     * @param _users Mảng users cần reset (tối đa 50 users)
+     * @notice Executes daily reset for an NPC market (admin only)
+     * @dev Resets all user purchases for all items in the specified NPC market
+     * @param _npcId The ID of the NPC market to reset
+     * @param _users Array of user addresses to reset (max 50 users)
      *
-     * Quy trình:
-     * 1. Kiểm tra xem đã reset hôm nay chưa
-     * 2. Reset tất cả user purchases cho tất cả items
-     * 3. Cập nhật lastResetDay
-     * 4. Emit event DailyResetExecuted
+     * Requirements:
+     * - Caller must be admin
+     * - Valid NPC ID (> 0)
+     * - Users array must not be empty
+     * - Users array length must not exceed 50
+     * - NPC market must have at least one item
+     * - All user addresses must be valid (not zero address)
+     *
+     * Note: Daily reset validation is currently commented out
+     *
+     * Process:
+     * 1. Retrieves all items in the NPC market
+     * 2. Resets purchase history for all users on all items
+     *
+     * Emits {UserPurchasesReset} event for each user-item combination
+     * Emits {DailyResetExecuted} event with total counts
      */
     function executeDailyReset(
         uint256 _npcId,
@@ -608,9 +726,10 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Kiểm tra xem NPC market đã được reset hôm nay chưa
-     * @param _npcId ID của NPC
-     * @return bool True nếu đã reset hôm nay
+     * @notice Checks if the NPC market has been reset today
+     * @dev Compares last reset day with current day
+     * @param _npcId The ID of the NPC market
+     * @return True if reset has been executed today, false otherwise
      */
     function isDailyResetExecuted(uint256 _npcId) external view returns (bool) {
         uint256 currentDay = block.timestamp / SECONDS_PER_DAY;
@@ -618,17 +737,19 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy ngày reset cuối cùng của NPC market
-     * @param _npcId ID của NPC
-     * @return uint256 Ngày reset cuối cùng (timestamp / SECONDS_PER_DAY)
+     * @notice Gets the last reset day for an NPC market
+     * @dev Returns the day number when the market was last reset
+     * @param _npcId The ID of the NPC market
+     * @return The last reset day (calculated as timestamp / SECONDS_PER_DAY)
      */
     function getLastResetDay(uint256 _npcId) external view returns (uint256) {
         return lastResetDay[_npcId];
     }
 
     /**
-     * @dev Lấy ngày hiện tại (timestamp / SECONDS_PER_DAY)
-     * @return uint256 Ngày hiện tại
+     * @notice Gets the current day number
+     * @dev Returns the current day calculated from block timestamp
+     * @return The current day (calculated as block.timestamp / SECONDS_PER_DAY)
      */
     function getCurrentDay() external view returns (uint256) {
         return block.timestamp / SECONDS_PER_DAY;
@@ -637,10 +758,11 @@ contract NPCMarketLogic {
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============
 
     /**
-     * @dev Lấy thông tin item trong market
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @return Thông tin MarketItemView
+     * @notice Gets market item information
+     * @dev Retrieves basic market item details from the component
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @return MarketItemView struct containing item's market information
      */
     function getMarketItem(
         uint256 _npcId,
@@ -650,11 +772,12 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy thông tin item trong market kèm chi tiết item
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @return marketItem Thông tin market item
-     * @return itemDetails Chi tiết item
+     * @notice Gets market item information with full item details
+     * @dev Retrieves both market data and complete item information
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @return marketItem MarketItemView struct with market information
+     * @return itemDetails Complete Item struct with all item properties
      */
     function getMarketItemWithDetails(
         uint256 _npcId,
@@ -673,14 +796,15 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy thông tin item trong market kèm thông tin user
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _user Địa chỉ user
-     * @return marketItem Thông tin market item
-     * @return itemDetails Chi tiết item
-     * @return userPurchased Số lượng user đã mua
-     * @return remainingLimit Giới hạn còn lại
+     * @notice Gets market item information with item details and user-specific data
+     * @dev Retrieves market data, item details, and calculates user's purchase limits
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @param _user The address of the user
+     * @return marketItem MarketItemView struct with market information
+     * @return itemDetails Complete Item struct with all item properties
+     * @return userPurchased Total quantity the user has purchased
+     * @return remainingLimit Remaining purchase limit for the user (max uint256 if unlimited)
      */
     function getMarketItemWithDetailsAndUserInfo(
         uint256 _npcId,
@@ -713,9 +837,10 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy tất cả item trong market của NPC
-     * @param _npcId ID của NPC
-     * @return Mảng MarketItemView
+     * @notice Gets all items available in an NPC market
+     * @dev Retrieves array of all market items for the specified NPC
+     * @param _npcId The ID of the NPC market
+     * @return Array of MarketItemView structs containing all market items
      */
     function getAllMarketItems(
         uint256 _npcId
@@ -724,10 +849,11 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy tất cả item trong market kèm chi tiết
-     * @param _npcId ID của NPC
-     * @return marketItems Mảng market items
-     * @return itemDetails Mảng chi tiết item
+     * @notice Gets all market items with their complete item details
+     * @dev Retrieves market items and fetches corresponding item information
+     * @param _npcId The ID of the NPC market
+     * @return marketItems Array of MarketItemView structs
+     * @return itemDetails Array of complete Item structs with all properties
      */
     function getAllMarketItemsWithDetails(
         uint256 _npcId
@@ -750,13 +876,14 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy tất cả item trong market kèm thông tin user
-     * @param _npcId ID của NPC
-     * @param _user Địa chỉ user
-     * @return marketItems Mảng market items
-     * @return itemDetails Mảng chi tiết item
-     * @return userPurchased Mảng số lượng user đã mua
-     * @return remainingLimit Mảng giới hạn còn lại
+     * @notice Gets all market items with details and user-specific information
+     * @dev Retrieves market items, item details, and calculates user limits for each item
+     * @param _npcId The ID of the NPC market
+     * @param _user The address of the user
+     * @return marketItems Array of MarketItemView structs
+     * @return itemDetails Array of complete Item structs
+     * @return userPurchased Array of quantities purchased by the user for each item
+     * @return remainingLimit Array of remaining purchase limits for the user (max uint256 if unlimited)
      */
     function getAllMarketItemsWithDetailsAndUserInfo(
         uint256 _npcId,
@@ -800,9 +927,10 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy ID của tất cả item trong market
-     * @param _npcId ID của NPC
-     * @return Mảng ID của các item
+     * @notice Gets IDs of all items in an NPC market
+     * @dev Retrieves array of item IDs available in the market
+     * @param _npcId The ID of the NPC market
+     * @return Array of item IDs
      */
     function getMarketItemIds(
         uint256 _npcId
@@ -811,10 +939,11 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy ID của tất cả item kèm chi tiết
-     * @param _npcId ID của NPC
-     * @return itemIds Mảng ID của các item
-     * @return itemDetails Mảng chi tiết item
+     * @notice Gets IDs of all items in an NPC market with their details
+     * @dev Retrieves item IDs and fetches complete information for each item
+     * @param _npcId The ID of the NPC market
+     * @return itemIds Array of item IDs
+     * @return itemDetails Array of complete Item structs with all properties
      */
     function getMarketItemIdsWithDetails(
         uint256 _npcId
@@ -836,6 +965,15 @@ contract NPCMarketLogic {
         return (itemIds, itemDetails);
     }
 
+    /**
+     * @notice Gets basic information about an NPC market
+     * @dev Retrieves the market's metadata including name, status, and item count
+     * @param _npcId The ID of the NPC market
+     * @return npcId The ID of the NPC
+     * @return name The name of the NPC market
+     * @return isActive Whether the market is currently active
+     * @return itemCount Total number of items in the market
+     */
     function getNPCMarketInfo(
         uint256 _npcId
     )
@@ -852,14 +990,25 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Kiểm tra market có mở không
-     * @param _npcId ID của NPC
-     * @return bool True nếu market đang mở
+     * @notice Checks if an NPC market is currently open
+     * @dev Queries the market's active status
+     * @param _npcId The ID of the NPC market
+     * @return True if the market is open for trading, false otherwise
      */
     function isMarketOpen(uint256 _npcId) external view returns (bool) {
         return npcMarketProxy.isMarketOpen(_npcId);
     }
 
+    /**
+     * @notice Checks if a player can buy an item from the NPC market
+     * @dev Validates all requirements for a purchase without executing the transaction
+     * @param _player The address of the player
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item to buy
+     * @param _quantity The quantity to purchase
+     * @return canBuy True if the player can make the purchase, false otherwise
+     * @return reason Explanation if the purchase cannot be made (empty if successful)
+     */
     function canPlayerBuyItem(
         address _player,
         uint256 _npcId,
@@ -912,6 +1061,16 @@ contract NPCMarketLogic {
         }
     }
 
+    /**
+     * @notice Checks if a player can sell an item to the NPC market
+     * @dev Validates all requirements for a sale without executing the transaction
+     * @param _player The address of the player
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item to sell
+     * @param _quantity The quantity to sell
+     * @return canSell True if the player can make the sale, false otherwise
+     * @return reason Explanation if the sale cannot be made (empty if successful)
+     */
     function canPlayerSellItem(
         address _player,
         uint256 _npcId,
@@ -968,11 +1127,16 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Tính giá mua item
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _quantity Số lượng
-     * @return totalPrice Tổng giá
+     * @notice Calculates the total price to buy items from the NPC
+     * @dev Multiplies the item's market price by the quantity
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @param _quantity The quantity to purchase
+     * @return totalPrice The total price (pricePerUnit * quantity)
+     *
+     * Requirements:
+     * - Item must be active in the market
+     * - NPC must be selling this item
      */
     function calculateBuyPrice(
         uint256 _npcId,
@@ -988,11 +1152,16 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Tính giá bán item
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _quantity Số lượng
-     * @return totalPrice Tổng giá
+     * @notice Calculates the total price when selling items to the NPC
+     * @dev Multiplies the item's market price by the quantity
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @param _quantity The quantity to sell
+     * @return totalPrice The total price (pricePerUnit * quantity)
+     *
+     * Requirements:
+     * - Item must be active in the market
+     * - NPC must be buying this item
      */
     function calculateSellPrice(
         uint256 _npcId,
@@ -1011,11 +1180,12 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy số lượng user đã mua bán
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _user Địa chỉ user
-     * @return Số lượng đã mua bán
+     * @notice Gets the total quantity a user has purchased/sold for an item
+     * @dev Retrieves the user's transaction history count from the component
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @param _user The address of the user
+     * @return The total quantity the user has purchased or sold
      */
     function getUserPurchases(
         uint256 _npcId,
@@ -1026,12 +1196,13 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Kiểm tra user có thể mua bán thêm không
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _user Địa chỉ user
-     * @param _additionalQuantity Số lượng muốn thêm
-     * @return bool True nếu có thể mua bán thêm
+     * @notice Checks if a user can purchase/sell additional quantity
+     * @dev Validates if adding the quantity would exceed the user's limit
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @param _user The address of the user
+     * @param _additionalQuantity The additional quantity to check
+     * @return True if the user can purchase/sell more, false otherwise
      */
     function canUserPurchaseMore(
         uint256 _npcId,
@@ -1049,10 +1220,11 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy giới hạn mua bán per user của item
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @return Giới hạn per user (0 = không giới hạn)
+     * @notice Gets the purchase/sell limit per user for an item
+     * @dev Retrieves the limit from the market item configuration
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @return The limit per user (0 = unlimited)
      */
     function getItemLimitPerUser(
         uint256 _npcId,
@@ -1066,11 +1238,12 @@ contract NPCMarketLogic {
     }
 
     /**
-     * @dev Lấy giới hạn còn lại của user
-     * @param _npcId ID của NPC
-     * @param _itemId ID của item
-     * @param _user Địa chỉ user
-     * @return Giới hạn còn lại (max uint256 = không giới hạn)
+     * @notice Gets the remaining purchase/sell limit for a user
+     * @dev Calculates remaining limit by subtracting used from total limit
+     * @param _npcId The ID of the NPC market
+     * @param _itemId The ID of the item
+     * @param _user The address of the user
+     * @return The remaining limit (max uint256 = unlimited, 0 = limit reached)
      */
     function getRemainingUserLimit(
         uint256 _npcId,
@@ -1087,7 +1260,6 @@ contract NPCMarketLogic {
             _user
         );
 
-        // Nếu limitPerUser = 0, không giới hạn (trả về max uint256)
         if (marketItem.limitPerUser == 0) {
             return type(uint256).max;
         }

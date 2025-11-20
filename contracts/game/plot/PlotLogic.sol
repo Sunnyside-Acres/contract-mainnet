@@ -9,10 +9,20 @@ import "../../interfaces/IWeather.sol";
 import "../../interfaces/IPlayer.sol";
 import "../../struct/Weather.sol";
 
+/**
+ * @title PlotLogic
+ * @author RYG.Labs
+ * @notice Logic contract for the Plot system
+ * @dev Handles plot creation with weather-based plot type probabilities
+ */
 contract PlotLogic {
+    /// @notice World contract for access control
     IWorld public world;
+    /// @notice Plot component contract
     IPlotComponent public plotProxy;
+    /// @notice Weather component contract
     IWeatherComponent public weatherProxy;
+    /// @notice Player component contract
     IPlayerComponent public playerProxy;
 
     event PlayerCreated(address indexed playerAddress);
@@ -25,11 +35,13 @@ contract PlotLogic {
         uint256 plotType
     );
 
+    /// @notice Restricts access to admin only
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
         _;
     }
 
+    /// @notice Restricts access to registered logic contracts only
     modifier onlyInternal() {
         require(
             world.isLogicRegistered(msg.sender),
@@ -38,6 +50,13 @@ contract PlotLogic {
         _;
     }
 
+    /**
+     * @notice Constructor to initialize the plot logic contract
+     * @param _world The address of the World contract
+     * @param _plotProxy The address of the Plot component
+     * @param _weatherProxy The address of the Weather component
+     * @param _playerProxy The address of the Player component
+     */
     constructor(
         address _world,
         address _plotProxy,
@@ -50,6 +69,13 @@ contract PlotLogic {
         playerProxy = IPlayerComponent(_playerProxy);
     }
 
+    /**
+     * @notice Create a new plot at specified coordinates
+     * @dev Plot type is determined by current weather with different probabilities
+     * @param _xCoordinate The X coordinate of the plot
+     * @param _yCoordinate The Y coordinate of the plot
+     * @return The ID of the newly created plot
+     */
     function createPlot(
         int256 _xCoordinate,
         int256 _yCoordinate
@@ -57,7 +83,7 @@ contract PlotLogic {
         WeatherStructs.Weather memory currentWeather = weatherProxy
             .getCurrentWeather();
 
-        // Phương pháp 1: Deterministic randomness từ tọa độ và address
+        // Deterministic randomness from coordinates and address
         uint256 random = uint256(
             keccak256(
                 abi.encodePacked(
@@ -65,7 +91,7 @@ contract PlotLogic {
                     msg.sender,
                     _xCoordinate,
                     _yCoordinate,
-                    block.chainid // Thêm chain ID để tránh replay cross-chain
+                    block.chainid // Add chain ID to prevent cross-chain replay
                 )
             )
         ) % 100;
@@ -73,40 +99,40 @@ contract PlotLogic {
         uint256 plotType;
 
         if (currentWeather.state == WeatherStructs.WeatherState.Cloudy) {
-            // Cloudy: 80% Thường, 15% Phì nhiêu, 5% Ma thuật
+            // Cloudy: 80% Normal, 15% Fertile, 5% Magic
             if (random < 80) {
-                plotType = 0; // Thường
+                plotType = 0; // Normal
             } else if (random < 95) {
-                plotType = 1; // Phì nhiêu
+                plotType = 1; // Fertile
             } else {
-                plotType = 2; // Ma thuật
+                plotType = 2; // Magic
             }
         } else if (currentWeather.state == WeatherStructs.WeatherState.Rainy) {
-            // Rainy: 40% Thường, 50% Phì nhiêu, 10% Ma thuật
+            // Rainy: 40% Normal, 50% Fertile, 10% Magic
             if (random < 40) {
-                plotType = 0; // Thường
+                plotType = 0; // Normal
             } else if (random < 90) {
-                plotType = 1; // Phì nhiêu
+                plotType = 1; // Fertile
             } else {
-                plotType = 2; // Ma thuật
+                plotType = 2; // Magic
             }
         } else if (currentWeather.state == WeatherStructs.WeatherState.Stormy) {
-            // Stormy: 50% Thường, 40% Phì nhiêu, 10% Ma thuật
+            // Stormy: 50% Normal, 40% Fertile, 10% Magic
             if (random < 50) {
-                plotType = 0; // Thường
+                plotType = 0; // Normal
             } else if (random < 90) {
-                plotType = 1; // Phì nhiêu
+                plotType = 1; // Fertile
             } else {
-                plotType = 2; // Ma thuật
+                plotType = 2; // Magic
             }
         } else {
-            // Sunny: 80% Thường, 16% Phì nhiêu, 4% Ma thuật
+            // Sunny: 80% Normal, 16% Fertile, 4% Magic
             if (random < 80) {
-                plotType = 0; // Thường
+                plotType = 0; // Normal
             } else if (random < 96) {
-                plotType = 1; // Phì nhiêu
+                plotType = 1; // Fertile
             } else {
-                plotType = 2; // Ma thuật
+                plotType = 2; // Magic
             }
         }
 
@@ -126,14 +152,28 @@ contract PlotLogic {
         );
     }
 
+    /**
+     * @notice Delete a plot (internal logic only)
+     * @param _plotId The ID of the plot to delete
+     */
     function deletePlot(uint256 _plotId) external onlyInternal {
         plotProxy.deletePlot(_plotId, msg.sender);
     }
 
+    /**
+     * @notice Get the owner of a plot
+     * @param _plotId The ID of the plot
+     * @return The address of the plot owner
+     */
     function getPlotOwner(uint256 _plotId) external view returns (address) {
         return plotProxy.getPlotOwner(_plotId);
     }
 
+    /**
+     * @notice Get all plots owned by a player
+     * @param _playerAddress The player's address
+     * @return Array of Plot structs
+     */
     function getPlots(
         address _playerAddress
     ) external view returns (Plot[] memory) {

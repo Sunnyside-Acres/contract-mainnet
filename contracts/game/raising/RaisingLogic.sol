@@ -11,18 +11,45 @@ import "../../struct/Weather.sol";
 import "../../struct/Item.sol";
 import "../../struct/Inventory.sol";
 
+/**
+ * @title RaisingLogic
+ * @dev Logic contract for Animal Raising system - handles gameplay mechanics
+ * @notice This contract manages all raising-related gameplay including feeding, harvesting, and slaughtering
+ *
+ * Key Features:
+ * - Start raising livestock from inventory items
+ * - Feed animals to improve quality (up to 3 times)
+ * - Harvest products without killing animals (up to 3 times with cooldown)
+ * - Slaughter animals for meat
+ * - Quality-based reward system with probabilistic drops
+ * - Weather integration for growth modifiers
+ * - Comprehensive UI helper functions
+ */
 contract RaisingLogic {
+    /// @notice World contract for access control
     IWorld public world;
+    /// @notice Raising component for data storage
     IRaisingComponent public raisingProxy;
+    /// @notice Inventory component for item management
     IInventoryComponent public inventoryProxy;
+    /// @notice Weather component for environmental effects
     IWeatherComponent public weatherProxy;
+    /// @notice Item component for item data and drops
     IItemComponent public itemProxy;
 
+    /**
+     * @dev Modifier to restrict access to admin only
+     * @notice Reverts if caller is not an admin
+     */
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
         _;
     }
 
+    /**
+     * @dev Modifier to restrict access to registered logic contracts only
+     * @notice Reverts if caller is not a registered logic contract
+     */
     modifier onlyInternal() {
         require(
             world.isLogicRegistered(msg.sender),
@@ -31,6 +58,7 @@ contract RaisingLogic {
         _;
     }
 
+    /// @notice Emitted when a player starts raising a livestock
     event RaisingStarted(
         uint256 indexed raisingId,
         address indexed player,
@@ -38,6 +66,7 @@ contract RaisingLogic {
         Raising raising
     );
 
+    /// @notice Emitted when a player harvests products from an animal
     event RaisingHarvestedWithCooldown(
         address indexed player,
         uint256 indexed raisingId,
@@ -47,6 +76,7 @@ contract RaisingLogic {
         Raising raising
     );
 
+    /// @notice Emitted when a player slaughters an animal for meat
     event RaisingSlaughtered(
         address indexed player,
         uint256 indexed raisingId,
@@ -55,24 +85,35 @@ contract RaisingLogic {
         Raising raising
     );
 
+    /// @notice Emitted when a player feeds an animal
     event RaisingFed(
         uint256 indexed raisingId,
         WeatherStructs.WeatherState weatherState,
         Raising raising
     );
 
+    /// @notice Emitted when total harvested items counter is updated
     event TotalHarvestedItemsUpdated(
         uint256 indexed raisingId,
         uint256 totalHarvestedItems,
         Raising raising
     );
 
+    /// @notice Emitted when feeding counter is reset after harvest
     event FeedingReset(
         uint256 indexed raisingId,
         uint256 harvestCount,
         Raising raising
     );
 
+    /**
+     * @dev Initializes the RaisingLogic contract with required dependencies
+     * @param _world Address of the World contract
+     * @param _raisingProxy Address of the RaisingComponent proxy
+     * @param _inventoryProxy Address of the InventoryComponent proxy
+     * @param _weatherProxy Address of the WeatherComponent proxy
+     * @param _itemProxy Address of the ItemComponent proxy
+     */
     constructor(
         address _world,
         address _raisingProxy,
@@ -87,14 +128,36 @@ contract RaisingLogic {
         itemProxy = IItemComponent(_itemProxy);
     }
 
+    /**
+     * @dev Internal helper for pseudo-random number generation
+     * @notice Uses block number and sender for randomness (not cryptographically secure)
+     * @param max Maximum value (exclusive)
+     * @return Random number between 0 and max-1
+     */
     function random(uint256 max) private view returns (uint256) {
         return
             uint256(keccak256(abi.encodePacked(block.number, msg.sender))) %
             max;
     }
 
+    /**
+     * @dev Starts raising a livestock from player's inventory
+     * @notice Consumes one livestock item from inventory and creates a new raising
+     *
+     * Requirements:
+     * - Item ID must be valid
+     * - Item must be of type Livestock
+     * - Player must have at least 1 of the item in inventory
+     *
+     * Effects:
+     * - Removes 1 livestock item from inventory
+     * - Creates new raising with weather-adjusted growth time
+     * - Emits RaisingStarted event
+     *
+     * @param _itemId ID of the livestock item to start raising
+     */
     function startRaising(uint256 _itemId) external {
-        // Kiểm tra điều kiện trước khi bắt đầu nuôi
+        // Validate conditions before starting raising
         require(_itemId > 0, "Invalid item ID");
 
         ItemStructs.Item memory item = itemProxy.getItem(_itemId);
@@ -111,7 +174,7 @@ contract RaisingLogic {
         WeatherStructs.WeatherState weatherState = weatherProxy
             .getCurrentWeatherState();
 
-        // Kiểm tra xem item có tồn tại không
+        // Verify item exists
         require(
             item.itemType == ItemStructs.ItemType.Livestock,
             "Item is not a livestock"
@@ -138,12 +201,39 @@ contract RaisingLogic {
             weatherState
         );
 
-        // Lấy thông tin raising sau khi tạo để emit
+        // Get raising info after creation to emit
         Raising memory raising = raisingProxy.getRaising(raisingId);
 
         emit RaisingStarted(raisingId, msg.sender, _itemId, raising);
     }
 
+    /**
+     * @dev Harvests products from an animal without killing it
+     * @notice Allows up to 3 harvests with cooldown periods, rewards based on quality and RNG
+     *
+     * Requirements:
+     * - Caller must be the raising owner
+     * - Raising must not be harvested or slaughtered
+     * - Animal must have been fed at least once
+     * - Animal must be fully grown
+     * - Harvest count must be less than 3
+     * - Harvest cooldown must have passed (for subsequent harvests)
+     *
+     * Reward System:
+     * - Uses drop system (index 1+ are harvest drops, index 0 is meat)
+     * - Quality modifier increases drop probability and yield
+     * - Bonus +1 item if fed 3 times
+     * - Guaranteed at least 1 item if quality > 0
+     *
+     * Effects:
+     * - Increments harvest count
+     * - Resets feeding counter for next cycle
+     * - Adds harvested items to player inventory
+     * - Updates total harvested items counter
+     * - Emits RaisingHarvestedWithCooldown event
+     *
+     * @param raisingId ID of the raising to harvest
+     */
     function harvestRaising(uint256 raisingId) external {
         require(raisingId > 0, "Invalid raising ID");
         require(
@@ -155,14 +245,14 @@ contract RaisingLogic {
         require(!raising.isHarvested, "Raising already harvested");
         require(!raising.isSlaughtered, "Raising already slaughtered");
 
-        // Kiểm tra xem raising có được feed hay chưa
+        // Check if raising has been fed
         require(raising.feedCount > 0, "Raising must be fed before harvest");
 
         ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
             raising.itemId
         );
 
-        // Lấy cooldown từ item attribute
+        // Get cooldown from item attribute
         uint256 harvestCooldown = itemProxy.getItemAttribute(
             raising.itemId,
             ItemStructs.Attribute.HarvestCooldown
@@ -173,30 +263,29 @@ contract RaisingLogic {
             harvestCooldown
         );
 
-        require(drops.length > 1, "No harvest drops configured"); // Cần ít nhất 2 drops (drop[0] là thịt, drop[1+] là harvest)
+        require(drops.length > 1, "No harvest drops configured"); // Need at least 2 drops (drop[0] is meat, drop[1+] is harvest)
 
         uint256 qualityMultiplier = qualityModifier;
-        // Loại bỏ check qualityModifier == 0 vì đã check feedCount > 0 ở trên
 
         uint256 qualityBonus = 0;
         if (qualityMultiplier > 100) {
             qualityBonus = (qualityMultiplier - 100) * 100;
         }
 
-        // Tính tổng tỉ lệ của các drops harvest (từ index 1 trở đi)
+        // Calculate total probability of harvest drops (from index 1 onwards)
         uint256 totalHarvestProbability = 0;
         for (uint256 i = 1; i < drops.length; i++) {
             totalHarvestProbability += drops[i].probability;
         }
 
         uint256 totalItemAmount = 0;
-        uint256[] memory harvestedItemIds = new uint256[](drops.length - 1); // Trừ drop[0] (thịt)
+        uint256[] memory harvestedItemIds = new uint256[](drops.length - 1); // Exclude drop[0] (meat)
         uint256[] memory harvestedItemAmounts = new uint256[](drops.length - 1);
         uint256 harvestedItemCount = 0;
 
-        // Chỉ xử lý từ drop[1] trở đi (không phải thịt)
+        // Only process from drop[1] onwards (not meat)
         for (uint256 i = 1; i < drops.length; i++) {
-            // Tính lại tỉ lệ dựa trên tổng 100% trừ đi phần thịt
+            // Recalculate probability based on total 100% minus meat portion
             uint256 adjustedProbability = (drops[i].probability * 10000) /
                 totalHarvestProbability;
 
@@ -225,13 +314,13 @@ contract RaisingLogic {
                 harvestedItemAmounts[harvestedItemCount] = itemAmount;
                 harvestedItemCount++;
 
-                // Lấy số lượng hiện tại của item
+                // Get current item quantity
                 InventoryItem memory currentItem = inventoryProxy.getItem(
                     msg.sender,
                     drops[i].itemId
                 );
 
-                // Cộng thêm số lượng mới (nếu item chưa tồn tại thì quantity = 0)
+                // Add new quantity (if item doesn't exist, quantity = 0)
                 uint256 newQuantity = currentItem.quantity + itemAmount;
 
                 inventoryProxy.setItem(
@@ -244,20 +333,20 @@ contract RaisingLogic {
             }
         }
 
-        // Đảm bảo ít nhất một vật phẩm nếu có chăm sóc
+        // Guarantee at least one item if animal was cared for
         if (totalItemAmount == 0 && qualityModifier > 0 && drops.length > 1) {
             harvestedItemIds[0] = drops[1].itemId;
             harvestedItemAmounts[0] = 1;
             harvestedItemCount = 1;
-            totalItemAmount = 1; // FIX: Cập nhật totalItemAmount để đếm đúng
+            totalItemAmount = 1; // FIX: Update totalItemAmount to count correctly
 
-            // Lấy số lượng hiện tại của item
+            // Get current item quantity
             InventoryItem memory currentItem = inventoryProxy.getItem(
                 msg.sender,
                 drops[1].itemId
             );
 
-            // Cộng thêm số lượng mới (nếu item chưa tồn tại thì quantity = 0)
+            // Add new quantity (if item doesn't exist, quantity = 0)
             uint256 newQuantity = currentItem.quantity + 1;
 
             inventoryProxy.setItem(
@@ -269,12 +358,12 @@ contract RaisingLogic {
             );
         }
 
-        // BONUS: Thêm +1 item nếu chăm sóc đủ 3 lần
+        // BONUS: Add +1 item if fed 3 times
         if (raising.feedCount >= 3 && drops.length > 1) {
-            // Thêm bonus item (sử dụng drop[1] làm bonus item)
+            // Add bonus item (using drop[1] as bonus item)
             uint256 bonusItemId = drops[1].itemId;
 
-            // Tìm xem item này đã có trong danh sách thu hoạch chưa
+            // Check if this item is already in harvest list
             bool itemExists = false;
             for (uint256 i = 0; i < harvestedItemCount; i++) {
                 if (harvestedItemIds[i] == bonusItemId) {
@@ -284,14 +373,14 @@ contract RaisingLogic {
                 }
             }
 
-            // Nếu chưa có, thêm mới vào danh sách
+            // If not exists, add new to list
             if (!itemExists) {
                 harvestedItemIds[harvestedItemCount] = bonusItemId;
                 harvestedItemAmounts[harvestedItemCount] = 1;
                 harvestedItemCount++;
             }
 
-            // Cập nhật inventory cho bonus item
+            // Update inventory for bonus item
             InventoryItem memory bonusCurrentItem = inventoryProxy.getItem(
                 msg.sender,
                 bonusItemId
@@ -305,7 +394,7 @@ contract RaisingLogic {
                 0
             );
 
-            // Cập nhật totalItemAmount
+            // Update totalItemAmount
             totalItemAmount += 1;
         }
 
@@ -317,7 +406,7 @@ contract RaisingLogic {
             finalItemAmounts[i] = harvestedItemAmounts[i];
         }
 
-        // Lấy thông tin raising sau khi harvest để emit
+        // Get raising info after harvest to emit
         Raising memory updatedRaising = raisingProxy.getRaising(raisingId);
 
         emit RaisingHarvestedWithCooldown(
@@ -329,10 +418,10 @@ contract RaisingLogic {
             updatedRaising
         );
 
-        // Cập nhật tổng số sản phẩm đã thu hoạch được
+        // Update total harvested items count
         raisingProxy.updateTotalHarvestedItems(raisingId, totalItemAmount);
 
-        // Emit event để theo dõi (lấy giá trị mới từ component)
+        // Emit event to track (get new value from component)
         Raising memory finalRaising = raisingProxy.getRaising(raisingId);
         emit TotalHarvestedItemsUpdated(
             raisingId,
@@ -341,6 +430,31 @@ contract RaisingLogic {
         );
     }
 
+    /**
+     * @dev Slaughters an animal for meat
+     * @notice Removes the animal permanently and gives meat drops based on quality
+     *
+     * Requirements:
+     * - Caller must be the raising owner
+     * - Raising must not be harvested or slaughtered
+     * - Animal must be fully grown
+     *
+     * Reward System:
+     * - Uses drop[0] (meat) with 100% probability
+     * - If not fed, no items are dropped (qualityMultiplier = 0)
+     * - Quality modifier increases yield
+     * - Guaranteed at least 1 meat if quality > 0
+     *
+     * Effects:
+     * - Marks raising as slaughtered
+     * - Deletes raising data permanently
+     * - Adds meat to player inventory
+     * - Emits RaisingSlaughtered event
+     *
+     * Note: Total harvested items are NOT tracked for slaughter
+     *
+     * @param raisingId ID of the raising to slaughter
+     */
     function slaughterRaising(uint256 raisingId) external {
         require(raisingId > 0, "Invalid raising ID");
         require(
@@ -352,26 +466,26 @@ contract RaisingLogic {
         require(!raising.isHarvested, "Raising already harvested");
         require(!raising.isSlaughtered, "Raising already slaughtered");
 
-        // Cho phép giết ngay cả khi chưa chăm sóc, nhưng sẽ không có vật phẩm
+        // Allow slaughter even if not fed, but will yield no items
 
         ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
             raising.itemId
         );
 
-        // Lấy thông tin trước khi xóa con vật
+        // Get info before deleting the animal
         uint256 feedCount = raising.feedCount;
 
-        // Lưu thông tin raising trước khi xóa để emit
+        // Save raising info before deletion to emit
         Raising memory raisingBeforeSlaughter = raising;
 
-        // Xóa con vật và lấy qualityModifier
+        // Delete the animal and get qualityModifier
         uint256 qualityModifier = raisingProxy.slaughterRaising(raisingId);
 
         require(drops.length > 0, "No item drops configured");
 
         uint256 qualityMultiplier = qualityModifier;
 
-        // Nếu chưa chăm sóc (feedCount = 0), không có vật phẩm
+        // If not fed (feedCount = 0), no items
         if (feedCount == 0) {
             qualityMultiplier = 0;
         }
@@ -382,11 +496,11 @@ contract RaisingLogic {
         }
 
         uint256 totalItemAmount = 0;
-        uint256[] memory harvestedItemIds = new uint256[](1); // Chỉ lấy drop[0] (thịt)
+        uint256[] memory harvestedItemIds = new uint256[](1); // Only drop[0] (meat)
         uint256[] memory harvestedItemAmounts = new uint256[](1);
         uint256 harvestedItemCount = 0;
 
-        // Chỉ xử lý drop[0] (thịt) với tỉ lệ 100%
+        // Only process drop[0] (meat) with 100% probability
         if (drops.length > 0) {
             uint256 baseRoll = random(10000);
             uint256 adjustedRoll = baseRoll;
@@ -396,7 +510,7 @@ contract RaisingLogic {
                 adjustedRoll = 0;
             }
 
-            // Tỉ lệ thịt luôn là 100% (10000)
+            // Meat probability is always 100% (10000)
             if (adjustedRoll < 10000) {
                 uint256 itemAmount;
                 if (drops[0].yield == 0) {
@@ -414,13 +528,13 @@ contract RaisingLogic {
                 harvestedItemAmounts[0] = itemAmount;
                 harvestedItemCount = 1;
 
-                // Lấy số lượng hiện tại của item
+                // Get current item quantity
                 InventoryItem memory currentItem = inventoryProxy.getItem(
                     msg.sender,
                     drops[0].itemId
                 );
 
-                // Cộng thêm số lượng mới (nếu item chưa tồn tại thì quantity = 0)
+                // Add new quantity (if item doesn't exist, quantity = 0)
                 uint256 newQuantity = currentItem.quantity + itemAmount;
 
                 inventoryProxy.setItem(
@@ -433,19 +547,19 @@ contract RaisingLogic {
             }
         }
 
-        // Đảm bảo ít nhất một vật phẩm thịt nếu có chăm sóc
+        // Guarantee at least one meat if animal was cared for
         if (totalItemAmount == 0 && qualityModifier > 0 && drops.length > 0) {
             harvestedItemIds[0] = drops[0].itemId;
             harvestedItemAmounts[0] = 1;
             harvestedItemCount = 1;
 
-            // Lấy số lượng hiện tại của item
+            // Get current item quantity
             InventoryItem memory currentItem = inventoryProxy.getItem(
                 msg.sender,
                 drops[0].itemId
             );
 
-            // Cộng thêm số lượng mới (nếu item chưa tồn tại thì quantity = 0)
+            // Add new quantity (if item doesn't exist, quantity = 0)
             uint256 newQuantity = currentItem.quantity + 1;
 
             inventoryProxy.setItem(
@@ -473,10 +587,29 @@ contract RaisingLogic {
             raisingBeforeSlaughter
         );
 
-        // Lưu ý: totalHarvestedItems không được cập nhật cho slaughter
-        // vì con vật đã bị xóa. Nếu cần đếm thịt, có thể thêm logic riêng
+        // Note: totalHarvestedItems is NOT updated for slaughter
+        // because the animal has been deleted. If meat counting is needed, add separate logic
     }
 
+    /**
+     * @dev Feeds an animal to improve its quality
+     * @notice Consumes 1 food item (ID 91) from inventory and increases quality modifier
+     *
+     * Requirements:
+     * - Caller must be the raising owner
+     * - Raising must not be harvested or slaughtered
+     * - Player must have at least 1 food item (ID 91) in inventory
+     * - Feeding cooldown must have passed
+     * - Feed count must not exceed 3
+     *
+     * Effects:
+     * - Removes 1 food item from inventory
+     * - Increases quality modifier by 10%
+     * - Updates feeding time and count
+     * - Emits RaisingFed event
+     *
+     * @param raisingId ID of the raising to feed
+     */
     function feedRaising(uint256 raisingId) external {
         require(raisingId > 0, "Invalid raising ID");
         require(
@@ -488,7 +621,7 @@ contract RaisingLogic {
         require(!raising.isHarvested, "Raising already harvested");
         require(!raising.isSlaughtered, "Raising already slaughtered");
 
-        // Kiểm tra có thức ăn (item id 91) trong inventory không
+        // Check for food (item id 91) in inventory
         InventoryItem memory foodItem = inventoryProxy.getItem(msg.sender, 91);
         require(
             foodItem.quantity > 0,
@@ -498,7 +631,7 @@ contract RaisingLogic {
         WeatherStructs.WeatherState weatherState = weatherProxy
             .getCurrentWeatherState();
 
-        // Lấy harvestCooldown từ item attribute
+        // Get harvestCooldown from item attribute
         uint256 harvestCooldown = itemProxy.getItemAttribute(
             raising.itemId,
             ItemStructs.Attribute.HarvestCooldown
@@ -506,7 +639,7 @@ contract RaisingLogic {
 
         raisingProxy.feedRaising(raisingId, harvestCooldown);
 
-        // Trừ 1 thức ăn khỏi inventory sau khi cho ăn thành công
+        // Deduct 1 food from inventory after successful feeding
         inventoryProxy.setItem(
             msg.sender,
             91,
@@ -515,38 +648,65 @@ contract RaisingLogic {
             foodItem.expiration
         );
 
-        // Lấy thông tin raising sau khi feed để emit
+        // Get raising info after feeding to emit
         Raising memory updatedRaising = raisingProxy.getRaising(raisingId);
 
         emit RaisingFed(raisingId, weatherState, updatedRaising);
     }
 
-    // View functions
+    // ============ VIEW FUNCTIONS ============
+
+    /**
+     * @dev Gets raising data by ID
+     * @param raisingId ID of the raising
+     * @return Raising struct with all data
+     */
     function getRaising(
         uint256 raisingId
     ) external view returns (Raising memory) {
         return raisingProxy.getRaising(raisingId);
     }
 
+    /**
+     * @dev Gets all raising IDs owned by a player
+     * @param _playerAddress Address of the player
+     * @return Array of raising IDs
+     */
     function getOwnerRaisings(
         address _playerAddress
     ) external view returns (uint256[] memory) {
         return raisingProxy.getOwnerRaisings(_playerAddress);
     }
 
+    /**
+     * @dev Gets detailed information for all active raisings owned by a player
+     * @param _playerAddress Address of the player
+     * @return Array of Raising structs
+     */
     function getOwnerRaisingsWithDetails(
         address _playerAddress
     ) external view returns (Raising[] memory) {
         return raisingProxy.getOwnerRaisingsWithDetails(_playerAddress);
     }
 
+    /**
+     * @dev Gets the owner of a raising
+     * @param raisingId ID of the raising
+     * @return Address of the raising owner
+     */
     function getRaisingOwner(
         uint256 raisingId
     ) external view returns (address) {
         return raisingProxy.getRaisingOwner(raisingId);
     }
 
-    // UI helper functions
+    // ============ UI HELPER FUNCTIONS ============
+
+    /**
+     * @dev Gets the next available feeding time
+     * @param raisingId ID of the raising
+     * @return Timestamp when next feeding is available
+     */
     function getNextFeedingTime(
         uint256 raisingId
     ) external view returns (uint256) {
@@ -558,6 +718,11 @@ contract RaisingLogic {
         return raisingProxy.getNextFeedingTime(raisingId, harvestCooldown);
     }
 
+    /**
+     * @dev Checks if an animal can be fed now
+     * @param raisingId ID of the raising
+     * @return True if feeding is allowed now, false otherwise
+     */
     function canFeed(uint256 raisingId) external view returns (bool) {
         Raising memory raising = raisingProxy.getRaising(raisingId);
         uint256 harvestCooldown = itemProxy.getItemAttribute(
@@ -567,6 +732,15 @@ contract RaisingLogic {
         return raisingProxy.canFeed(raisingId, harvestCooldown);
     }
 
+    /**
+     * @dev Gets comprehensive feeding information for UI display
+     * @param raisingId ID of the raising
+     * @return nextFeedingTime Timestamp when next feeding is available
+     * @return canFeedNow Whether feeding is allowed now
+     * @return feedCount Current feed count
+     * @return maxFeeds Maximum feed count (always 3)
+     * @return timeUntilNextFeed Seconds until next feeding is available
+     */
     function getFeedingInfo(
         uint256 raisingId
     )
@@ -593,9 +767,9 @@ contract RaisingLogic {
         canFeedNow = raisingProxy.canFeed(raisingId, harvestCooldown);
 
         feedCount = raising.feedCount;
-        maxFeeds = 3; // Giới hạn 3 lần feed
+        maxFeeds = 3; // Maximum 3 feeds
 
-        // Tính thời gian còn lại cho đến lần feed tiếp theo
+        // Calculate time remaining until next feed
         if (canFeedNow) {
             timeUntilNextFeed = 0;
         } else {
@@ -603,6 +777,15 @@ contract RaisingLogic {
         }
     }
 
+    /**
+     * @dev Gets detailed feeding cooldown information
+     * @param raisingId ID of the raising
+     * @return currentTime Current block timestamp
+     * @return lastFeedTime Timestamp of last feeding
+     * @return cooldownDuration Cooldown duration in seconds
+     * @return timeRemaining Seconds remaining until can feed
+     * @return isReadyToFeed Whether feeding is available now
+     */
     function getFeedingCooldownInfo(
         uint256 raisingId
     )
@@ -625,9 +808,9 @@ contract RaisingLogic {
         currentTime = block.timestamp;
         lastFeedTime = raising.lastFeedTime;
 
-        // Logic thời gian chăm sóc:
-        // - Lần đầu tiên (chưa thu hoạch): sử dụng growthTime/4
-        // - Sau khi thu hoạch lần đầu: sử dụng harvestCooldown/4
+        // Feeding cooldown logic:
+        // - Before first harvest: use growthTime/4
+        // - After first harvest: use harvestCooldown/4
         if (raising.harvestCount == 0) {
             cooldownDuration = raising.growthTime / 4; // Cooldown = growthTime / 4
         } else {
@@ -635,7 +818,7 @@ contract RaisingLogic {
         }
 
         if (raising.feedCount == 0) {
-            // Chưa feed lần nào, có thể feed ngay
+            // Never fed, can feed immediately
             timeRemaining = 0;
             isReadyToFeed = true;
         } else {
@@ -650,13 +833,18 @@ contract RaisingLogic {
         }
     }
 
+    /**
+     * @dev Gets comprehensive raising information for UI display
+     * @notice Returns all relevant data for displaying raising status
+     * @param raisingId ID of the raising
+     */
     function getFullRaisingInfo(
         uint256 raisingId
     )
         external
         view
         returns (
-            // Thông tin cơ bản của raising
+            // Basic raising information
             uint256 id,
             uint256 itemId,
             uint256 raisingTime,
@@ -669,34 +857,34 @@ contract RaisingLogic {
             uint256 harvestCount,
             bool isSlaughtered,
             uint256 totalHarvestedItems,
-            // Thông tin item
+            // Item information
             string memory itemName,
             ItemStructs.ItemType itemType,
             ItemStructs.Rarity itemRarity,
-            // Thông tin thời gian
+            // Timing information
             uint256 currentTime,
             uint256 timeUntilFullyGrown,
             bool isFullyGrown,
-            // Thông tin feeding
+            // Feeding information
             uint256 nextFeedingTime,
             bool canFeedNow,
             uint256 timeUntilNextFeed,
             uint256 maxFeeds,
-            // Thông tin harvest
+            // Harvest information
             bool canHarvest,
             uint256 harvestCooldown,
             uint256 timeUntilNextHarvest,
             uint256 maxHarvests,
-            // Thông tin drops
+            // Drop information
             ItemStructs.ItemDrop[] memory itemDrops,
-            // Thông tin owner
+            // Owner information
             address owner
         )
     {
-        // Lấy thông tin raising cơ bản
+        // Get basic raising information
         Raising memory raising = raisingProxy.getRaising(raisingId);
 
-        // Gán các giá trị cơ bản
+        // Assign basic values
         id = raising.id;
         itemId = raising.itemId;
         raisingTime = raising.raisingTime;
@@ -710,13 +898,13 @@ contract RaisingLogic {
         isSlaughtered = raising.isSlaughtered;
         totalHarvestedItems = raising.totalHarvestedItems;
 
-        // Lấy thông tin item
+        // Get item information
         ItemStructs.Item memory item = itemProxy.getItem(itemId);
         itemName = item.name;
         itemType = item.itemType;
         itemRarity = item.rarity;
 
-        // Thông tin thời gian
+        // Timing information
         currentTime = block.timestamp;
         timeUntilFullyGrown = 0;
         isFullyGrown = false;
@@ -727,7 +915,7 @@ contract RaisingLogic {
             isFullyGrown = true;
         }
 
-        // Thông tin feeding
+        // Feeding information
         uint256 feedingHarvestCooldown = itemProxy.getItemAttribute(
             itemId,
             ItemStructs.Attribute.HarvestCooldown
@@ -745,7 +933,7 @@ contract RaisingLogic {
             timeUntilNextFeed = nextFeedingTime - currentTime;
         }
 
-        // Thông tin harvest
+        // Harvest information
         canHarvest = false;
         harvestCooldown = 0;
         timeUntilNextHarvest = 0;
@@ -769,36 +957,36 @@ contract RaisingLogic {
             }
         }
 
-        // Lấy thông tin drops
+        // Get drop information
         itemDrops = itemProxy.getItemDrops(itemId);
 
-        // Lấy thông tin owner
+        // Get owner information
         owner = raisingProxy.getRaisingOwner(raisingId);
     }
 
-    // Struct để trả về thông tin đầy đủ
+    /// @notice Struct for returning comprehensive raising information
     struct FullRaisingInfo {
-        // Thông tin cơ bản
+        // Basic information
         uint256 id;
         uint256 itemId;
         string itemName;
         ItemStructs.ItemType itemType;
         ItemStructs.Rarity itemRarity;
         address owner;
-        // Thông tin thời gian
+        // Timing information
         uint256 raisingTime;
         uint256 growthTime;
         uint256 currentTime;
         uint256 timeUntilFullyGrown;
         bool isFullyGrown;
-        // Thông tin feeding
+        // Feeding information
         uint256 lastFeedTime;
         uint256 feedCount;
         uint256 maxFeeds;
         uint256 nextFeedingTime;
         bool canFeedNow;
         uint256 timeUntilNextFeed;
-        // Thông tin harvest
+        // Harvest information
         uint256 lastHarvestTime;
         uint256 harvestCount;
         uint256 maxHarvests;
@@ -806,14 +994,20 @@ contract RaisingLogic {
         uint256 harvestCooldown;
         uint256 timeUntilNextHarvest;
         uint256 totalHarvestedItems;
-        // Thông tin trạng thái
+        // Status information
         bool isHarvested;
         bool isSlaughtered;
         uint256 qualityModifier;
-        // Thông tin drops
+        // Drop information
         ItemStructs.ItemDrop[] itemDrops;
     }
 
+    /**
+     * @dev Gets comprehensive raising information as a struct
+     * @notice Wrapper function that returns getFullRaisingInfo as a struct for easier consumption
+     * @param raisingId ID of the raising
+     * @return info FullRaisingInfo struct with all raising data
+     */
     function getFullRaisingInfoStruct(
         uint256 raisingId
     ) external view returns (FullRaisingInfo memory) {

@@ -32,12 +32,14 @@ async function main() {
   const playerComponentAddress = deploymentInfo.contracts.PlayerComponent;
   const playerProxyAddress = deploymentInfo.contracts.PlayerProxy;
   const playerLogicAddress = deploymentInfo.contracts.PlayerLogic;
+  const inventoryProxyAddress = deploymentInfo.contracts.InventoryProxy;
 
   console.log("\n📋 Existing contract addresses:");
   console.log("   • World:", worldAddress);
   console.log("   • Old PlayerComponent:", playerComponentAddress);
   console.log("   • Old PlayerProxy:", playerProxyAddress);
   console.log("   • Old PlayerLogic:", playerLogicAddress);
+  console.log("   • InventoryProxy:", inventoryProxyAddress);
 
   // === DEPLOY PLAYER CONTRACTS ===
   console.log("\n🚀 PHASE: Deploying Player Contracts...");
@@ -67,7 +69,8 @@ async function main() {
   const PlayerLogic = await ethers.getContractFactory("PlayerLogic");
   const playerLogic = await PlayerLogic.deploy(
     worldAddress,
-    newPlayerProxyAddress
+    newPlayerProxyAddress,
+    inventoryProxyAddress
   );
   await playerLogic.waitForDeployment();
   const newPlayerLogicAddress = await playerLogic.getAddress();

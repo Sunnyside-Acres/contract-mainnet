@@ -12,13 +12,14 @@ import "../../struct/Inventory.sol";
 
 /**
  * @title TaskLogic
- * @dev Logic contract cho Task System - quản lý proof và claim thưởng
+ * @dev Logic contract for Task System - manages proof and reward claims
+ * @notice This contract handles task completion verification and reward distribution
  *
- * Tính năng chính:
- * - Admin tạo proof cho task hoàn thành
- * - User claim thưởng bằng proof ID
- * - Quản lý thời gian hết hạn proof
- * - Thống kê và báo cáo task
+ * Key Features:
+ * - Admin creates proof for completed tasks
+ * - Users claim rewards using proof ID
+ * - Manages proof expiration time
+ * - Task statistics and reporting
  */
 contract TaskLogic {
     IWorld public world;
@@ -58,6 +59,10 @@ contract TaskLogic {
 
     // ============ MODIFIERS ============
 
+    /**
+     * @dev Modifier to restrict access to admin only
+     * @notice Reverts if caller is not an admin in the World contract
+     */
     modifier onlyAdmin() {
         require(world.isAdmin(msg.sender), "Not authorized as admin");
         _;
@@ -65,6 +70,14 @@ contract TaskLogic {
 
     // ============ CONSTRUCTOR ============
 
+    /**
+     * @dev Initializes the TaskLogic contract with required dependencies
+     * @param _world Address of the World contract
+     * @param _taskProxy Address of the TaskComponent proxy contract
+     * @param _playerProxy Address of the PlayerComponent proxy contract
+     * @param _inventoryProxy Address of the InventoryComponent proxy contract
+     * @param _itemProxy Address of the ItemComponent proxy contract
+     */
     constructor(
         address _world,
         address _taskProxy,
@@ -82,23 +95,27 @@ contract TaskLogic {
     // ============ ADMIN FUNCTIONS (WRITE) ============
 
     /**
-     * @dev Admin tạo proof cho task hoàn thành
+     * @dev Admin creates proof for completed task
+     * @notice Creates a new proof for a player who has completed a task
      *
-     * Chức năng:
-     * - Tạo proof mới cho người chơi đã hoàn thành task
-     * - Kiểm tra người chơi có tồn tại và được khởi tạo
-     * - Validate các item reward có tồn tại và số lượng hợp lệ
-     * - Tạo proof với thời gian hết hạn
-     * - Emit event TaskProofCreated
+     * Requirements:
+     * - Caller must be admin
+     * - Player must exist and be initialized
+     * - Reward items must exist and have valid quantities
      *
-     * @param _taskId ID của task đã hoàn thành
-     * @param _player Địa chỉ người chơi nhận proof
-     * @param _rewardSunny Phần thưởng sunny
-     * @param _rewardExp Phần thưởng kinh nghiệm
-     * @param _rewardItems Danh sách ID item thưởng
-     * @param _rewardItemQuantities Số lượng tương ứng của từng item
-     * @param _expiresIn Thời gian hết hạn proof (giây)
-     * @return bytes32 ID của proof vừa tạo
+     * Effects:
+     * - Creates proof with expiration time
+     * - Emits TaskProofCreated event
+     *
+     * @param _taskId ID of the completed task
+     * @param _player Address of the player receiving the proof
+     * @param _rewardSunny Sunny token reward amount
+     * @param _rewardSunlight Sunlight token reward amount
+     * @param _rewardExp Experience points reward
+     * @param _rewardItems Array of reward item IDs
+     * @param _rewardItemQuantities Array of quantities corresponding to each item
+     * @param _expiresIn Proof expiration time in seconds
+     * @return proofId The ID of the newly created proof
      */
     function createTaskProof(
         uint256 _taskId,
@@ -151,15 +168,20 @@ contract TaskLogic {
     }
 
     /**
-     * @dev Admin thu hồi proof
+     * @dev Admin revokes an active proof
+     * @notice Revokes an active and unclaimed proof
      *
-     * Chức năng:
-     * - Thu hồi proof đang active và chưa claim
-     * - Kiểm tra proof có tồn tại và có thể thu hồi
-     * - Cập nhật trạng thái proof thành inactive
-     * - Emit event TaskProofRevoked
+     * Requirements:
+     * - Caller must be admin
+     * - Proof must exist
+     * - Proof must be active
+     * - Proof must not be claimed
      *
-     * @param _proofId ID của proof cần thu hồi
+     * Effects:
+     * - Sets proof status to inactive
+     * - Emits TaskProofRevoked event
+     *
+     * @param _proofId ID of the proof to revoke
      */
     function revokeTaskProof(bytes32 _proofId) external onlyAdmin {
         TaskProof memory proof = taskProxy.getTaskProof(_proofId);
@@ -173,16 +195,21 @@ contract TaskLogic {
     }
 
     /**
-     * @dev Admin gia hạn thời gian proof
+     * @dev Admin extends proof expiration time
+     * @notice Extends the expiration time of an active proof
      *
-     * Chức năng:
-     * - Gia hạn thời gian hết hạn của proof đang active
-     * - Kiểm tra proof có tồn tại và có thể gia hạn
-     * - Cộng thêm thời gian vào thời gian hết hạn hiện tại
-     * - Emit event TaskProofExtended
+     * Requirements:
+     * - Caller must be admin
+     * - Proof must exist
+     * - Proof must be active
+     * - Proof must not be claimed
      *
-     * @param _proofId ID của proof cần gia hạn
-     * @param _additionalTime Thời gian gia hạn thêm (giây)
+     * Effects:
+     * - Adds additional time to current expiration time
+     * - Emits TaskProofExtended event
+     *
+     * @param _proofId ID of the proof to extend
+     * @param _additionalTime Additional time to add in seconds
      */
     function extendTaskProof(
         bytes32 _proofId,
@@ -205,16 +232,21 @@ contract TaskLogic {
     // ============ PLAYER FUNCTIONS (WRITE) ============
 
     /**
-     * @dev Người chơi claim thưởng task
+     * @dev Player claims task rewards
+     * @notice Claims rewards for a completed task using proof ID
      *
-     * Chức năng:
-     * - Kiểm tra proof có hợp lệ và có thể claim không
-     * - Cập nhật trạng thái proof thành đã claim
-     * - Cộng thêm sunny và exp cho người chơi
-     * - Thêm items vào inventory của người chơi
-     * - Emit event TaskRewardClaimed
+     * Requirements:
+     * - Caller must be initialized player
+     * - Proof must be valid and claimable
      *
-     * @param _proofId ID của proof cần claim
+     * Effects:
+     * - Marks proof as claimed
+     * - Adds Sunny and Sunlight tokens to player
+     * - Adds experience points to player
+     * - Adds reward items to player's inventory
+     * - Emits TaskRewardClaimed event
+     *
+     * @param _proofId ID of the proof to claim
      */
     function claimTaskReward(bytes32 _proofId) external {
         address player = msg.sender;
@@ -274,41 +306,30 @@ contract TaskLogic {
     }
 
     // ============ VIEW FUNCTIONS (READ) ============
+
     /**
-     * @dev Người chơi xem proof đang hoạt động
-     *
-     * Chức năng:
-     * - Lấy các proof còn hiệu lực (chưa hết hạn và chưa claim) của người chơi hiện tại
-     * - Trả về mảng TaskProof[] chứa các proof active
-     *
-     * @return TaskProof[] Mảng chứa các proof đang hoạt động
+     * @dev Gets active proofs for the caller
+     * @notice Returns all valid proofs (not expired and not claimed) for the current player
+     * @return activeProofs Array of active TaskProof structs
      */
     function getMyActiveProofs() external view returns (TaskProof[] memory) {
         return taskProxy.getPlayerActiveProofs(msg.sender);
     }
 
     /**
-     * @dev Người chơi xem proof đã claim
-     *
-     * Chức năng:
-     * - Lấy các proof đã được claim thành công của người chơi hiện tại
-     * - Trả về mảng TaskProof[] chứa các proof đã claim
-     *
-     * @return TaskProof[] Mảng chứa các proof đã claim
+     * @dev Gets claimed proofs for the caller
+     * @notice Returns all successfully claimed proofs for the current player
+     * @return claimedProofs Array of claimed TaskProof structs
      */
     function getMyClaimedProofs() external view returns (TaskProof[] memory) {
         return taskProxy.getPlayerClaimedProofs(msg.sender);
     }
 
     /**
-     * @dev Xem chi tiết proof theo ID
-     *
-     * Chức năng:
-     * - Lấy thông tin chi tiết của một proof cụ thể theo proofId
-     * - Trả về struct TaskProof chứa đầy đủ thông tin proof
-     *
-     * @param _proofId ID của proof cần xem chi tiết
-     * @return TaskProof Struct chứa thông tin chi tiết của proof
+     * @dev Gets detailed information for a specific proof
+     * @notice Returns complete information about a proof by its ID
+     * @param _proofId ID of the proof to query
+     * @return proof TaskProof struct containing detailed proof information
      */
     function getTaskProof(
         bytes32 _proofId
@@ -317,35 +338,32 @@ contract TaskLogic {
     }
 
     /**
-     * @dev Lấy thống kê tổng quan về task system
-     *
-     * Chức năng:
-     * - Lấy thống kê tổng quan về toàn bộ hệ thống task
-     * - Bao gồm số lượng proof đã tạo, đã claim, tổng reward đã phát
-     * - Trả về struct TaskStats chứa các thông số thống kê
-     *
-     * @return TaskStats Struct chứa thống kê tổng quan task system
+     * @dev Gets overall task system statistics
+     * @notice Returns comprehensive statistics about the entire task system
+     * @return stats TaskStats struct containing:
+     *         - Total number of proofs created
+     *         - Number of claimed proofs
+     *         - Total rewards distributed
      */
     function getTaskStatistics() external view returns (TaskStats memory) {
         return taskProxy.getTaskStats();
     }
 
     /**
-     * @dev Lấy tổng quan proof của người chơi
+     * @dev Gets player proof overview and statistics
+     * @notice Returns comprehensive statistics about a specific player's proofs
      *
-     * Chức năng:
-     * - Lấy thống kê tổng quan về proof của một người chơi cụ thể
-     * - Tính toán số lượng proof theo từng trạng thái (tổng, active, claimed)
-     * - Tính tổng reward đã nhận (sunny, sunlight và exp)
-     * - Trả về tuple chứa các thông số thống kê
+     * Calculates:
+     * - Number of proofs by status (total, active, claimed)
+     * - Total rewards earned (Sunny, Sunlight, and experience points)
      *
-     * @param _player Địa chỉ người chơi cần xem thống kê
-     * @return totalProofs Tổng số proof của người chơi
-     * @return activeProofs Số proof đang hoạt động
-     * @return claimedProofs Số proof đã claim
-     * @return totalSunnyEarned Tổng sunny đã nhận từ task
-     * @return totalSunlightEarned Tổng sunlight đã nhận từ task
-     * @return totalExpEarned Tổng exp đã nhận từ task
+     * @param _player Address of the player to query
+     * @return totalProofs Total number of proofs for the player
+     * @return activeProofs Number of active proofs
+     * @return claimedProofs Number of claimed proofs
+     * @return totalSunnyEarned Total Sunny tokens earned from tasks
+     * @return totalSunlightEarned Total Sunlight tokens earned from tasks
+     * @return totalExpEarned Total experience points earned from tasks
      */
     function getPlayerProofOverview(
         address _player

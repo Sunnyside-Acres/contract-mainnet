@@ -4,25 +4,46 @@ pragma solidity ^0.8.28;
 import "../../interfaces/IWorld.sol";
 import "../../struct/Task.sol";
 
+/**
+ * @title TaskComponent
+ * @author RYG.Labs
+ * @notice Data storage contract for the Task system
+ * @dev Stores task proofs and statistics
+ */
 contract TaskComponent {
+    /// @notice Address of the World contract for access control
     address public world;
+    /// @notice Address of the admin
     address public admin;
+    /// @notice Address of the implementation logic contract
     address public implementation;
 
-    // Mapping từ proof ID đến TaskProof
+    /// @notice Mapping from proof ID to TaskProof
     mapping(bytes32 => TaskProof) public taskProofs;
 
-    // Mapping từ player address đến danh sách proof IDs
+    /// @notice Mapping from player address to their proof IDs
     mapping(address => bytes32[]) public playerProofIds;
 
-    // Mapping từ task ID đến danh sách proof IDs
+    /// @notice Mapping from task ID to proof IDs
     mapping(uint256 => bytes32[]) public taskProofIds;
 
-    // Thống kê task
+    /// @notice Task system statistics
     TaskStats public taskStats;
 
     // ============ ADMIN FUNCTIONS ============
 
+    /**
+     * @notice Create a new task proof
+     * @param _taskId The ID of the task
+     * @param _player The player's address
+     * @param _rewardSunny Sunny token reward
+     * @param _rewardSunlight Sunlight reward
+     * @param _rewardExp Experience reward
+     * @param _rewardItems Array of reward item IDs
+     * @param _rewardItemQuantities Array of reward item quantities
+     * @param _expiresIn Expiration time in seconds
+     * @return The proof ID
+     */
     function createTaskProof(
         uint256 _taskId,
         address _player,
@@ -40,7 +61,7 @@ contract TaskComponent {
             "Reward arrays length mismatch"
         );
 
-        // Tạo proof ID bằng cách hash taskId + player + timestamp + nonce
+        // Create proof ID by hashing taskId + player + timestamp + nonce
         bytes32 proofId = keccak256(
             abi.encodePacked(
                 _taskId,
@@ -50,7 +71,7 @@ contract TaskComponent {
             )
         );
 
-        // Kiểm tra proof ID không trùng lặp
+        // Check that proof ID is unique
         require(taskProofs[proofId].proofId == 0, "Proof ID already exists");
 
         TaskProof storage proof = taskProofs[proofId];
