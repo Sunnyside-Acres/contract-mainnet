@@ -73,14 +73,15 @@ contract PlotLogic {
         WeatherStructs.Weather memory currentWeather = weatherProxy
             .getCurrentWeather();
 
-        // Deterministic randomness from coordinates and address
-        uint256 random = uint256(
+        // Deterministic plot type based on coordinates and weather state
+        // Same coordinates + same weather = same plot type (no randomness)
+        uint256 coordinateHash = uint256(
             keccak256(
                 abi.encodePacked(
                     block.number,
-                    msg.sender,
                     _xCoordinate,
                     _yCoordinate,
+                    uint8(currentWeather.state),
                     block.chainid // Add chain ID to prevent cross-chain replay
                 )
             )
@@ -90,36 +91,36 @@ contract PlotLogic {
 
         if (currentWeather.state == WeatherStructs.WeatherState.Cloudy) {
             // Cloudy: 80% Normal, 15% Fertile, 5% Magic
-            if (random < 80) {
+            if (coordinateHash < 80) {
                 plotType = 0; // Normal
-            } else if (random < 95) {
+            } else if (coordinateHash < 95) {
                 plotType = 1; // Fertile
             } else {
                 plotType = 2; // Magic
             }
         } else if (currentWeather.state == WeatherStructs.WeatherState.Rainy) {
             // Rainy: 40% Normal, 50% Fertile, 10% Magic
-            if (random < 40) {
+            if (coordinateHash < 40) {
                 plotType = 0; // Normal
-            } else if (random < 90) {
+            } else if (coordinateHash < 90) {
                 plotType = 1; // Fertile
             } else {
                 plotType = 2; // Magic
             }
         } else if (currentWeather.state == WeatherStructs.WeatherState.Stormy) {
             // Stormy: 50% Normal, 40% Fertile, 10% Magic
-            if (random < 50) {
+            if (coordinateHash < 50) {
                 plotType = 0; // Normal
-            } else if (random < 90) {
+            } else if (coordinateHash < 90) {
                 plotType = 1; // Fertile
             } else {
                 plotType = 2; // Magic
             }
         } else {
             // Sunny: 80% Normal, 16% Fertile, 4% Magic
-            if (random < 80) {
+            if (coordinateHash < 80) {
                 plotType = 0; // Normal
-            } else if (random < 96) {
+            } else if (coordinateHash < 96) {
                 plotType = 1; // Fertile
             } else {
                 plotType = 2; // Magic

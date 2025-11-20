@@ -135,12 +135,12 @@ contract PlantComponent {
 
         plants[plantId] = Plant(
             plantId,
-            _plotId,
-            _itemId,
-            block.timestamp,
-            block.timestamp,
-            adjustedQuality,
-            adjustedGrowthTime,
+            uint128(_plotId),
+            uint128(_itemId),
+            uint64(block.timestamp),
+            uint64(block.timestamp),
+            uint32(adjustedGrowthTime),
+            uint8(adjustedQuality),
             0,
             false
         );
@@ -208,9 +208,9 @@ contract PlantComponent {
             adjustedQuality += 5;
         }
 
-        plant.qualityModifier = adjustedQuality;
-        plant.growthTime = adjustedGrowthTime;
-        plant.lastTendedTime = block.timestamp;
+        plant.qualityModifier = uint8(adjustedQuality);
+        plant.growthTime = uint32(adjustedGrowthTime);
+        plant.lastTendedTime = uint64(block.timestamp);
         plant.tendCount++;
 
         emit PlantTended(_plantId, adjustedQuality);

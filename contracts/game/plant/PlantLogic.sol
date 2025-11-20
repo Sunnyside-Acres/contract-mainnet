@@ -200,7 +200,7 @@ contract PlantLogic {
             _plotId,
             _itemId,
             msg.sender,
-            plot.plotType,
+            uint256(plot.plotType),
             growthTime,
             weatherState
         );
@@ -217,13 +217,13 @@ contract PlantLogic {
         emit PlantCreated(
             plant.id,
             msg.sender,
-            plant.plotId,
-            plant.itemId,
-            plant.plantedTime,
-            plant.lastTendedTime,
-            plant.qualityModifier,
-            plant.growthTime,
-            plant.tendCount,
+            uint256(plant.plotId),
+            uint256(plant.itemId),
+            uint256(plant.plantedTime),
+            uint256(plant.lastTendedTime),
+            uint256(plant.qualityModifier),
+            uint256(plant.growthTime),
+            uint256(plant.tendCount),
             plant.isHarvested
         );
     }
@@ -263,7 +263,7 @@ contract PlantLogic {
         require(!plant.isHarvested, "Plant already harvested");
 
         ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
-            plant.itemId
+            uint256(plant.itemId)
         );
 
         require(drops.length > 0, "No item drops configured");
@@ -280,47 +280,83 @@ contract PlantLogic {
         uint256[] memory harvestedItemAmounts = new uint256[](drops.length);
         uint256 harvestedItemCount = 0;
 
-        for (uint256 i = 0; i < drops.length; i++) {
-            uint256 baseRoll = random(10000);
-            uint256 adjustedRoll = baseRoll;
-            if (baseRoll > qualityBonus) {
-                adjustedRoll = baseRoll - qualityBonus;
+        // If only 1 drop, skip random and guarantee it
+        if (drops.length == 1) {
+            uint256 itemAmount;
+            if (drops[0].yield == 0) {
+                itemAmount = 1;
             } else {
-                adjustedRoll = 0;
+                // Use yield as base quantity, qualityModifier as multiplier
+                itemAmount = (drops[0].yield * qualityMultiplier) / 100;
+                if (itemAmount == 0) {
+                    itemAmount = 1;
+                }
             }
 
-            if (adjustedRoll < drops[i].probability) {
-                uint256 itemAmount;
-                if (drops[i].yield == 0) {
-                    itemAmount = 1;
+            totalItemAmount += itemAmount;
+
+            // Store harvested item information
+            harvestedItemIds[0] = drops[0].itemId;
+            harvestedItemAmounts[0] = itemAmount;
+            harvestedItemCount = 1;
+
+            // Add item to inventory
+            InventoryItem memory currentItem = inventoryProxy.getItem(
+                msg.sender,
+                drops[0].itemId
+            );
+            uint256 newQuantity = currentItem.quantity + itemAmount;
+            inventoryProxy.setItem(
+                msg.sender,
+                drops[0].itemId,
+                newQuantity,
+                100,
+                0
+            );
+        } else {
+            // Multiple drops: use random for each drop
+            for (uint256 i = 0; i < drops.length; i++) {
+                uint256 baseRoll = random(10000);
+                uint256 adjustedRoll = baseRoll;
+                if (baseRoll > qualityBonus) {
+                    adjustedRoll = baseRoll - qualityBonus;
                 } else {
-                    // Use yield as base quantity, qualityModifier as multiplier
-                    itemAmount = (drops[i].yield * qualityMultiplier) / 100;
-                    if (itemAmount == 0) {
-                        itemAmount = 1;
-                    }
+                    adjustedRoll = 0;
                 }
 
-                totalItemAmount += itemAmount;
+                if (adjustedRoll < drops[i].probability) {
+                    uint256 itemAmount;
+                    if (drops[i].yield == 0) {
+                        itemAmount = 1;
+                    } else {
+                        // Use yield as base quantity, qualityModifier as multiplier
+                        itemAmount = (drops[i].yield * qualityMultiplier) / 100;
+                        if (itemAmount == 0) {
+                            itemAmount = 1;
+                        }
+                    }
 
-                // Store harvested item information
-                harvestedItemIds[harvestedItemCount] = drops[i].itemId;
-                harvestedItemAmounts[harvestedItemCount] = itemAmount;
-                harvestedItemCount++;
+                    totalItemAmount += itemAmount;
 
-                // Add item to inventory
-                InventoryItem memory currentItem = inventoryProxy.getItem(
-                    msg.sender,
-                    drops[i].itemId
-                );
-                uint256 newQuantity = currentItem.quantity + itemAmount;
-                inventoryProxy.setItem(
-                    msg.sender,
-                    drops[i].itemId,
-                    newQuantity,
-                    100,
-                    0
-                );
+                    // Store harvested item information
+                    harvestedItemIds[harvestedItemCount] = drops[i].itemId;
+                    harvestedItemAmounts[harvestedItemCount] = itemAmount;
+                    harvestedItemCount++;
+
+                    // Add item to inventory
+                    InventoryItem memory currentItem = inventoryProxy.getItem(
+                        msg.sender,
+                        drops[i].itemId
+                    );
+                    uint256 newQuantity = currentItem.quantity + itemAmount;
+                    inventoryProxy.setItem(
+                        msg.sender,
+                        drops[i].itemId,
+                        newQuantity,
+                        100,
+                        0
+                    );
+                }
             }
         }
 
@@ -355,12 +391,12 @@ contract PlantLogic {
         // Call plantHarvest to delete plant after processing logic
         plantProxy.plantHarvest(plantId);
 
-        plotProxy.deletePlot(plant.plotId, msg.sender);
+        plotProxy.deletePlot(uint256(plant.plotId), msg.sender);
 
         emit PlantHarvested(
             msg.sender,
             plantId,
-            plant.plotId,
+            uint256(plant.plotId),
             harvestedItemIds,
             harvestedItemAmounts
         );
