@@ -135,8 +135,8 @@ contract PlantComponent {
 
         plants[plantId] = Plant(
             plantId,
-            uint128(_plotId),
-            uint128(_itemId),
+            _plotId,
+            _itemId,
             uint64(block.timestamp),
             uint64(block.timestamp),
             uint32(adjustedGrowthTime),

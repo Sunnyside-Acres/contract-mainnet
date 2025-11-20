@@ -13,8 +13,8 @@ pragma solidity ^0.8.28;
  */
 struct Plant {
     uint256 id; /// Unique plant ID (keccak256 hash, requires full uint256)
-    uint128 plotId; /// ID of the plot where crop is planted (max 2^128-1)
-    uint128 itemId; /// ID of the crop item (max 2^128-1)
+    uint256 plotId; /// ID of the plot where crop is planted (max 2^128-1)
+    uint256 itemId; /// ID of the crop item (max 2^128-1)
     uint64 plantedTime; /// Timestamp when crop was planted (sufficient until year 584 billion)
     uint64 lastTendedTime; /// Timestamp of last tending action
     uint32 growthTime; /// Time required for crop to grow (in seconds, sufficient for ~136 years)
