@@ -35,6 +35,14 @@ contract ItemPassLogic {
     }
 
     function activeItemPass(uint256 _itemId) external {
+        require(
+            _itemId == 120 ||
+                _itemId == 121 ||
+                _itemId == 122 ||
+                _itemId == 123 ||
+                _itemId == 124,
+            "ItemPass: Invalid Pass Item ID"
+        );
         address player = msg.sender;
 
         // Get item from inventory to check a quantity
