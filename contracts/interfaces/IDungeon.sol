@@ -136,7 +136,7 @@ interface IDungeon {
         uint256 _dungeonId,
         uint256 _stageNumber,
         uint256 _rewardMultiplier
-    ) external;
+    ) external returns (bool);
 
     // ============ DUNGEON MANAGEMENT FUNCTIONS ============
 
@@ -157,8 +157,9 @@ interface IDungeon {
     /**
      * @notice Deletes a dungeon
      * @param _dungeonId ID of the dungeon to delete
+     * @return success Whether the operation succeeded
      */
-    function deleteDungeon(uint256 _dungeonId) external;
+    function deleteDungeon(uint256 _dungeonId) external returns (bool);
 
     // ============ DUNGEON SESSION FUNCTIONS ============
 

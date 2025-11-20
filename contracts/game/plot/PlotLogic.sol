@@ -69,17 +69,7 @@ contract PlotLogic {
         playerProxy = IPlayerComponent(_playerProxy);
     }
 
-    /**
-     * @notice Create a new plot at specified coordinates
-     * @dev Plot type is determined by current weather with different probabilities
-     * @param _xCoordinate The X coordinate of the plot
-     * @param _yCoordinate The Y coordinate of the plot
-     * @return The ID of the newly created plot
-     */
-    function createPlot(
-        int256 _xCoordinate,
-        int256 _yCoordinate
-    ) external {
+    function createPlot(int256 _xCoordinate, int256 _yCoordinate) external {
         WeatherStructs.Weather memory currentWeather = weatherProxy
             .getCurrentWeather();
 

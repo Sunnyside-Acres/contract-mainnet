@@ -9,7 +9,10 @@ import "../player/PlayerComponent.sol";
 import "../../struct/Inventory.sol";
 import "../../struct/Player.sol";
 import "../../interfaces/IItemPass.sol";
-import "../itempass/ItemPassComponent.sol";
+import "../../interfaces/IDungeon.sol";
+import "../../interfaces/IInventory.sol";
+import "../../interfaces/IPlayer.sol";
+import "../../interfaces/IItemPass.sol";
 
 /**
  * @title DungeonLogic
@@ -20,12 +23,18 @@ import "../itempass/ItemPassComponent.sol";
 contract DungeonLogic {
     /// @notice World contract address
     address public world;
+
     /// @notice DungeonComponent address
-    address public dungeonProxy;
+    IDungeon public dungeonComponent;
+
     /// @notice InventoryComponent address
-    address public inventoryComponent;
+    IInventoryComponent public inventoryComponent;
+
     /// @notice PlayerComponent address
-    address public playerComponent;
+    IPlayerComponent public playerComponent;
+
+    /// @notice ItemPassComponent address
+    IItemPassComponent public itemPassComponent;
 
     /// @notice Contract owner (has withdrawal rights)
     address public owner;
@@ -35,8 +44,6 @@ contract DungeonLogic {
 
     /// @dev Maximum quantity allowed per item stack
     uint256 constant MAX_QUANTITY = 1000000;
-
-    address public itemPassComponent;
 
     /// @notice Events
     event DungeonCreated(
@@ -124,25 +131,18 @@ contract DungeonLogic {
         _locked = false;
     }
 
-    /**
-     * @notice Constructor
-     * @param _world World contract address
-     * @param _dungeonProxy DungeonComponent proxy address
-     * @param _inventoryComponent InventoryComponent address
-     * @param _playerComponent PlayerComponent address
-     */
     constructor(
         address _world,
         address _dungeonProxy,
-        address _inventoryComponent,
-        address _playerComponent,
-        address _itemPassComponent
+        address _inventoryProxy,
+        address _playerProxy,
+        address _itemPassProxy
     ) {
         world = _world;
-        dungeonProxy = _dungeonProxy;
-        inventoryComponent = _inventoryComponent;
-        playerComponent = _playerComponent;
-        itemPassComponent = _itemPassComponent;
+        dungeonComponent = IDungeon(_dungeonProxy);
+        inventoryComponent = IInventoryComponent(_inventoryProxy);
+        playerComponent = IPlayerComponent(_playerProxy);
+        itemPassComponent = IItemPassComponent(_itemPassProxy);
         owner = msg.sender;
     }
 
@@ -203,7 +203,7 @@ contract DungeonLogic {
             );
         }
 
-        uint256 dungeonId = DungeonComponent(dungeonProxy).createDungeon(
+        uint256 dungeonId = dungeonComponent.createDungeon(
             _dungeonId,
             _name,
             _description,
@@ -245,17 +245,13 @@ contract DungeonLogic {
             "Reward multiplier too high (max 10x)"
         );
 
-        bool success = DungeonComponent(dungeonProxy).addDungeonStage(
+        dungeonComponent.addDungeonStage(
             _dungeonId,
             _stageNumber,
             _rewardMultiplier
         );
 
-        if (success) {
-            emit DungeonStageAdded(_dungeonId, _stageNumber, _rewardMultiplier);
-        }
-
-        return success;
+        emit DungeonStageAdded(_dungeonId, _stageNumber, _rewardMultiplier);
     }
 
     /**
@@ -267,7 +263,7 @@ contract DungeonLogic {
         uint256 _dungeonId,
         bool _isActive
     ) external onlyAdmin {
-        DungeonComponent(dungeonProxy).setDungeonActive(_dungeonId, _isActive);
+        dungeonComponent.setDungeonActive(_dungeonId, _isActive);
     }
 
     /**
@@ -279,7 +275,7 @@ contract DungeonLogic {
         uint256 _dungeonId,
         bool _isPaused
     ) external onlyAdmin {
-        DungeonComponent(dungeonProxy).setDungeonPaused(_dungeonId, _isPaused);
+        dungeonComponent.setDungeonPaused(_dungeonId, _isPaused);
     }
 
     /**
@@ -290,7 +286,7 @@ contract DungeonLogic {
     function deleteDungeon(
         uint256 _dungeonId
     ) external onlyAdmin returns (bool) {
-        bool success = DungeonComponent(dungeonProxy).deleteDungeon(_dungeonId);
+        bool success = dungeonComponent.deleteDungeon(_dungeonId);
         if (success) {
             emit DungeonDeleted(_dungeonId);
         }
@@ -307,7 +303,7 @@ contract DungeonLogic {
     function getDungeon(
         uint256 _dungeonId
     ) external view returns (DungeonStructs.Dungeon memory) {
-        return DungeonComponent(dungeonProxy).getDungeon(_dungeonId);
+        return dungeonComponent.getDungeon(_dungeonId);
     }
 
     /**
@@ -315,7 +311,7 @@ contract DungeonLogic {
      * @return Array of all dungeon IDs
      */
     function getAllDungeonIds() external view returns (uint256[] memory) {
-        return DungeonComponent(dungeonProxy).getAllDungeonIds();
+        return dungeonComponent.getAllDungeonIds();
     }
 
     /**
@@ -324,7 +320,7 @@ contract DungeonLogic {
      * @return exists Whether dungeon exists
      */
     function dungeonExists(uint256 _dungeonId) external view returns (bool) {
-        return DungeonComponent(dungeonProxy).exists(_dungeonId);
+        return dungeonComponent.exists(_dungeonId);
     }
 
     /**
@@ -337,25 +333,24 @@ contract DungeonLogic {
         address _player,
         uint256 _dungeonId
     ) external view returns (bool) {
-        DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
-            .getDungeon(_dungeonId);
+        DungeonStructs.Dungeon memory dungeon = dungeonComponent.getDungeon(
+            _dungeonId
+        );
 
         for (uint256 i = 0; i < dungeon.itemRequirements.length; i++) {
             DungeonStructs.ItemRequirement memory requirement = dungeon
                 .itemRequirements[i];
 
             if (
-                !InventoryComponent(inventoryComponent).exists(
-                    _player,
-                    uint256(requirement.itemId)
-                )
+                !inventoryComponent.exists(_player, uint256(requirement.itemId))
             ) {
                 return false;
             }
 
-            InventoryItem memory playerItem = InventoryComponent(
-                inventoryComponent
-            ).getItem(_player, uint256(requirement.itemId));
+            InventoryItem memory playerItem = inventoryComponent.getItem(
+                _player,
+                uint256(requirement.itemId)
+            );
 
             if (playerItem.quantity < uint256(requirement.quantity)) {
                 return false;
@@ -375,12 +370,11 @@ contract DungeonLogic {
         address _player,
         uint256 _dungeonId
     ) external view returns (bool) {
-        DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
-            .getDungeon(_dungeonId);
-
-        Player memory player = PlayerComponent(playerComponent).getPlayer(
-            _player
+        DungeonStructs.Dungeon memory dungeon = dungeonComponent.getDungeon(
+            _dungeonId
         );
+
+        Player memory player = playerComponent.getPlayer(_player);
 
         if (
             dungeon.energyCost > 0 && player.mana < uint256(dungeon.energyCost)
@@ -436,8 +430,9 @@ contract DungeonLogic {
     ) external payable returns (uint256) {
         require(_dungeonId > 0, "Dungeon ID must be greater than 0");
 
-        DungeonStructs.Dungeon memory dungeon = DungeonComponent(dungeonProxy)
-            .getDungeon(_dungeonId);
+        DungeonStructs.Dungeon memory dungeon = dungeonComponent.getDungeon(
+            _dungeonId
+        );
 
         if (msg.value > 0) {
             require(
@@ -447,7 +442,7 @@ contract DungeonLogic {
             );
         }
 
-        bool hasPass = ItemPassComponent(itemPassComponent).checkActiveItemPass(msg.sender);
+        bool hasPass = itemPassComponent.checkActiveItemPass(msg.sender);
 
         _validateEquipmentItems(_equipmentItemIds, _equipmentQuantities);
         if (!hasPass) {
@@ -456,7 +451,7 @@ contract DungeonLogic {
         }
         _deductEquipmentItems(_equipmentItemIds, _equipmentQuantities);
 
-        uint256 sessionId = DungeonComponent(dungeonProxy).startDungeonSession(
+        uint256 sessionId = dungeonComponent.startDungeonSession(
             msg.sender,
             _dungeonId,
             msg.value,
@@ -508,14 +503,13 @@ contract DungeonLogic {
         );
 
         // Kiểm tra session đã end chưa
-        DungeonStructs.DungeonSession memory session = DungeonComponent(
-            dungeonProxy
-        ).getDungeonSession(_sessionId);
+        DungeonStructs.DungeonSession memory session = dungeonComponent
+            .getDungeonSession(_sessionId);
         require(session.sessionId > 0, "Session does not exist");
         require(!session.isCompleted, "Session already ended");
         require(!session.isClaimed, "Session already claimed");
 
-        DungeonComponent(dungeonProxy).endDungeonSession(
+        dungeonComponent.endDungeonSession(
             _sessionId,
             _isCompleted,
             _rewardItemIds,
@@ -553,9 +547,8 @@ contract DungeonLogic {
     ) external nonReentrant returns (bool) {
         require(_sessionId > 0, "Session ID must be greater than 0");
 
-        DungeonStructs.DungeonSession memory session = DungeonComponent(
-            dungeonProxy
-        ).getDungeonSession(_sessionId);
+        DungeonStructs.DungeonSession memory session = dungeonComponent
+            .getDungeonSession(_sessionId);
 
         require(session.sessionId > 0, "Session does not exist");
         require(session.player == msg.sender, "Not the session owner");
@@ -567,23 +560,16 @@ contract DungeonLogic {
         );
 
         if (session.sunlightReward > 0) {
-            PlayerComponent(playerComponent).addSunlight(
+            playerComponent.addSunlight(
                 msg.sender,
                 uint256(session.sunlightReward)
             );
         }
         if (session.sunnyReward > 0) {
-            PlayerComponent(playerComponent).addSunny(
-                msg.sender,
-                uint256(session.sunnyReward)
-            );
+            playerComponent.addSunny(msg.sender, uint256(session.sunnyReward));
         }
 
         if (session.rewardItemIds.length > 0) {
-            InventoryComponent inventory = InventoryComponent(
-                inventoryComponent
-            );
-
             for (uint256 i = 0; i < session.rewardItemIds.length; i++) {
                 uint256 itemId = uint256(session.rewardItemIds[i]);
                 uint256 addQty = uint256(session.rewardQuantities[i]);
@@ -591,17 +577,15 @@ contract DungeonLogic {
                 require(addQty > 0, "Invalid reward quantity");
                 require(addQty <= MAX_QUANTITY, "Exceeds max quantity");
 
-                bool existsItem = inventory.exists(msg.sender, itemId);
+                bool existsItem = inventoryComponent.exists(msg.sender, itemId);
 
                 uint256 newQty;
                 uint256 durability;
                 uint256 expiration;
 
                 if (existsItem) {
-                    InventoryItem memory currentItem = inventory.getItem(
-                        msg.sender,
-                        itemId
-                    );
+                    InventoryItem memory currentItem = inventoryComponent
+                        .getItem(msg.sender, itemId);
                     newQty = currentItem.quantity + addQty;
 
                     require(
@@ -618,7 +602,7 @@ contract DungeonLogic {
                     expiration = 0;
                 }
 
-                inventory.setItem(
+                inventoryComponent.setItem(
                     msg.sender,
                     itemId,
                     newQty,
@@ -628,7 +612,7 @@ contract DungeonLogic {
             }
         }
 
-        bool claimSuccess = DungeonComponent(dungeonProxy).claimDungeonRewards(
+        bool claimSuccess = dungeonComponent.claimDungeonRewards(
             _sessionId,
             msg.sender
         );
@@ -691,7 +675,7 @@ contract DungeonLogic {
     function getDungeonSession(
         uint256 _sessionId
     ) external view returns (DungeonStructs.DungeonSession memory) {
-        return DungeonComponent(dungeonProxy).getDungeonSession(_sessionId);
+        return dungeonComponent.getDungeonSession(_sessionId);
     }
 
     /**
@@ -702,7 +686,7 @@ contract DungeonLogic {
     function getPlayerSessions(
         address _player
     ) external view returns (uint256[] memory) {
-        return DungeonComponent(dungeonProxy).getPlayerSessions(_player);
+        return dungeonComponent.getPlayerSessions(_player);
     }
 
     /**
@@ -718,7 +702,7 @@ contract DungeonLogic {
         view
         returns (uint32[] memory playerDamages, uint32[] memory monsterHPs)
     {
-        return DungeonComponent(dungeonProxy).getSessionBattleData(_sessionId);
+        return dungeonComponent.getSessionBattleData(_sessionId);
     }
 
     /**
@@ -780,16 +764,17 @@ contract DungeonLogic {
                 .itemRequirements[i];
 
             require(
-                InventoryComponent(inventoryComponent).exists(
+                inventoryComponent.exists(
                     msg.sender,
                     uint256(requirement.itemId)
                 ),
                 "Player does not have required item"
             );
 
-            InventoryItem memory playerItem = InventoryComponent(
-                inventoryComponent
-            ).getItem(msg.sender, uint256(requirement.itemId));
+            InventoryItem memory playerItem = inventoryComponent.getItem(
+                msg.sender,
+                uint256(requirement.itemId)
+            );
 
             require(
                 playerItem.quantity >= uint256(requirement.quantity),
@@ -799,7 +784,7 @@ contract DungeonLogic {
             if (requirement.isConsumed) {
                 uint256 newQuantity = playerItem.quantity -
                     uint256(requirement.quantity);
-                InventoryComponent(inventoryComponent).setItem(
+                inventoryComponent.setItem(
                     msg.sender,
                     uint256(requirement.itemId),
                     newQuantity,
@@ -817,9 +802,7 @@ contract DungeonLogic {
     function _checkAndDeductResources(
         DungeonStructs.Dungeon memory _dungeon
     ) internal {
-        Player memory player = PlayerComponent(playerComponent).getPlayer(
-            msg.sender
-        );
+        Player memory player = playerComponent.getPlayer(msg.sender);
 
         if (_dungeon.energyCost > 0) {
             require(
@@ -827,10 +810,7 @@ contract DungeonLogic {
                 "Not enough energy"
             );
             uint256 newMana = player.mana - uint256(_dungeon.energyCost);
-            PlayerComponent(playerComponent).setMana(
-                msg.sender,
-                uint16(newMana)
-            );
+            playerComponent.setMana(msg.sender, uint16(newMana));
         }
 
         if (_dungeon.sunlightCost > 0) {
@@ -838,7 +818,7 @@ contract DungeonLogic {
                 player.sunlight >= uint256(_dungeon.sunlightCost),
                 "Not enough sunlight"
             );
-            PlayerComponent(playerComponent).subtractSunlight(
+            playerComponent.subtractSunlight(
                 msg.sender,
                 uint256(_dungeon.sunlightCost)
             );
@@ -849,7 +829,7 @@ contract DungeonLogic {
                 player.sunny >= uint256(_dungeon.sunnyCost),
                 "Not enough sunny"
             );
-            PlayerComponent(playerComponent).subtractSunny(
+            playerComponent.subtractSunny(
                 msg.sender,
                 uint256(_dungeon.sunnyCost)
             );
@@ -875,16 +855,14 @@ contract DungeonLogic {
             require(_equipmentQuantities[i] > 0, "Invalid equipment quantity");
 
             require(
-                InventoryComponent(inventoryComponent).exists(
-                    msg.sender,
-                    _equipmentItemIds[i]
-                ),
+                inventoryComponent.exists(msg.sender, _equipmentItemIds[i]),
                 "Player does not have equipment item"
             );
 
-            InventoryItem memory equipmentItem = InventoryComponent(
-                inventoryComponent
-            ).getItem(msg.sender, _equipmentItemIds[i]);
+            InventoryItem memory equipmentItem = inventoryComponent.getItem(
+                msg.sender,
+                _equipmentItemIds[i]
+            );
 
             require(
                 equipmentItem.quantity >= _equipmentQuantities[i],
@@ -903,8 +881,6 @@ contract DungeonLogic {
         uint256[] memory _equipmentItemIds,
         uint256[] memory _equipmentQuantities
     ) internal {
-        InventoryComponent inventory = InventoryComponent(inventoryComponent);
-
         for (uint256 i = 0; i < _equipmentItemIds.length; i++) {
             uint256 itemId = _equipmentItemIds[i];
             uint256 deductQty = _equipmentQuantities[i];
@@ -915,7 +891,7 @@ contract DungeonLogic {
             }
 
             // Get current item
-            InventoryItem memory currentItem = inventory.getItem(
+            InventoryItem memory currentItem = inventoryComponent.getItem(
                 msg.sender,
                 itemId
             );
@@ -924,7 +900,7 @@ contract DungeonLogic {
             uint256 newQuantity = currentItem.quantity - deductQty;
 
             // Update items in inventory
-            inventory.setItem(
+            inventoryComponent.setItem(
                 msg.sender,
                 itemId,
                 newQuantity,

@@ -33,6 +33,7 @@ async function main() {
   const inventoryComponentAddress = deploymentInfo.contracts.InventoryProxy;
   const playerComponentAddress = deploymentInfo.contracts.PlayerProxy;
   const oldDungeonLogicAddress = deploymentInfo.contracts.DungeonLogic;
+  const itemPassComponentAddress = deploymentInfo.contracts.ItemPassProxy;
 
   console.log("\n📋 Existing contract addresses:");
   console.log("   • World:", worldAddress);
@@ -40,7 +41,7 @@ async function main() {
   console.log("   • InventoryProxy:", inventoryComponentAddress);
   console.log("   • PlayerProxy:", playerComponentAddress);
   console.log("   • Old DungeonLogic:", oldDungeonLogicAddress);
-
+  console.log("   • ItemPassProxy:", itemPassComponentAddress);
   // Validate required contracts
   if (!worldAddress) {
     throw new Error("World contract address not found in deployment file");
@@ -61,6 +62,12 @@ async function main() {
     );
   }
 
+  if (!itemPassComponentAddress) {
+    throw new Error(
+      "ItemPassProxy contract address not found in deployment file"
+    );
+  }
+
   // === DEPLOY DUNGEON LOGIC ===
   console.log("\n🚀 PHASE: Deploying DungeonLogic...");
 
@@ -71,7 +78,8 @@ async function main() {
     worldAddress,
     dungeonProxyAddress,
     inventoryComponentAddress,
-    playerComponentAddress
+    playerComponentAddress,
+    itemPassComponentAddress
   );
   await dungeonLogic.waitForDeployment();
   const newDungeonLogicAddress = await dungeonLogic.getAddress();

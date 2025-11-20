@@ -2,7 +2,7 @@
   "network": "seimainnet",
   "chainId": 1329,
   "deployer": "0x40687047E55F8027940E95143317BFAd550A28D1",
-  "timestamp": "2025-09-17T13:43:12.622Z",
+  "timestamp": "2025-11-20T09:32:59.448Z",
   "contracts": {
     "World": "0x937A1A686bcBEf127581E8719645cA02832F5765",
     "PlayerComponent": "0x0a1337c38743ab28D87299Cd9bA48A7f617F4f70",
@@ -44,11 +44,14 @@
     "FishingLogic": "0x025Be4E2DC405b8BC27a6750A53B6E4750308Dd8",
     "DungeonComponent": "0x503495165E5DCFc79fe59184375f7aC752e8550f",
     "DungeonProxy": "0x4E63620EB09b4406B20A5aB1dbBEDb7b9AE974E8",
-    "DungeonLogic": "0x92524eF32aA020E5eAaaA3a875F0f31312d9b651",
+    "DungeonLogic": "0x3842c9d1d9186F1e1359169dD86814079699F850",
     "NPCMarketNativeComponent": "0x0c297A60185Af77E813E80123ed5adC653673332",
     "NPCMarketNativeLogic": "0x0b5A2afd546C6e86299a5Ed9bdc8E1214dcf181C",
     "NPCMarketNativeProxy": "0x0bE3a6856d5c0c16A2D09044DE3f6B2b8785a937",
-    "GachaLogic": "0x2aCDA504De7925e42c8AE5fed79D6884a65d92AB"
+    "GachaLogic": "0x2aCDA504De7925e42c8AE5fed79D6884a65d92AB",
+    "ItemPassComponent": "0x65088D083f7f175D55D8078A3538E302AaEde156",
+    "ItemPassProxy": "0x5Aa1a62bfFe0f8EF30C91D5f585B660842489bE2",
+    "ItemPassLogic": "0xF09AB2234111548b34cbaFd4793b55e6811b62ca"
   },
   "deploymentOrder": [
     "World",
