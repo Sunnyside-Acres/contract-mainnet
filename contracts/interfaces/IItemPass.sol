@@ -9,10 +9,5 @@ interface IItemPassComponent {
     function getPass(
         address player
     ) external view returns (ItemPassStruct memory);
-}
-
-interface IItemPassLogic {
     function checkActiveItemPass(address _player) external view returns (bool);
 }
-
-
