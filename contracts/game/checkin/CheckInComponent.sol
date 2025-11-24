@@ -52,8 +52,8 @@ contract CheckInComponent {
 
         // uint64 currentDay = uint64((block.timestamp) / 1 days);
         // uint64 lastDay = (lastTime) / 1 days;
-        uint64 currentDay = uint64((block.timestamp) / 120);
-        uint64 lastDay = (lastTime) / 120;
+        uint64 currentDay = uint64((block.timestamp) / 15);
+        uint64 lastDay = (lastTime) / 15;
         return currentDay == lastDay;
     }
 }
