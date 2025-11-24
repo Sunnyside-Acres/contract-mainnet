@@ -82,7 +82,7 @@ contract CheckInLogic {
             "Already checked in today"
         );
 
-        (uint256 lastTime, uint256 currentStreak) = checkInProxy.getCheckInData(
+        (uint64 lastTime, uint256 currentStreak) = checkInProxy.getCheckInData(
             player
         );
 
@@ -91,7 +91,9 @@ contract CheckInLogic {
         if (lastTime == 0) {
             newStreak = 1;
         } else {
-            uint256 daysDiff = (block.timestamp / 1 days) - (lastTime / 1 days);
+            // uint256 daysDiff = (block.timestamp / 1 days) - (lastTime / 1 days);
+            uint64 twoMinute = 120;
+            uint64 daysDiff = (uint64(block.timestamp) / twoMinute) - (lastTime / twoMinute);
             if (daysDiff == 1) {
                 newStreak = currentStreak + 1;
             } else {
@@ -131,7 +133,7 @@ contract CheckInLogic {
         }
 
         // Save check in data
-        checkInProxy.setCheckInData(player, block.timestamp, newStreak);
+        checkInProxy.setCheckInData(player, uint64(block.timestamp), newStreak);
 
         emit CheckedIn(player, cycleDay, newStreak);
     }

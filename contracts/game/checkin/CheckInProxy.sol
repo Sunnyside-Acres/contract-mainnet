@@ -8,7 +8,7 @@ contract CheckInProxy {
     address public admin;
     address public implementation;
 
-    mapping(address => uint256) public lastCheckInTime;
+    mapping(address => uint64) public lastCheckInTime;
     mapping(address => uint256) public currentStreak;
 
     event ComponentUpdated(address indexed newImplementation);

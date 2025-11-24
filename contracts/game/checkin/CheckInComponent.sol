@@ -10,7 +10,7 @@ contract CheckInComponent {
 
     // Mapping save information check in
     // Address -> check in last time
-    mapping(address => uint256) public lastCheckInTime;
+    mapping(address => uint64) public lastCheckInTime;
     // Address -> current streak
     mapping(address => uint256) public currentStreak;
 
@@ -32,7 +32,7 @@ contract CheckInComponent {
 
     function setCheckInData(
         address _player,
-        uint256 _lastTime,
+        uint64 _lastTime,
         uint256 _streak
     ) external onlyAuthorized {
         lastCheckInTime[_player] = _lastTime;
@@ -42,17 +42,18 @@ contract CheckInComponent {
 
     function getCheckInData(
         address _player
-    ) external view returns (uint256 lastTime, uint256 streak) {
+    ) external view returns (uint64 lastTime, uint256 streak) {
         return (lastCheckInTime[_player], currentStreak[_player]);
     }
 
     function hasCheckedInToday(address _player) external view returns (bool) {
-        uint256 lastTime = lastCheckInTime[_player];
+        uint64 lastTime = lastCheckInTime[_player];
         if (lastTime == 0) return false;
 
-        uint256 currentDay = (block.timestamp) / 1 days;
-        uint256 lastDay = (lastTime) / 1 days;
-
+        // uint64 currentDay = uint64((block.timestamp) / 1 days);
+        // uint64 lastDay = (lastTime) / 1 days;
+        uint64 currentDay = uint64((block.timestamp) / 120);
+        uint64 lastDay = (lastTime) / 120;
         return currentDay == lastDay;
     }
 }
