@@ -205,10 +205,17 @@ contract CheckInLogic {
     /**
      * @notice Get check in data
      */
-    function getCheckInData() external view returns (uint64 lastTime, uint256 streak) {
-        return checkInProxy.getCheckInData(msg.sender);
+    function getCheckInData()
+        external
+        view
+        returns (uint64 lastTime, uint256 streak, uint256 cycleDay)
+    {
+        (uint64 lastTimes, uint256 currentStreak) = checkInProxy.getCheckInData(
+            msg.sender
+        );
+        uint256 day = ((currentStreak - 1) % CYCLE_DAYS) + 1;
+        return (lastTimes, currentStreak, day);
     }
-
 
     /**
      * @notice Daily Gift Configuration
