@@ -91,7 +91,8 @@ contract CheckInLogic {
         if (lastTime == 0) {
             newStreak = 1;
         } else {
-            uint64 daysDiff = (uint64(block.timestamp) / 1 days) - (lastTime / 1 days);
+            uint64 daysDiff = (uint64(block.timestamp) / 15) - (lastTime / 15);
+            // uint64 daysDiff = (uint64(block.timestamp) / 1 days) - (lastTime / 1 days);
             if (daysDiff == 1) {
                 newStreak = currentStreak + 1;
             } else {
@@ -193,6 +194,21 @@ contract CheckInLogic {
         }
         return allRewards;
     }
+
+    /**
+     * @notice Check if player has checked in today
+     */
+    function hasCheckedInToday() external view returns (bool) {
+        return checkInProxy.hasCheckedInToday(msg.sender);
+    }
+
+    /**
+     * @notice Get check in data
+     */
+    function getCheckInData() external view returns (uint64 lastTime, uint256 streak) {
+        return checkInProxy.getCheckInData(msg.sender);
+    }
+
 
     /**
      * @notice Daily Gift Configuration
