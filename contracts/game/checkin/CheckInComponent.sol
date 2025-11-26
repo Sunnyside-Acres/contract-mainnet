@@ -50,8 +50,8 @@ contract CheckInComponent {
         uint64 lastTime = lastCheckInTime[_player];
         if (lastTime == 0) return false;
 
-        uint64 currentDay = uint64((block.timestamp) / 15);
-        uint64 lastDay = (lastTime) / 15;
+        uint64 currentDay = uint64((block.timestamp) / 60);
+        uint64 lastDay = (lastTime) / 60;
         // uint64 currentDay = uint64((block.timestamp) / 1 days);
         // uint64 lastDay = (lastTime) / 1 days;
         return currentDay == lastDay;

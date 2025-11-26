@@ -91,7 +91,7 @@ contract CheckInLogic {
         if (lastTime == 0) {
             newStreak = 1;
         } else {
-            uint64 daysDiff = (uint64(block.timestamp) / 15) - (lastTime / 15);
+            uint64 daysDiff = (uint64(block.timestamp) / 60) - (lastTime / 60);
             // uint64 daysDiff = (uint64(block.timestamp) / 1 days) - (lastTime / 1 days);
             if (daysDiff == 1) {
                 newStreak = currentStreak + 1;
