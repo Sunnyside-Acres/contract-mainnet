@@ -26,7 +26,8 @@ contract CheckInLogic {
     event CheckedIn(
         address indexed player,
         uint256 cycleDay,
-        uint256 totalStreak
+        uint256 totalStreak,
+        uint64 lastTime
     );
     event RewardDistributed(
         address indexed player,
@@ -134,7 +135,7 @@ contract CheckInLogic {
         // Save check in data
         checkInProxy.setCheckInData(player, uint64(block.timestamp), newStreak);
 
-        emit CheckedIn(player, cycleDay, newStreak);
+        emit CheckedIn(player, cycleDay, newStreak,uint64(block.timestamp));
     }
 
     /**
