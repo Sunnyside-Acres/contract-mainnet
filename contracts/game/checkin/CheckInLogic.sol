@@ -213,8 +213,14 @@ contract CheckInLogic {
         (uint64 lastTimes, uint256 currentStreak) = checkInProxy.getCheckInData(
             msg.sender
         );
-        uint256 day = ((currentStreak - 1) % CYCLE_DAYS) + 1;
-        return (lastTimes, currentStreak, day);
+        uint256 day;
+
+        if (currentStreak == 0) {
+            day = 1;
+        } else {
+            day = ((currentStreak - 1) % CYCLE_DAYS) + 1;
+        }
+        return (uint64(lastTimes), currentStreak, day);
     }
 
     /**
