@@ -52,7 +52,10 @@
     "OldDungeonComponent": "0x3b7A5D982618452d35A5A413A216CE2f409F7f5E",
     "ItemPassComponent": "0x65088D083f7f175D55D8078A3538E302AaEde156",
     "ItemPassProxy": "0x5Aa1a62bfFe0f8EF30C91D5f585B660842489bE2",
-    "ItemPassLogic": "0xF09AB2234111548b34cbaFd4793b55e6811b62ca"
+    "ItemPassLogic": "0xF09AB2234111548b34cbaFd4793b55e6811b62ca",
+    "CheckInComponent": "0x3A430188C67951180Ab45e75F7C7E3dc113dc710",
+    "CheckInProxy": "0x952a654dDCdde39167Dc6dd473246b1eDE1DdA33",
+    "CheckInLogic": "0xf8C289e66ae66E6C3b44E1792FB5d29dac8f67cB"
   },
   "deploymentOrder": [
     "World",
