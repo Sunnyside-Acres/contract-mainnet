@@ -53,7 +53,7 @@ async function main() {
   const fundAmountArg = process.argv[2];
   const fundAmount = fundAmountArg
     ? ethers.parseEther(fundAmountArg)
-    : ethers.parseEther("10.0"); // Mặc định 10 ETH
+    : ethers.parseEther("100.0"); // Mặc định 10 ETH
 
   console.log(
     "\n💸 Amount to fund:",
