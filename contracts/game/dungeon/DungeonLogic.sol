@@ -14,6 +14,10 @@ import "../../interfaces/IInventory.sol";
 import "../../interfaces/IPlayer.sol";
 import "../../interfaces/IItemPass.sol";
 
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 /**
  * @title DungeonLogic
  * @author RYG.Labs
@@ -44,6 +48,9 @@ contract DungeonLogic {
 
     /// @dev Maximum quantity allowed per item stack
     uint256 constant MAX_QUANTITY = 1000000;
+
+    /// @notice Nonces for replay protection
+    mapping(address => uint256) public nonces;
 
     /// @notice Events
     event DungeonCreated(
@@ -480,6 +487,8 @@ contract DungeonLogic {
      * @param _monsterHPs Monster HPs in rounds
      * @param _sunlightReward Sunlight reward
      * @param _sunnyReward Sunny reward
+     * @param _stageNumber Stage number reached
+     * @param proof Signature proof from admin
      */
     function endDungeon(
         uint256 _sessionId,
@@ -490,8 +499,35 @@ contract DungeonLogic {
         uint256[] memory _monsterHPs,
         uint256 _sunlightReward,
         uint256 _sunnyReward,
-        uint16 _stageNumber
-    ) external onlyAdmin {
+        uint16 _stageNumber,
+        bytes memory proof
+    ) external {
+        bytes32 message = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _sessionId,
+                _isCompleted,
+                _rewardItemIds,
+                _rewardQuantities,
+                _playerDamages,
+                _monsterHPs,
+                _sunlightReward,
+                _sunnyReward,
+                _stageNumber,
+                nonces[msg.sender]
+            )
+        );
+
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            message
+        );
+        address signer = ECDSA.recover(ethSignedMessageHash, proof);
+        require(
+            IWorld(world).isAdmin(signer),
+            "Invalid proof: not signed by admin"
+        );
+        nonces[msg.sender]++;
+
         require(_sessionId > 0, "Session ID must be greater than 0");
         require(
             _rewardItemIds.length == _rewardQuantities.length,
@@ -521,6 +557,10 @@ contract DungeonLogic {
             _stageNumber
         );
 
+        if (_isCompleted) {
+            _claimRewards(_sessionId);
+        }
+
         emit DungeonSessionEnded(
             _sessionId,
             session.player,
@@ -542,9 +582,9 @@ contract DungeonLogic {
      * @param _sessionId Session ID
      * @return success Whether the operation succeeded
      */
-    function claimRewards(
+    function _claimRewards(
         uint256 _sessionId
-    ) external nonReentrant returns (bool) {
+    ) internal nonReentrant returns (bool) {
         require(_sessionId > 0, "Session ID must be greater than 0");
 
         DungeonStructs.DungeonSession memory session = dungeonComponent
@@ -665,6 +705,15 @@ contract DungeonLogic {
         );
 
         return true;
+    }
+
+    /**
+     * @notice Get player's nonce for replay protection
+     * @param _player Player address
+     * @return nonce Current nonce
+     */
+    function getNonce(address _player) external view returns (uint256) {
+        return nonces[_player];
     }
 
     /**

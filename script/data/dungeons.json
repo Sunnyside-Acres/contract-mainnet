@@ -76,7 +76,7 @@
       ],
       "cooldownTime": 1,
       "minBetAmount": "1000000000000000000",
-      "maxBetAmount": "10000000000000000000"
+      "maxBetAmount": "100000000000000000000"
     }
   ]
 }
