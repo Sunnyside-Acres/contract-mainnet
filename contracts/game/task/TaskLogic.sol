@@ -9,6 +9,8 @@ import "../../interfaces/IItem.sol";
 import "../../struct/Task.sol";
 import "../../struct/Player.sol";
 import "../../struct/Inventory.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title TaskLogic
@@ -27,7 +29,7 @@ contract TaskLogic {
     IPlayerComponent public playerProxy;
     IInventoryComponent public inventoryProxy;
     IItemComponent public itemProxy;
-
+    mapping(address => uint256) public nonces;
     // ============ EVENTS ============
 
     event TaskProofCreated(
@@ -108,27 +110,51 @@ contract TaskLogic {
      * - Emits TaskProofCreated event
      *
      * @param _taskId ID of the completed task
-     * @param _player Address of the player receiving the proof
      * @param _rewardSunny Sunny token reward amount
      * @param _rewardSunlight Sunlight token reward amount
      * @param _rewardExp Experience points reward
      * @param _rewardItems Array of reward item IDs
      * @param _rewardItemQuantities Array of quantities corresponding to each item
      * @param _expiresIn Proof expiration time in seconds
+     * @param proof Off-chain generated proof signed by an admin
      * @return proofId The ID of the newly created proof
      */
     function createTaskProof(
         uint256 _taskId,
-        address _player,
         uint256 _rewardSunny,
         uint256 _rewardSunlight,
         uint256 _rewardExp,
         uint256[] memory _rewardItems,
         uint256[] memory _rewardItemQuantities,
-        uint256 _expiresIn
-    ) external onlyAdmin returns (bytes32) {
+        uint256 _expiresIn,
+        bytes memory proof
+    ) external returns (bytes32) {
+        bytes32 message = keccak256(
+            abi.encodePacked(
+                _taskId,
+                msg.sender,
+                _rewardSunny,
+                _rewardSunlight,
+                _rewardExp,
+                _rewardItems,
+                _rewardItemQuantities,
+                _expiresIn,
+                nonces[msg.sender]
+            )
+        );
+
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            message
+        );
+        address signer = ECDSA.recover(ethSignedMessageHash, proof);
+        require(
+            IWorld(world).isAdmin(signer),
+            "Invalid proof: not signed by admin"
+        );
+        nonces[msg.sender]++;
+
         // Check if player exists
-        Player memory playerData = playerProxy.getPlayer(_player);
+        Player memory playerData = playerProxy.getPlayer(msg.sender);
         require(playerData.level > 0, "Player not initialized");
 
         // Validate reward items
@@ -145,7 +171,7 @@ contract TaskLogic {
 
         bytes32 proofId = taskProxy.createTaskProof(
             _taskId,
-            _player,
+            msg.sender,
             _rewardSunny,
             _rewardSunlight,
             _rewardExp,
@@ -157,7 +183,7 @@ contract TaskLogic {
         emit TaskProofCreated(
             proofId,
             _taskId,
-            _player,
+            msg.sender,
             _rewardSunny,
             _rewardSunlight,
             _rewardExp,
@@ -314,6 +340,16 @@ contract TaskLogic {
      */
     function getMyActiveProofs() external view returns (TaskProof[] memory) {
         return taskProxy.getPlayerActiveProofs(msg.sender);
+    }
+
+    /**
+     * @dev Gets proof nonce for the caller
+     * @notice Returns the current nonce for a given player address
+     * @param player Address of the player to query
+     * @return nonce Current nonce value for the player
+     */
+    function getNonce(address player) external view returns (uint256) {
+        return nonces[player];
     }
 
     /**
