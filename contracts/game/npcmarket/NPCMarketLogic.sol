@@ -10,6 +10,8 @@ import "../../struct/NPCMarket.sol";
 import "../../struct/Inventory.sol";
 import "../../struct/Item.sol";
 import "../../struct/Player.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title NPCMarketLogic
@@ -53,6 +55,8 @@ contract NPCMarketLogic {
     /// @notice Tracks last reset day for each NPC market
     mapping(uint256 => uint256) public lastResetDay;
 
+    /// @notice Nonces for replay protection
+    mapping(address => uint256) public nonces;
     // ============ EVENTS ============
 
     /// @notice Emitted when a player purchases items from an NPC
@@ -690,8 +694,23 @@ contract NPCMarketLogic {
      */
     function executeDailyReset(
         uint256 _npcId,
-        address[] calldata _users
-    ) external onlyAdmin {
+        address[] calldata _users,
+        bytes memory _proof
+    ) external {
+        bytes32 message = keccak256(
+            abi.encodePacked(msg.sender, _npcId, _users, nonces[msg.sender])
+        );
+
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            message
+        );
+        address signer = ECDSA.recover(ethSignedMessageHash, _proof);
+        require(
+            IWorld(world).isAdmin(signer),
+            "Invalid proof: not signed by admin"
+        );
+        nonces[msg.sender]++;
+
         require(_npcId > 0, "Invalid NPC ID");
         require(_users.length > 0, "Users array cannot be empty");
         require(_users.length <= 50, "Too many users in one batch");
@@ -753,6 +772,15 @@ contract NPCMarketLogic {
      */
     function getCurrentDay() external view returns (uint256) {
         return block.timestamp / SECONDS_PER_DAY;
+    }
+
+    /**
+     * @notice Get player's nonce for replay protection
+     * @param _player Player address
+     * @return nonce Current nonce
+     */
+    function getNonce(address _player) external view returns (uint256) {
+        return nonces[_player];
     }
 
     // ============ READ FUNCTIONS (EXTERNAL VIEW) ============

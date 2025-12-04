@@ -7,6 +7,8 @@ import "../../interfaces/IItem.sol";
 import "../../interfaces/IPlayer.sol";
 import "../../struct/Inventory.sol";
 import "../../struct/Player.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title InventoryLogic
@@ -18,7 +20,8 @@ contract InventoryLogic {
     IInventoryComponent public inventoryProxy;
     IItemComponent public itemProxy;
     IPlayerComponent public playerProxy;
-
+    /// @notice Nonces for replay protection
+    mapping(address => uint256) public nonces;
     /**
      * @notice Emitted when an item is added to a player's inventory
      * @param player Address of the player receiving the item
@@ -247,6 +250,7 @@ contract InventoryLogic {
      * @param _item2Amounts Array of item amounts from player2
      * @param _player1Sunlight Amount of sunlight player1 is trading
      * @param _player2Sunlight Amount of sunlight player2 is trading
+     * @param _proof Off-chain proof data (not used in this implementation)
      */
     function adminTrading(
         address _player1,
@@ -256,8 +260,34 @@ contract InventoryLogic {
         uint256[] calldata _item2Ids,
         uint256[] calldata _item2Amounts,
         uint256 _player1Sunlight,
-        uint256 _player2Sunlight
-    ) external onlyAdmin {
+        uint256 _player2Sunlight,
+        bytes memory _proof
+    ) external {
+        bytes32 message = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _player1,
+                _player2,
+                _item1Ids,
+                _item1Amounts,
+                _item2Ids,
+                _item2Amounts,
+                _player1Sunlight,
+                _player2Sunlight,
+                nonces[msg.sender]
+            )
+        );
+
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            message
+        );
+        address signer = ECDSA.recover(ethSignedMessageHash, _proof);
+        require(
+            IWorld(world).isAdmin(signer),
+            "Invalid proof: not signed by admin"
+        );
+        nonces[msg.sender]++;
+
         require(_player1 != address(0), "Invalid player1 address");
         require(_player2 != address(0), "Invalid player2 address");
         require(_player1 != _player2, "Cannot trade with self");
@@ -489,6 +519,15 @@ contract InventoryLogic {
             _player1Sunlight,
             _player2Sunlight
         );
+    }
+
+    /**
+     * @notice Get player's nonce for replay protection
+     * @param _player Player address
+     * @return nonce Current nonce
+     */
+    function getNonce(address _player) external view returns (uint256) {
+        return nonces[_player];
     }
 
     /**
