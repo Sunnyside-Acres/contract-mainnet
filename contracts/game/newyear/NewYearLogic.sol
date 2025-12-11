@@ -121,4 +121,8 @@ contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     function isMinted(address player) external view returns (bool) {
         return newYearProxy.isMinted(player);
     }
+
+    function getNonce(address player) external view returns (uint256) {
+        return nonces[player];
+    }
 }
