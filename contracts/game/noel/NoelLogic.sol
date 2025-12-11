@@ -28,7 +28,7 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         uint256 amount,
         uint256 totalAmount
     );
-
+    event ClaimNFT(address indexed player, uint256 indexed tokenId);
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
         _;
@@ -54,7 +54,7 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         return _baseTokenURI;
     }
 
-    function safeMint(bytes calldata proof) external returns (uint256) {
+    function safeMint(bytes calldata proof) external {
         address player = msg.sender;
         bytes32 message = keccak256(
             abi.encodePacked(player, address(this), nonces[player])
@@ -86,13 +86,12 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         );
 
         uint256 tokenId = _nextTokenId++;
-        
+
         _safeMint(player, tokenId);
 
         noelProxy.setGift(player, numGift - giftRedemptionMilestones);
         noelProxy.setHasMinted(player, true);
-
-        return tokenId;
+        emit ClaimNFT(player, tokenId);
     }
 
     function tokenURI(
