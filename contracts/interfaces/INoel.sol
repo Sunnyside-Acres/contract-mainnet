@@ -19,4 +19,10 @@ interface INoelComponent {
 
     function setHasMinted(address _player, bool _status) external;
     function getHasMinted(address _player) external view returns (bool);
+
+    function getStartTime() external view returns (uint64);
+    function setStartTime(uint64 _startTime) external;
+
+    function getEndTime() external view returns (uint64);
+    function setEndTime(uint64 _endTime) external;
 }

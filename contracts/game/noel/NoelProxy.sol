@@ -7,8 +7,10 @@ contract NoelProxy {
     address public world;
     address public implementation;
 
-    uint64 waitingTime = 300; // 5 minutes
-    uint64 spaceTime = 7200; // 2 hours
+    uint64 waitingTime = 5 minutes; 
+    uint64 spaceTime = 2 hours;
+    uint64 startTime = 1766534400; // GMT: Wednesday, 24 December 2025 00:00:00
+    uint64 endTime = 1766707200; // GMT: Friday, 26 December 2025 00:00:00
     uint256 public giftRedemptionMilestones = 150;
     mapping(address => uint64) public lastClaimTime;
     mapping(address => uint256) public gifts;

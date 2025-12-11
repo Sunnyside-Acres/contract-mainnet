@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import "../../interfaces/IWorld.sol";
 import "../../interfaces/INewYear.sol";
-import "../../interfaces/IInventory.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -14,7 +13,6 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     IWorld public world;
     INewYearComponent public newYearProxy;
-    IInventoryComponent public inventoryProxy;
 
     uint256 public maxSupply;
     uint256 private _nextTokenId;
@@ -30,7 +28,6 @@ contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     constructor(
         address _world,
         address _newYearProxy,
-        address _inventoryProxy,
         string memory name,
         string memory symbol,
         uint256 _maxSupply,
@@ -38,7 +35,6 @@ contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     ) ERC721(name, symbol) Ownable(msg.sender) {
         world = IWorld(_world);
         newYearProxy = INewYearComponent(_newYearProxy);
-        inventoryProxy = IInventoryComponent(_inventoryProxy);
         maxSupply = _maxSupply;
         _baseTokenURI = baseURI;
     }
@@ -50,13 +46,7 @@ contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     ) public returns (uint256) {
         address player = msg.sender;
         bytes32 message = keccak256(
-            abi.encodePacked(
-                player,
-                address(this),
-                to,
-                uri,
-                nonces[player]
-            )
+            abi.encodePacked(player, address(this), to, uri, nonces[player])
         );
 
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
@@ -99,5 +89,36 @@ contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
 
     function getBaseTokenURI() external view returns (string memory) {
         return _baseTokenURI;
+    }
+
+    function canClaimNFT(address player) external view returns (bool) {
+        if (newYearProxy.isMinted(player)) {
+            return false;
+        }
+        return newYearProxy.canClaimNFT();
+    }
+
+    function setBaseTokenURI(string memory baseTokenURI) external onlyAdmin {
+        _baseTokenURI = baseTokenURI;
+    }
+
+    function getStartTime() external view returns (uint64) {
+        return newYearProxy.getStartTime();
+    }
+
+    function setStartTime(uint64 _startTime) external onlyAdmin {
+        newYearProxy.setStartTime(_startTime);
+    }
+
+    function getEndTime() external view returns (uint64) {
+        return newYearProxy.getEndTime();
+    }
+
+    function setEndTime(uint64 _endTime) external onlyAdmin {
+        newYearProxy.setEndTime(_endTime);
+    }
+
+    function isMinted(address player) external view returns (bool) {
+        return newYearProxy.isMinted(player);
     }
 }

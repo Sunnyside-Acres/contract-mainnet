@@ -59,15 +59,9 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         string memory uri,
         bytes calldata proof
     ) public returns (uint256) {
-         address player = msg.sender;
+        address player = msg.sender;
         bytes32 message = keccak256(
-            abi.encodePacked(
-                player,
-                address(this),
-                to,
-                uri,
-                nonces[player]
-            )
+            abi.encodePacked(player, address(this), to, uri, nonces[player])
         );
 
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
@@ -147,17 +141,10 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
             "Invalid proof: not signed by admin"
         );
         nonces[player]++;
-
+        
         uint64 currentTime = uint64(block.timestamp);
         uint64 spaceTime = noelProxy.getSpaceTime();
-        uint64 waitingTime = noelProxy.getWaitingTime();
-
-        // Exp: spaceTime = 7200 (2h). waitingTime = 300 (5p).
-        // 0h00 -> 0h05: Dư 0 -> 300 (OK)
-        // 0h05 -> 1h59: Dư 301 -> 7199 (FAIL)
-        // 2h00 -> 2h05: Dư 0 -> 300 (OK)
-        uint64 timeInCycle = currentTime % spaceTime;
-        require(timeInCycle < waitingTime, "Not within claim window");
+        require(canClaimGift(), "Not within claim window");
 
         uint64 currentCycleId = currentTime / spaceTime;
         uint64 lastClaim = noelProxy.getLastClaimTime(player);
@@ -189,6 +176,19 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         noelProxy.setLastClaimTime(player, currentTime);
 
         emit ClaimGift(player, itemId, amount, newGiftAmount);
+    }
+
+    function canClaimGift() public view returns (bool) {
+        uint64 currentTime = uint64(block.timestamp);
+        uint64 spaceTime = noelProxy.getSpaceTime();
+        uint64 waitingTime = noelProxy.getWaitingTime();
+
+        // Exp: spaceTime = 7200 (2h). waitingTime = 300 (5p).
+        // 0h00 -> 0h05: Dư 0 -> 300 (OK)
+        // 0h05 -> 1h59: Dư 301 -> 7199 (FAIL)
+        // 2h00 -> 2h05: Dư 0 -> 300 (OK)
+        uint64 timeInCycle = currentTime % spaceTime;
+        return timeInCycle < waitingTime;
     }
 
     function setGiftRedemptionMilestones(
