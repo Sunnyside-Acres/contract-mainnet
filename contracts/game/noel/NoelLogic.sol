@@ -54,14 +54,10 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         return _baseTokenURI;
     }
 
-    function safeMint(
-        address to,
-        string memory uri,
-        bytes calldata proof
-    ) public returns (uint256) {
+    function safeMint(bytes calldata proof) external returns (uint256) {
         address player = msg.sender;
         bytes32 message = keccak256(
-            abi.encodePacked(player, address(this), to, uri, nonces[player])
+            abi.encodePacked(player, address(this), nonces[player])
         );
 
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
@@ -75,9 +71,12 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         nonces[player]++;
 
         require(_nextTokenId < maxSupply, "Max supply reached");
-        require(!noelProxy.getHasMinted(to), "User has already redeemed NFT");
+        require(
+            !noelProxy.getHasMinted(player),
+            "User has already redeemed NFT"
+        );
 
-        uint256 numGift = noelProxy.getGifts(to);
+        uint256 numGift = noelProxy.getGifts(player);
         uint256 giftRedemptionMilestones = noelProxy
             .getGiftRedemptionMilestones();
 
@@ -87,11 +86,11 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         );
 
         uint256 tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
+        
+        _safeMint(player, tokenId);
 
-        noelProxy.setGift(to, numGift - giftRedemptionMilestones);
-        noelProxy.setHasMinted(to, true);
+        noelProxy.setGift(player, numGift - giftRedemptionMilestones);
+        noelProxy.setHasMinted(player, true);
 
         return tokenId;
     }
@@ -141,7 +140,7 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
             "Invalid proof: not signed by admin"
         );
         nonces[player]++;
-        
+
         uint64 currentTime = uint64(block.timestamp);
         uint64 spaceTime = noelProxy.getSpaceTime();
         require(canClaimGift(), "Not within claim window");

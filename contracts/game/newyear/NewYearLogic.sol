@@ -40,13 +40,11 @@ contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     }
 
     function safeMint(
-        address to,
-        string memory uri,
         bytes calldata proof
     ) public returns (uint256) {
         address player = msg.sender;
         bytes32 message = keccak256(
-            abi.encodePacked(player, address(this), to, uri, nonces[player])
+            abi.encodePacked(player, address(this), nonces[player])
         );
 
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
@@ -61,13 +59,12 @@ contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
 
         require(_nextTokenId < maxSupply, "Max supply reached");
         require(newYearProxy.canClaimNFT(), "Not within claim period");
-        require(!newYearProxy.isMinted(to), "User has already redeemed NFT");
+        require(!newYearProxy.isMinted(player), "User has already redeemed NFT");
 
         uint256 tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
+        _safeMint(player, tokenId);
 
-        newYearProxy.setHasMinted(to, true);
+        newYearProxy.setHasMinted(player, true);
         return tokenId;
     }
 
