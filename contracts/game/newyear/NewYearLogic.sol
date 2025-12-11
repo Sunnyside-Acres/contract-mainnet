@@ -1,0 +1,103 @@
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import "../../interfaces/IWorld.sol";
+import "../../interfaces/INewYear.sol";
+import "../../interfaces/IInventory.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+contract NewYearLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
+    IWorld public world;
+    INewYearComponent public newYearProxy;
+    IInventoryComponent public inventoryProxy;
+
+    uint256 public maxSupply;
+    uint256 private _nextTokenId;
+    string private _baseTokenURI;
+
+    mapping(address => uint256) public nonces;
+
+    modifier onlyAdmin() {
+        require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
+        _;
+    }
+
+    constructor(
+        address _world,
+        address _newYearProxy,
+        address _inventoryProxy,
+        string memory name,
+        string memory symbol,
+        uint256 _maxSupply,
+        string memory baseURI
+    ) ERC721(name, symbol) Ownable(msg.sender) {
+        world = IWorld(_world);
+        newYearProxy = INewYearComponent(_newYearProxy);
+        inventoryProxy = IInventoryComponent(_inventoryProxy);
+        maxSupply = _maxSupply;
+        _baseTokenURI = baseURI;
+    }
+
+    function safeMint(
+        address to,
+        string memory uri,
+        bytes calldata proof
+    ) public returns (uint256) {
+        address player = msg.sender;
+        bytes32 message = keccak256(
+            abi.encodePacked(
+                player,
+                address(this),
+                to,
+                uri,
+                nonces[player]
+            )
+        );
+
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            message
+        );
+        address signer = ECDSA.recover(ethSignedMessageHash, proof);
+        require(
+            IWorld(world).isAdmin(signer),
+            "Invalid proof: not signed by admin"
+        );
+        nonces[player]++;
+
+        require(_nextTokenId < maxSupply, "Max supply reached");
+        require(newYearProxy.canClaimNFT(), "Not within claim period");
+        require(!newYearProxy.isMinted(to), "User has already redeemed NFT");
+
+        uint256 tokenId = _nextTokenId++;
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+
+        newYearProxy.setHasMinted(to, true);
+        return tokenId;
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+        return super.tokenURI(tokenId);
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721, ERC721URIStorage) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
+
+    function getCurrentTokenId() external view returns (uint256) {
+        return _nextTokenId;
+    }
+
+    function getBaseTokenURI() external view returns (string memory) {
+        return _baseTokenURI;
+    }
+}

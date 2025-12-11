@@ -1,17 +1,13 @@
-// SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import "../../interfaces/IWorld.sol";
 
-contract NoelProxy {
+contract NewYearProxy {
     address public world;
     address public implementation;
-
-    uint64 waitingTime = 300; // 5 minutes
-    uint64 spaceTime = 7200; // 2 hours
-    uint256 public giftRedemptionMilestones = 150;
-    mapping(address => uint64) public lastClaimTime;
-    mapping(address => uint256) public gifts;
+    uint64 public startTime = 1767052800; // GMT: Tuesday, 30 December 2025 00:00:00
+    uint64 public endTime = 1767312000; // GMT: Friday, 2 January 2026 00:00:00
     mapping(address => bool) public hasMinted;
 
     event ComponentUpdated(address indexed newImplementation);

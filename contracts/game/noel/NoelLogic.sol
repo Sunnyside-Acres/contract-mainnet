@@ -4,6 +4,8 @@ pragma solidity ^0.8.28;
 import "../../interfaces/IWorld.sol";
 import "../../interfaces/INoel.sol";
 import "../../interfaces/IInventory.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
@@ -13,9 +15,19 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     IWorld public world;
     INoelComponent public noelProxy;
     IInventoryComponent public inventoryProxy;
+
     uint256 public maxSupply;
     uint256 private _nextTokenId;
     string private _baseTokenURI;
+
+    mapping(address => uint256) public nonces;
+
+    event ClaimGift(
+        address indexed player,
+        uint256 indexed itemId,
+        uint256 amount,
+        uint256 totalAmount
+    );
 
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
@@ -44,12 +56,49 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
 
     function safeMint(
         address to,
-        string memory uri
-    ) public onlyAdmin returns (uint256) {
+        string memory uri,
+        bytes calldata proof
+    ) public returns (uint256) {
+         address player = msg.sender;
+        bytes32 message = keccak256(
+            abi.encodePacked(
+                player,
+                address(this),
+                to,
+                uri,
+                nonces[player]
+            )
+        );
+
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            message
+        );
+        address signer = ECDSA.recover(ethSignedMessageHash, proof);
+        require(
+            IWorld(world).isAdmin(signer),
+            "Invalid proof: not signed by admin"
+        );
+        nonces[player]++;
+
         require(_nextTokenId < maxSupply, "Max supply reached");
+        require(!noelProxy.getHasMinted(to), "User has already redeemed NFT");
+
+        uint256 numGift = noelProxy.getGifts(to);
+        uint256 giftRedemptionMilestones = noelProxy
+            .getGiftRedemptionMilestones();
+
+        require(
+            numGift >= giftRedemptionMilestones,
+            "Not enough gifts to redeem"
+        );
+
         uint256 tokenId = _nextTokenId++;
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
+
+        noelProxy.setGift(to, numGift - giftRedemptionMilestones);
+        noelProxy.setHasMinted(to, true);
+
         return tokenId;
     }
 
@@ -69,15 +118,114 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         return _nextTokenId;
     }
 
+    function getNonce(address player) external view returns (uint256) {
+        return nonces[player];
+    }
+
     function claimGift(
         uint256 itemId,
         uint256 amount,
         bytes calldata proof
     ) external {
         address player = msg.sender;
-        uint256 giftAmount = noelProxy.getGifts(player);
-        require(giftAmount > 0, "No gifts to claim");
+        bytes32 message = keccak256(
+            abi.encodePacked(
+                player,
+                address(this),
+                itemId,
+                amount,
+                nonces[player]
+            )
+        );
 
-        noelProxy.addGift(player, type(uint256).max - giftAmount);
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            message
+        );
+        address signer = ECDSA.recover(ethSignedMessageHash, proof);
+        require(
+            IWorld(world).isAdmin(signer),
+            "Invalid proof: not signed by admin"
+        );
+        nonces[player]++;
+
+        uint64 currentTime = uint64(block.timestamp);
+        uint64 spaceTime = noelProxy.getSpaceTime();
+        uint64 waitingTime = noelProxy.getWaitingTime();
+
+        // Exp: spaceTime = 7200 (2h). waitingTime = 300 (5p).
+        // 0h00 -> 0h05: Dư 0 -> 300 (OK)
+        // 0h05 -> 1h59: Dư 301 -> 7199 (FAIL)
+        // 2h00 -> 2h05: Dư 0 -> 300 (OK)
+        uint64 timeInCycle = currentTime % spaceTime;
+        require(timeInCycle < waitingTime, "Not within claim window");
+
+        uint64 currentCycleId = currentTime / spaceTime;
+        uint64 lastClaim = noelProxy.getLastClaimTime(player);
+
+        if (lastClaim > 0) {
+            uint64 lastCycleId = lastClaim / spaceTime;
+            require(
+                currentCycleId > lastCycleId,
+                "Already claimed in this window"
+            );
+        }
+
+        uint256 giftAmount = noelProxy.getGifts(player);
+
+        uint256 newGiftAmount = giftAmount + amount;
+
+        noelProxy.setGift(player, newGiftAmount);
+
+        InventoryItem memory item = inventoryProxy.getItem(player, itemId);
+
+        inventoryProxy.setItem(
+            player,
+            itemId,
+            newGiftAmount,
+            item.durability,
+            item.expiration
+        );
+
+        noelProxy.setLastClaimTime(player, currentTime);
+
+        emit ClaimGift(player, itemId, amount, newGiftAmount);
+    }
+
+    function setGiftRedemptionMilestones(
+        uint256 milestones
+    ) external onlyAdmin {
+        noelProxy.setGiftRedemptionMilestones(milestones);
+    }
+
+    function getGiftRedemptionMilestones() external view returns (uint256) {
+        return noelProxy.getGiftRedemptionMilestones();
+    }
+
+    function setWaitingTime(uint64 _waitingTime) external onlyAdmin {
+        noelProxy.setWaitingTime(_waitingTime);
+    }
+
+    function getWaitingTime() external view returns (uint64) {
+        return noelProxy.getWaitingTime();
+    }
+
+    function setSpaceTime(uint64 _spaceTime) external onlyAdmin {
+        noelProxy.setSpaceTime(_spaceTime);
+    }
+
+    function getSpaceTime() external view returns (uint64) {
+        return noelProxy.getSpaceTime();
+    }
+
+    function getGifts(address to) external view returns (uint256) {
+        return noelProxy.getGifts(to);
+    }
+
+    function getLastClaimTime(address _player) external view returns (uint64) {
+        return noelProxy.getLastClaimTime(_player);
+    }
+
+    function isMinted(address _player) external view returns (bool) {
+        return noelProxy.getHasMinted(_player);
     }
 }
