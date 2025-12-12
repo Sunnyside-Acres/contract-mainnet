@@ -8,7 +8,6 @@ contract NewYearComponent {
     address public implementation;
     uint64 public startTime;
     uint64 public endTime;
-    mapping(address => bool) public hasMinted;
 
     modifier onlyAuthorized() {
         require(
@@ -16,17 +15,6 @@ contract NewYearComponent {
             "[NewYearComponent] Unauthorized"
         );
         _;
-    }
-
-    function setHasMinted(
-        address _player,
-        bool _status
-    ) external onlyAuthorized {
-        hasMinted[_player] = _status;
-    }
-
-    function isMinted(address _player) external view returns (bool) {
-        return hasMinted[_player];
     }
 
     function getStartTime() external view returns (uint64) {

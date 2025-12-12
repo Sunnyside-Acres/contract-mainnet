@@ -14,7 +14,6 @@ contract NoelProxy {
     uint256 public giftRedemptionMilestones = 150;
     mapping(address => uint64) public lastClaimTime;
     mapping(address => uint256) public gifts;
-    mapping(address => bool) public hasMinted;
 
     event ComponentUpdated(address indexed newImplementation);
 

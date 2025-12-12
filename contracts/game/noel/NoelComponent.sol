@@ -14,7 +14,6 @@ contract NoelComponent {
     uint256 public giftRedemptionMilestones;
     mapping(address => uint64) public lastClaimTime;
     mapping(address => uint256) public gifts;
-    mapping(address => bool) public hasMinted;
 
     modifier onlyAuthorized() {
         require(
@@ -75,17 +74,6 @@ contract NoelComponent {
 
     function getLastClaimTime(address _player) external view returns (uint64) {
         return lastClaimTime[_player];
-    }
-
-    function setHasMinted(
-        address _player,
-        bool _status
-    ) external onlyAuthorized {
-        hasMinted[_player] = _status;
-    }
-
-    function getHasMinted(address _player) external view returns (bool) {
-        return hasMinted[_player];
     }
 
     function getStartTime() external view returns (uint64) {

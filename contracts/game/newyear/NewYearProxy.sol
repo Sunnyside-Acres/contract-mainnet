@@ -8,7 +8,6 @@ contract NewYearProxy {
     address public implementation;
     uint64 public startTime = 1767052800; // GMT: Tuesday, 30 December 2025 00:00:00
     uint64 public endTime = 1767312000; // GMT: Friday, 2 January 2026 00:00:00
-    mapping(address => bool) public hasMinted;
 
     event ComponentUpdated(address indexed newImplementation);
 

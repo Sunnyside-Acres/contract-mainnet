@@ -4,21 +4,15 @@ pragma solidity ^0.8.28;
 import "../../interfaces/IWorld.sol";
 import "../../interfaces/INoel.sol";
 import "../../interfaces/IInventory.sol";
+import "../../interfaces/INoelNFT.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
+contract NoelLogic {
     IWorld public world;
     INoelComponent public noelProxy;
+    INoelNFT public noelNFT;
     IInventoryComponent public inventoryProxy;
-
-    uint256 public maxSupply;
-    uint256 private _nextTokenId;
-    string private _baseTokenURI;
 
     mapping(address => uint256) public nonces;
 
@@ -38,20 +32,12 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         address _world,
         address _noelProxy,
         address _inventoryProxy,
-        string memory name,
-        string memory symbol,
-        uint256 _maxSupply,
-        string memory baseURI
-    ) ERC721(name, symbol) Ownable(msg.sender) {
+        address _noelNFT
+    ) {
         world = IWorld(_world);
         noelProxy = INoelComponent(_noelProxy);
         inventoryProxy = IInventoryComponent(_inventoryProxy);
-        maxSupply = _maxSupply;
-        _baseTokenURI = baseURI;
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return _baseTokenURI;
+        noelNFT = INoelNFT(_noelNFT);
     }
 
     function safeMint(bytes calldata proof) external {
@@ -70,12 +56,6 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         );
         nonces[player]++;
 
-        require(_nextTokenId < maxSupply, "Max supply reached");
-        require(
-            !noelProxy.getHasMinted(player),
-            "User has already redeemed NFT"
-        );
-
         uint256 numGift = noelProxy.getGifts(player);
         uint256 giftRedemptionMilestones = noelProxy
             .getGiftRedemptionMilestones();
@@ -85,29 +65,10 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
             "Not enough gifts to redeem"
         );
 
-        uint256 tokenId = _nextTokenId++;
-
-        _safeMint(player, tokenId);
+        uint256 tokenId = noelNFT.mint(player);
 
         noelProxy.setGift(player, numGift - giftRedemptionMilestones);
-        noelProxy.setHasMinted(player, true);
         emit ClaimNFT(player, tokenId);
-    }
-
-    function tokenURI(
-        uint256 tokenId
-    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(ERC721, ERC721URIStorage) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
-
-    function totalMinted() external view returns (uint256) {
-        return _nextTokenId;
     }
 
     function getNonce(address player) external view returns (uint256) {
@@ -221,9 +182,5 @@ contract NoelLogic is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
 
     function getLastClaimTime(address _player) external view returns (uint64) {
         return noelProxy.getLastClaimTime(_player);
-    }
-
-    function isMinted(address _player) external view returns (bool) {
-        return noelProxy.getHasMinted(_player);
     }
 }
