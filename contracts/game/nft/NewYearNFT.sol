@@ -8,7 +8,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NewYearNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     IWorld public world;
-    uint256 private _nextTokenId;
+    uint256 private _nextTokenId = 1;
     string private _baseTokenURI;
     mapping(address => bool) public hasMinted;
 
@@ -30,15 +30,15 @@ contract NewYearNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         _baseTokenURI = baseURI;
     }
 
-    function mint(address to) external onlyAuthorized returns (uint256) { 
+    function mint(address to) external onlyAuthorized returns (uint256) {
         require(!hasMinted[to], "Address has already minted NFT");
         require(to != address(0), "Cannot mint to zero address");
-        
-        uint256 tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
+
+        _safeMint(to, _nextTokenId);
+        _nextTokenId++;
 
         hasMinted[to] = true;
-        return tokenId;
+        return _nextTokenId;
     }
 
     function tokenURI(
