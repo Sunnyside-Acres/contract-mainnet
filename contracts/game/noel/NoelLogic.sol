@@ -116,25 +116,20 @@ contract NoelLogic {
             );
         }
 
-        uint256 giftAmount = noelProxy.getGifts(player);
-
-        uint256 newGiftAmount = giftAmount + amount;
-
-        noelProxy.setGift(player, newGiftAmount);
-
         InventoryItem memory item = inventoryProxy.getItem(player, itemId);
 
         inventoryProxy.setItem(
             player,
             itemId,
-            newGiftAmount,
+            item.quantity + amount,
             item.durability,
             item.expiration
         );
+        noelProxy.setGift(player, item.quantity + amount);
 
         noelProxy.setLastClaimTime(player, currentTime);
 
-        emit ClaimGift(player, itemId, amount, newGiftAmount);
+        emit ClaimGift(player, itemId, amount, item.quantity + amount);
     }
 
     function canClaimGift() public view returns (bool) {
