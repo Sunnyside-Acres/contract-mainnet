@@ -40,10 +40,10 @@ contract NoelLogic {
         noelNFT = INoelNFT(_noelNFT);
     }
 
-    function safeMint(bytes calldata proof) external {
+    function safeMint(uint256 itemId, bytes calldata proof) external {
         address player = msg.sender;
         bytes32 message = keccak256(
-            abi.encodePacked(player, address(this), nonces[player])
+            abi.encodePacked(player, itemId, address(this), nonces[player])
         );
 
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
@@ -56,18 +56,25 @@ contract NoelLogic {
         );
         nonces[player]++;
 
-        uint256 numGift = noelProxy.getGifts(player);
+        InventoryItem memory item = inventoryProxy.getItem(player, itemId);
+
         uint256 giftRedemptionMilestones = noelProxy
             .getGiftRedemptionMilestones();
 
         require(
-            numGift >= giftRedemptionMilestones,
+            item.quantity >= giftRedemptionMilestones,
             "Not enough gifts to redeem"
         );
 
         uint256 tokenId = noelNFT.mint(player);
-
-        noelProxy.setGift(player, numGift - giftRedemptionMilestones);
+        inventoryProxy.setItem(
+            player,
+            itemId,
+            item.quantity - giftRedemptionMilestones,
+            item.durability,
+            item.expiration
+        );
+        noelProxy.setGift(player, item.quantity - giftRedemptionMilestones);
         emit ClaimNFT(player, tokenId);
     }
 
