@@ -57,4 +57,8 @@ contract NoelNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     function _baseURI() internal view override returns (string memory) {
         return _baseTokenURI;
     }
+
+    function isMinted(address to) external view returns (bool) {
+        return hasMinted[to];
+    }
 }

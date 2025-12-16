@@ -73,4 +73,8 @@ contract NewYearLogic {
     function getNonce(address player) external view returns (uint256) {
         return nonces[player];
     }
+
+    function isMinted(address to) external view returns (bool) {
+        return newYearNFT.isMinted(to);
+    }
 }

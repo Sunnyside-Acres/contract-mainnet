@@ -58,7 +58,7 @@ contract NoelLogic {
 
         uint64 endTime = noelProxy.getEndTime();
         require(uint64(block.timestamp) <= endTime, "Event has ended");
-        
+
         InventoryItem memory item = inventoryProxy.getItem(player, itemId);
 
         uint256 giftRedemptionMilestones = noelProxy
@@ -144,6 +144,23 @@ contract NoelLogic {
         emit ClaimGift(player, itemId, amount, item.quantity + amount);
     }
 
+    function isClaimedGift(address to) external view returns (bool) {
+        uint64 currentTime = uint64(block.timestamp);
+        uint64 spaceTime = noelProxy.getSpaceTime();
+        uint64 endTime = noelProxy.getEndTime();
+        if (currentTime > endTime) {
+            return true;
+        }
+        uint64 currentCycleId = currentTime / spaceTime;
+        uint64 lastClaim = noelProxy.getLastClaimTime(to);
+
+        if (lastClaim > 0) {
+            uint64 lastCycleId = lastClaim / spaceTime;
+            return currentCycleId <= lastCycleId;
+        }
+        return false;
+    }
+
     function canClaimGift() public view returns (bool) {
         uint64 currentTime = uint64(block.timestamp);
         uint64 spaceTime = noelProxy.getSpaceTime();
@@ -192,5 +209,9 @@ contract NoelLogic {
 
     function getLastClaimTime(address _player) external view returns (uint64) {
         return noelProxy.getLastClaimTime(_player);
+    }
+
+    function isMinted(address to) external view returns (bool) {
+        return noelNFT.isMinted(to);
     }
 }
