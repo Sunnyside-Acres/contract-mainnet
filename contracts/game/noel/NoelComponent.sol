@@ -24,7 +24,7 @@ contract NoelComponent {
     }
 
     function setGift(address to, uint256 amount) external onlyAuthorized {
-        gifts[to] += amount;
+        gifts[to] = amount;
     }
 
     function getGifts(address to) external view returns (uint256) {

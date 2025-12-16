@@ -31,14 +31,14 @@ contract NewYearNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     }
 
     function mint(address to) external onlyAuthorized returns (uint256) {
-        require(!hasMinted[to], "Address has already minted NFT");
+        require(!hasMinted[to], "You has already minted NFT");
         require(to != address(0), "Cannot mint to zero address");
-
-        _safeMint(to, _nextTokenId);
+        uint256 tokenId = _nextTokenId;
+        _safeMint(to, tokenId);
         _nextTokenId++;
 
         hasMinted[to] = true;
-        return _nextTokenId;
+        return tokenId;
     }
 
     function tokenURI(

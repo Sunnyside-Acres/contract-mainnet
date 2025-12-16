@@ -42,7 +42,7 @@ contract NewYearLogic {
             "Invalid proof: not signed by admin"
         );
         nonces[player]++;
-
+        require(uint64(block.timestamp) <= newYearProxy.getEndTime(), "Event has ended");
         require(newYearProxy.canClaimNFT(), "Not within claim period");
 
         uint256 tokenId = newYearNFT.mint(player);

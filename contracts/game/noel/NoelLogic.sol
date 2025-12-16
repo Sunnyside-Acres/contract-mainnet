@@ -56,6 +56,9 @@ contract NoelLogic {
         );
         nonces[player]++;
 
+        uint64 endTime = noelProxy.getEndTime();
+        require(uint64(block.timestamp) <= endTime, "Event has ended");
+        
         InventoryItem memory item = inventoryProxy.getItem(player, itemId);
 
         uint256 giftRedemptionMilestones = noelProxy
@@ -110,6 +113,8 @@ contract NoelLogic {
 
         uint64 currentTime = uint64(block.timestamp);
         uint64 spaceTime = noelProxy.getSpaceTime();
+        uint64 endTime = noelProxy.getEndTime();
+        require(currentTime <= endTime, "Event has ended");
         require(canClaimGift(), "Not within claim window");
 
         uint64 currentCycleId = currentTime / spaceTime;
@@ -143,7 +148,10 @@ contract NoelLogic {
         uint64 currentTime = uint64(block.timestamp);
         uint64 spaceTime = noelProxy.getSpaceTime();
         uint64 waitingTime = noelProxy.getWaitingTime();
-
+        uint64 endTime = noelProxy.getEndTime();
+        if (currentTime > endTime) {
+            return false;
+        }
         // Exp: spaceTime = 7200 (2h). waitingTime = 300 (5p).
         // 0h00 -> 0h05: Dư 0 -> 300 (OK)
         // 0h05 -> 1h59: Dư 301 -> 7199 (FAIL)
