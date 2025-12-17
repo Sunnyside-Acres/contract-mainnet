@@ -56,9 +56,7 @@ contract NoelLogic {
         );
         nonces[player]++;
 
-        uint64 startTime = noelProxy.getStartTime();
         uint64 endTime = noelProxy.getEndTime();
-        require(uint64(block.timestamp) >= startTime, "Event not started");
         require(uint64(block.timestamp) <= endTime, "Event has ended");
 
         InventoryItem memory item = inventoryProxy.getItem(player, itemId);

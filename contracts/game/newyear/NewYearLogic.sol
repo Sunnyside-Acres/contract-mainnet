@@ -43,10 +43,6 @@ contract NewYearLogic {
         );
         nonces[player]++;
         require(
-            uint64(block.timestamp) >= newYearProxy.getStartTime(),
-            "Event not started"
-        );
-        require(
             uint64(block.timestamp) <= newYearProxy.getEndTime(),
             "Event has ended"
         );
