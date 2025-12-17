@@ -229,6 +229,10 @@ contract NoelLogic {
         return noelNFT.symbol();
     }
 
+    function totalSupply() external view returns (uint256) {
+        return noelNFT.totalSupply();
+    }
+
     function setStartTime(uint64 _startTime) external onlyAdmin {
         noelProxy.setStartTime(_startTime);
     }
