@@ -42,7 +42,14 @@ contract NewYearLogic {
             "Invalid proof: not signed by admin"
         );
         nonces[player]++;
-        require(uint64(block.timestamp) <= newYearProxy.getEndTime(), "Event has ended");
+        require(
+            uint64(block.timestamp) >= newYearProxy.getStartTime(),
+            "Event not started"
+        );
+        require(
+            uint64(block.timestamp) <= newYearProxy.getEndTime(),
+            "Event has ended"
+        );
         require(newYearProxy.canClaimNFT(), "Not within claim period");
 
         uint256 tokenId = newYearNFT.mint(player);
@@ -76,5 +83,17 @@ contract NewYearLogic {
 
     function isMinted(address to) external view returns (bool) {
         return newYearNFT.isMinted(to);
+    }
+
+    function tokenURI(uint256 tokenId) external view returns (string memory) {
+        return newYearNFT.tokenURI(tokenId);
+    }
+
+    function name() external view returns (string memory) {
+        return newYearNFT.name();
+    }
+
+    function symbol() external view returns (string memory) {
+        return newYearNFT.symbol();
     }
 }

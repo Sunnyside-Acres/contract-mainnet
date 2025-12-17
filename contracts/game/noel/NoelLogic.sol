@@ -56,7 +56,9 @@ contract NoelLogic {
         );
         nonces[player]++;
 
+        uint64 startTime = noelProxy.getStartTime();
         uint64 endTime = noelProxy.getEndTime();
+        require(uint64(block.timestamp) >= startTime, "Event not started");
         require(uint64(block.timestamp) <= endTime, "Event has ended");
 
         InventoryItem memory item = inventoryProxy.getItem(player, itemId);
@@ -213,5 +215,33 @@ contract NoelLogic {
 
     function isMinted(address to) external view returns (bool) {
         return noelNFT.isMinted(to);
+    }
+
+    function tokenURI(uint256 tokenId) external view returns (string memory) {
+        return noelNFT.tokenURI(tokenId);
+    }
+
+    function name() external view returns (string memory) {
+        return noelNFT.name();
+    }
+
+    function symbol() external view returns (string memory) {
+        return noelNFT.symbol();
+    }
+
+    function setStartTime(uint64 _startTime) external onlyAdmin {
+        noelProxy.setStartTime(_startTime);
+    }
+
+    function getStartTime() external view returns (uint64) {
+        return noelProxy.getStartTime();
+    }
+
+    function setEndTime(uint64 _endTime) external onlyAdmin {
+        noelProxy.setEndTime(_endTime);
+    }
+
+    function getEndTime() external view returns (uint64) {
+        return noelProxy.getEndTime();
     }
 }
