@@ -92,4 +92,8 @@ contract NewYearLogic {
     function symbol() external view returns (string memory) {
         return newYearNFT.symbol();
     }
+
+    function totalSupply() external view returns (uint256) {
+        return newYearNFT.totalSupply();
+    }
 }

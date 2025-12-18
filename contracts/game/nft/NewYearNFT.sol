@@ -60,4 +60,8 @@ contract NewYearNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
      function isMinted(address to) external view returns (bool) {
         return hasMinted[to];
     }
+
+      function totalSupply() external view returns (uint256) {
+        return _nextTokenId - 1;
+    }
 }
