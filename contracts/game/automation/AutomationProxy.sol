@@ -8,8 +8,10 @@ contract AutomationProxy {
     address public world;
     address public implementation;
 
-    // Storage must be same with Component
-    mapping(address => mapping(uint256 => ItemAutoStruct)) public listItemAuto;
+    // Mapping: Player Address => Factory Index => Factory State
+    // Exp: Every player can have multiple factories identified by an index
+    mapping(address => mapping(uint256 => FactoryState)) public userFactories;
+    mapping(uint256 => uint256) public factoryPrices;
 
     event ComponentUpdated(address indexed newImplementation);
 

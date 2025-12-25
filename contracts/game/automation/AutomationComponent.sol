@@ -7,18 +7,9 @@ import "../../interfaces/IWorld.sol";
 contract AutomationComponent {
     address public world;
     address public implementation;
+    mapping(address => mapping(uint256 => FactoryState)) public userFactories;
+    mapping(uint256 => uint256) public factoryPrices;
 
-    // Storage must be same with Component
-    mapping(address => mapping(uint256 => ItemAutoStruct)) public listItemAuto;
-    event ItemAutoUpdated(
-        address indexed player,
-        uint256 itemId,
-        uint256 itemAmount,
-        uint256[] itemIdDrop,
-        uint256[] itemAmountDrop,
-        uint64 startTime,
-        uint64 endTime
-    );
     modifier onlyAuthorized() {
         require(
             IWorld(world).isLogicRegistered(msg.sender),
@@ -27,66 +18,58 @@ contract AutomationComponent {
         _;
     }
 
-    /**
-     * @notice Set automation items for a player
-     * @param player The address of the player
-     * @param _itemId The ID of the item to set automation
-     * @param _itemAmount The amount of the item to set automation for
-     * @param _itemIdDrop The IDs of the items to drop
-     * @param _itemAmountDrop The amounts of the items to drop
-     * @param _startTime The start time for the automation
-     * @param _endTime The end time for the automation
-     */
-    function setItemsAuto(
+    function getFactory(
         address player,
-        uint256 _itemId,
-        uint256 _itemAmount,
-        uint256[] calldata _itemIdDrop,
-        uint256[] calldata _itemAmountDrop,
-        uint64 _startTime,
-        uint64 _endTime
+        uint256 factoryId
+    ) external view returns (FactoryState memory) {
+        return userFactories[player][factoryId];
+    }
+
+    function setFactory(
+        address player,
+        uint256 factoryId,
+        FactoryState memory state
     ) external onlyAuthorized {
-        listItemAuto[player][_itemId] = ItemAutoStruct({
-            itemAmount: _itemAmount,
-            itemIdDrop: _itemIdDrop,
-            itemAmountDrop: _itemAmountDrop,
-            startTime: _startTime,
-            endTime: _endTime
-        });
-        emit ItemAutoUpdated(
-            player,
-            _itemId,
-            _itemAmount,
-            _itemIdDrop,
-            _itemAmountDrop,
-            _startTime,
-            _endTime
-        );
+        userFactories[player][factoryId] = state;
     }
 
-    /**
-     * @notice Get automation info for an item
-     * @param player The address of the player
-     * @param _itemId ID of the item
-     * @return ItemAutoStruct containing automation details
-     */
-    function getItemAutoInfo(
+    function setFactoryActive(
         address player,
-        uint256 _itemId
-    ) external view returns (ItemAutoStruct memory) {
-        return listItemAuto[player][_itemId];
+        uint256 factoryId,
+        bool isActive
+    ) external onlyAuthorized {
+        userFactories[player][factoryId].isActive = isActive;
     }
 
-    /**
-     * @notice Check if automation for an item is completed
-     * @param player The address of the player
-     * @param _itemId ID of the item
-     * @return bool indicating if automation is completed
-     */
-    function checkItemsAutoIsCompleted(
+    function updateClaimedOutput(
         address player,
-        uint256 _itemId
-    ) external view returns (bool) {
-        return listItemAuto[player][_itemId].endTime <= uint64(block.timestamp);
+        uint256 factoryId,
+        uint256 indexClaimed,
+        uint256 newClaimedAmount
+    ) external onlyAuthorized {
+        userFactories[player][factoryId].claimedOutput[indexClaimed] = newClaimedAmount;
+    }
+
+    function resetFactory(
+        address player,
+        uint256 factoryId
+    ) external onlyAuthorized {
+        bool owned = userFactories[player][factoryId].isOwned;
+        delete userFactories[player][factoryId];
+        userFactories[player][factoryId].isOwned = owned;
+        userFactories[player][factoryId].isActive = false;
+    }
+
+    function getFactoryPrice(
+        uint256 factoryId
+    ) external view returns (uint256) {
+        return factoryPrices[factoryId];
+    }
+
+    function setFactoryPrice(
+        uint256 factoryId,
+        uint256 price
+    ) external onlyAuthorized {
+        factoryPrices[factoryId] = price;
     }
 }
