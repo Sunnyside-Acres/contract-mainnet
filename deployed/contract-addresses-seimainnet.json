@@ -2,7 +2,7 @@
   "network": "seimainnet",
   "chainId": 1329,
   "deployer": "0x40687047E55F8027940E95143317BFAd550A28D1",
-  "timestamp": "2025-11-20T09:32:59.446Z",
+  "timestamp": "2025-12-19T03:18:43.587Z",
   "contracts": {
     "World": "0x937A1A686bcBEf127581E8719645cA02832F5765",
     "PlayerComponent": "0x0a1337c38743ab28D87299Cd9bA48A7f617F4f70",
@@ -55,7 +55,15 @@
     "ItemPassLogic": "0xF09AB2234111548b34cbaFd4793b55e6811b62ca",
     "CheckInComponent": "0x3A430188C67951180Ab45e75F7C7E3dc113dc710",
     "CheckInProxy": "0x952a654dDCdde39167Dc6dd473246b1eDE1DdA33",
-    "CheckInLogic": "0xf8C289e66ae66E6C3b44E1792FB5d29dac8f67cB"
+    "CheckInLogic": "0xf8C289e66ae66E6C3b44E1792FB5d29dac8f67cB",
+    "NewYearComponent": "0x82fC25033e565DED136A8B8e7C476Fe9516aFb72",
+    "NewYearProxy": "0x714e633A4549117689d8cfF1fF1BEd34bb1190A4",
+    "NewYearNFT": "0x71cd9d1532Ea769aac584De6dA635EC63C0546EC",
+    "NewYearLogic": "0x91765a1CA96f9718FDdB73DBD2b656BE4275f65A",
+    "NoelComponent": "0x4f95E5CAF5EDA8D69fD4A5aac27eC0596048aa45",
+    "NoelProxy": "0xF1742daF543dfA6bA86BcC8CEcfF8E60c651B481",
+    "NoelNFT": "0x6084Ea99Ee6502aFc527Ee4fC191AdB369777e16",
+    "NoelLogic": "0xf95350Fe44a4670058fb219C3Ff70609C033a3E1"
   },
   "deploymentOrder": [
     "World",
@@ -97,7 +105,15 @@
     "ReferralLogic",
     "ItemPassComponent",
     "ItemPassProxy",
-    "ItemPassLogic"
+    "ItemPassLogic",
+    "NewYearComponent",
+    "NewYearProxy",
+    "NewYearNFT",
+    "NewYearLogic",
+    "NoelComponent",
+    "NoelProxy",
+    "NoelNFT",
+    "NoelLogic"
   ],
   "lastUpgrade": {
     "component": "DungeonComponent",
