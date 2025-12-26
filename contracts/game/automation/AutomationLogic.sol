@@ -125,6 +125,8 @@ contract AutomationLogic {
     function buyFactory(uint256 factoryId) external payable nonReentrant {
         address player = msg.sender;
         require(treasuryWallet != address(0), "Treasury wallet not set");
+        
+        require(factoryId > 0 && factoryId <= automationProxy.getMaxFactory(), "Invalid factory ID");
 
         FactoryState memory factory = automationProxy.getFactory(
             player,
@@ -322,6 +324,30 @@ contract AutomationLogic {
 
         emit FactoryUpdateStatus(player, factoryId, factory);
     }
+
+    /**
+     * @dev Get maximum number of factories
+     * @return The maximum number of factories
+     */
+    function getMaxFactory() external view returns (uint256) {
+        return automationProxy.getMaxFactory();
+    }
+
+    /**
+     * @dev Set maximum number of factories (admin only)
+     * @param newMaxFactory The new maximum number of factories
+     */
+    function setMaxFactory(uint256 newMaxFactory) external onlyAdmin {
+        automationProxy.setMaxFactory(newMaxFactory);
+    }
+
+    /**
+     * @dev Get all factory prices
+     * @return An array of all factory prices
+     */
+    function getAllFactoryPrices() external view returns (uint256[] memory) {
+        return automationProxy.getAllFactoryPrices();
+    } 
 
     /**
      * @dev Claim produced items from the factory

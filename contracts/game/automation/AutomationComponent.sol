@@ -7,6 +7,7 @@ import "../../interfaces/IWorld.sol";
 contract AutomationComponent {
     address public world;
     address public implementation;
+    uint256 public maxFactory;
     mapping(address => mapping(uint256 => FactoryState)) public userFactories;
     mapping(uint256 => uint256) public factoryPrices;
 
@@ -66,10 +67,28 @@ contract AutomationComponent {
         return factoryPrices[factoryId];
     }
 
+    function getAllFactoryPrices() external view returns (uint256[] memory) {
+        uint256[] memory prices = new uint256[](maxFactory);
+        for (uint256 i = 0; i < maxFactory; i++) {
+            prices[i] = factoryPrices[i];
+        }
+        return prices;
+    }
+
     function setFactoryPrice(
         uint256 factoryId,
         uint256 price
     ) external onlyAuthorized {
         factoryPrices[factoryId] = price;
+    }
+
+    function getMaxFactory() external view returns (uint256) {
+        return maxFactory;
+    }
+
+    function setMaxFactory(
+        uint256 newMaxFactory
+    ) external onlyAuthorized {
+        maxFactory = newMaxFactory;
     }
 }

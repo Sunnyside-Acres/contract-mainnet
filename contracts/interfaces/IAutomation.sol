@@ -12,5 +12,9 @@ interface IAutomationComponent {
     function resetFactory(address player, uint256 factoryId) external;
 
     function getFactoryPrice(uint256 factoryId) external view returns (uint256);
+    function getAllFactoryPrices() external view returns (uint256[] memory);
     function setFactoryPrice(uint256 factoryId, uint256 price) external;
+
+    function getMaxFactory() external view returns (uint256);
+    function setMaxFactory(uint256 newMaxFactory) external;
 }

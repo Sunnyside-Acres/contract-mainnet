@@ -7,6 +7,7 @@ import "../../interfaces/IWorld.sol";
 contract AutomationProxy {
     address public world;
     address public implementation;
+    uint256 public maxFactory = 6;
 
     // Mapping: Player Address => Factory Index => Factory State
     // Exp: Every player can have multiple factories identified by an index
