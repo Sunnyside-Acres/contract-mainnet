@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 import "../struct/Automation.sol";
 
 interface IAutomationComponent {
-    function createFactory(uint256 factoryId, uint256 price) external;
     function getFactory(address player, uint256 factoryId) external view returns (FactoryState memory);
     function setFactory(address player, uint256 factoryId, FactoryState memory state) external;
     function setFactoryActive(address player, uint256 factoryId, bool isActive) external;

@@ -69,7 +69,7 @@ contract AutomationComponent {
 
     function getAllFactoryPrices() external view returns (uint256[] memory) {
         uint256[] memory prices = new uint256[](maxFactory);
-        for (uint256 i = 0; i < maxFactory; i++) {
+        for (uint8 i = 1; i <= maxFactory; i++) {
             prices[i] = factoryPrices[i];
         }
         return prices;
