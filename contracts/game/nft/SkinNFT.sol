@@ -15,7 +15,7 @@ contract SkinNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     modifier onlyAuthorized() {
         require(
             IWorld(world).isLogicRegistered(msg.sender),
-            "[NoelNFT] Unauthorized"
+            "[SkinNFT] Unauthorized"
         );
         _;
     }
@@ -30,10 +30,11 @@ contract SkinNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         _baseTokenURI = baseURI;
     }
 
-    function mint(address to) external onlyAuthorized returns (uint256) {
+    function mint(address to, string memory uri) external onlyAuthorized returns (uint256) {
         require(to != address(0), "Cannot mint to zero address");
         uint256 tokenId = _nextTokenId;
         _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
         _nextTokenId++;
 
         return tokenId;
