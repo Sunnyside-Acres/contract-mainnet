@@ -13,7 +13,9 @@ contract AutomationProxy {
     // Exp: Every player can have multiple factories identified by an index
     mapping(address => mapping(uint256 => FactoryState)) public userFactories;
     mapping(uint256 => uint256) public factoryPrices;
-
+    uint256[] public batteryIdValid;
+    uint256[] public supportIdValid;
+    
     event ComponentUpdated(address indexed newImplementation);
 
     modifier onlyAdmin() {

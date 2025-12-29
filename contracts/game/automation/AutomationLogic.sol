@@ -19,30 +19,11 @@ contract AutomationLogic {
     /// @notice Treasury wallet address where ETH proceeds from sales are sent
     address public treasuryWallet;
 
-    event FactoryBought(
-        address indexed player,
-        uint256 factoryId,
-        uint256 price,
-        FactoryState factoryState
-    );
-    event FactoryUpdateStatus(
-        address indexed player,
-        uint256 factoryId,
-        FactoryState factoryState
-    );
-    event FactoryClaimed(
-        address indexed player,
-        uint256 factoryId,
-        uint256 itemDropId,
-        uint256 claimedAmount,
-        FactoryState factoryState
-    );
+    event FactoryBought(address indexed player, uint256 factoryId, uint256 price, FactoryState factoryState);
+    event FactoryUpdateStatus(address indexed player, uint256 factoryId, FactoryState factoryState);
+    event FactoryClaimed(address indexed player, uint256 factoryId, uint256 itemDropId, uint256 claimedAmount, FactoryState factoryState);
     event FactoryStopped(address indexed player, uint256 factoryId);
-    event TreasuryWalletUpdated(
-        address indexed oldWallet,
-        address indexed newWallet,
-        address indexed admin
-    );
+    event TreasuryWalletUpdated(address indexed oldWallet, address indexed newWallet, address indexed admin);
 
     constructor(
         address _world,
@@ -55,10 +36,7 @@ contract AutomationLogic {
         inventoryProxy = IInventoryComponent(_inventoryProxy);
         itemProxy = IItemComponent(_itemProxy);
         automationProxy = IAutomationComponent(_automationProxy);
-        require(
-            _treasuryWallet != address(0),
-            "Treasury wallet cannot be zero address"
-        );
+        require(_treasuryWallet != address(0), "Treasury wallet cannot be zero address");
         treasuryWallet = _treasuryWallet;
     }
     /**
@@ -142,6 +120,22 @@ contract AutomationLogic {
         return automationProxy.getFactoryPrice(factoryId);
     }
 
+    function getBatteryIdValid() external view returns (uint256[] memory) {
+        return automationProxy.getBatteryIdValid();
+    }   
+
+    function getSupportIdValid() external view returns (uint256[] memory) {
+        return automationProxy.getSupportIdValid();
+    }
+
+    function setBatteryIdValid(uint256[] memory newBatteryIds) external onlyAdmin {
+        automationProxy.setBatteryIdValid(newBatteryIds);
+    }
+
+    function setSupportIdValid(uint256[] memory newSupportIds) external onlyAdmin {
+        automationProxy.setSupportIdValid(newSupportIds);
+    }
+
     /**
      * @dev Buy a factory
      * @param factoryId The ID of the factory to buy
@@ -164,7 +158,7 @@ contract AutomationLogic {
         uint256 factoryPrice = automationProxy.getFactoryPrice(factoryId);
         require(
             msg.value == factoryPrice,
-            "Incorrect SEI amount sent for factory purchase"
+            "Incorrect SEI amount"
         );
 
         (bool transferSuccess, ) = payable(treasuryWallet).call{
@@ -227,40 +221,10 @@ contract AutomationLogic {
         );
         nonces[player]++;
 
-        require(
-            batteryId.length == batteryQty.length,
-            "Battery array mismatch"
-        );
-        require(
-            supportItemId.length == supportItemQty.length,
-            "Support array mismatch"
-        );
-
-        require(
-            inventoryProxy.exists(player, inputItemId),
-            "Player missing input item"
-        );
-
-        InventoryItem memory inputInvItem = inventoryProxy.getItem(
-            player,
-            inputItemId
-        );
-        ItemStructs.Item memory itemDetails = itemProxy.getItem(inputItemId);
-
-        require(
-            itemDetails.itemType == ItemStructs.ItemType.Seed,
-            "Input item must be Seed"
-        );
-
-        require(inputInvItem.quantity >= inputQty, "Not enough input item");
-
-        inventoryProxy.setItem(
-            player,
-            inputItemId,
-            inputInvItem.quantity - inputQty,
-            inputInvItem.durability,
-            inputInvItem.expiration
-        );
+        // Validations
+        require(batteryId.length == batteryQty.length, "Battery mismatch");
+        require(supportItemId.length == supportItemQty.length, "Support mismatch");
+        require(inventoryProxy.exists(player, inputItemId), "Missing input item");
 
         //get factory
         FactoryState memory factory = automationProxy.getFactory(
@@ -281,6 +245,9 @@ contract AutomationLogic {
         uint64 addedEnergy = 0;
         // Calculate total energy from batteries (in seconds)
         for (uint8 i = 0; i < batteryId.length; i++) {
+
+            require(automationProxy.isBatteryIdValid(batteryId[i]), "Invalid battery item");
+
             require(
                 inventoryProxy.exists(player, batteryId[i]),
                 "Player missing battery item"
@@ -313,144 +280,175 @@ contract AutomationLogic {
             factory.batteryExpiration += addedEnergy;
         }
 
-        uint256 growthRate = itemProxy.getItemAttribute(
-            inputItemId,
-            ItemStructs.Attribute.GrowthRate
-        );
-        uint256 baseDuration = inputQty * growthRate;
-
-        uint256 totalReductionPercent = 0;
-        for (uint256 i = 0; i < supportItemId.length; i++) {
-            require(
-                inventoryProxy.exists(player, supportItemId[i]),
-                "Player missing support item"
-            );
-
-            InventoryItem memory sItem = inventoryProxy.getItem(
-                player,
-                supportItemId[i]
-            );
-            require(
-                sItem.quantity >= supportItemQty[i],
-                "Not enough support item"
-            );
+        if (inputQty > 0) {
+            // Input Item Processing
+            InventoryItem memory inputInvItem = inventoryProxy.getItem(player, inputItemId);
+            ItemStructs.Item memory itemDetails = itemProxy.getItem(inputItemId);
+            require(itemDetails.itemType == ItemStructs.ItemType.Seed, "Item must be Seed");
+            require(inputInvItem.quantity >= inputQty, "Not enough input");
 
             inventoryProxy.setItem(
                 player,
-                supportItemId[i],
-                sItem.quantity - supportItemQty[i],
-                sItem.durability,
-                sItem.expiration
+                inputItemId,
+                inputInvItem.quantity - inputQty,
+                inputInvItem.durability,
+                inputInvItem.expiration
             );
 
-            // Cumulative percentage discount
-            uint256 rate = itemProxy.getItemAttribute(
-                supportItemId[i],
+            uint256 growthRate = itemProxy.getItemAttribute(
+                inputItemId,
                 ItemStructs.Attribute.GrowthRate
             );
-            totalReductionPercent += (rate * supportItemQty[i]);
+            uint256 baseDuration = inputQty * growthRate;
 
-            bool found = false;
-            for (uint j = 0; j < factory.supportItemId.length; j++) {
-                if (factory.supportItemId[j] == supportItemId[i]) {
-                    factory.supportItemQty[j] += supportItemQty[i];
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                factory.supportItemId[i] = supportItemId[i];
-                factory.supportItemQty[i] = supportItemQty[i];
-            }
-        }
-
-        if (totalReductionPercent > 50) {
-            totalReductionPercent = 50;
-        } // Max 50% reduction
-
-        uint256 actualDuration = baseDuration -
-            ((baseDuration * totalReductionPercent) / 100) >
-            0
-            ? baseDuration - ((baseDuration * totalReductionPercent) / 100)
-            : 0;
-        require(actualDuration > 0, "Duration must be greater than 0");
-
-        ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
-            inputItemId
-        );
-        require(drops.length > 0, "No output drops");
-
-        if (
-            factory.outputItemId.length == 0 ||
-            factory.inputItemId != inputItemId
-        ) {
-            // Case: New machine running for the first time or running a new item type (after the old type is finished)
-            // Initialize a new array
-            for (uint8 i = 0; i < factory.outputItemId.length; i++) {
+            uint256 totalReductionPercent = 0;
+            for (uint256 i = 0; i < supportItemId.length; i++) {
+                require(automationProxy.isSupportIdValid(supportItemId[i]), "Invalid support item");
                 require(
-                    factory.claimedOutput[i] == factory.totalOutput[i],
-                    "Must claim all output items before switching input item"
+                    inventoryProxy.exists(player, supportItemId[i]),
+                    "Player missing support item"
                 );
-            }
-            factory.outputItemId = new uint256[](drops.length);
-            factory.totalOutput = new uint256[](drops.length);
-            factory.claimedOutput = new uint256[](drops.length); // Reset claimed
 
-            for (uint i = 0; i < drops.length; i++) {
-                factory.outputItemId[i] = drops[i].itemId;
-                factory.totalOutput[i] = drops[i].yield * inputQty;
-                factory.claimedOutput[i] = 0;
-            }
-            factory.inputItemId = inputItemId;
-            factory.startTime = currentTime; // Reset start time
-            factory.productionEndTime = uint64(currentTime + actualDuration);
-        } else {
-            // Case: Refill (Add more of the same type to a running or recently finished machine)
-            // Add to an existing array
-            for (uint i = 0; i < drops.length; i++) {
+                InventoryItem memory sItem = inventoryProxy.getItem(
+                    player,
+                    supportItemId[i]
+                );
+                require(
+                    sItem.quantity >= supportItemQty[i],
+                    "Not enough support item"
+                );
+
+                inventoryProxy.setItem(
+                    player,
+                    supportItemId[i],
+                    sItem.quantity - supportItemQty[i],
+                    sItem.durability,
+                    sItem.expiration
+                );
+
+                // Cumulative percentage discount
+                uint256 rate = itemProxy.getItemAttribute(
+                    supportItemId[i],
+                    ItemStructs.Attribute.GrowthRate
+                );
+                totalReductionPercent += (rate * supportItemQty[i]);
+
                 bool found = false;
-                for (uint j = 0; j < factory.outputItemId.length; j++) {
-                    if (factory.outputItemId[j] == drops[i].itemId) {
-                        factory.totalOutput[j] += (drops[i].yield * inputQty);
+                for (uint j = 0; j < factory.supportItemId.length; j++) {
+                    if (factory.supportItemId[j] == supportItemId[i]) {
+                        factory.supportItemQty[j] += supportItemQty[i];
                         found = true;
                         break;
                     }
                 }
+                if (!found) {
+                    // Dynamically resize and add new support items
+                    uint256[] memory newSupportItemId = new uint256[](factory.supportItemId.length + 1);
+                    uint256[] memory newSupportItemQty = new uint256[](factory.supportItemQty.length + 1);
+                    for (uint k = 0; k < factory.supportItemId.length; k++) {
+                        newSupportItemId[k] = factory.supportItemId[k];
+                        newSupportItemQty[k] = factory.supportItemQty[k];
+                    }
+                    newSupportItemId[factory.supportItemId.length] = supportItemId[i];
+                    newSupportItemQty[factory.supportItemQty.length] = supportItemQty[i];
+                    factory.supportItemId = newSupportItemId;
+                    factory.supportItemQty = newSupportItemQty;
+                }
             }
 
-            // Update time
-            if (factory.productionEndTime > currentTime) {
-                // Machine is running -> Append time to productionEndTime
-                factory.productionEndTime += uint64(actualDuration);
+            if (totalReductionPercent > 50) {
+                totalReductionPercent = 50;
+            } // Max 50% reduction
+
+            uint256 actualDuration = baseDuration -
+                ((baseDuration * totalReductionPercent) / 100) >
+                0
+                ? baseDuration - ((baseDuration * totalReductionPercent) / 100)
+                : 0;
+            require(actualDuration > 0, "Duration must be greater than 0");
+
+            ItemStructs.ItemDrop[] memory drops = itemProxy.getItemDrops(
+                inputItemId
+            );
+            require(drops.length > 0, "No output drops");
+
+            if (
+                factory.outputItemId.length == 0 ||
+                factory.inputItemId != inputItemId
+            ) {
+                // Case: New machine running for the first time or running a new item type (after the old type is finished)
+                // Initialize a new array
+                if (factory.outputItemId.length > 0) {
+                    for (uint8 i = 0; i < factory.outputItemId.length; i++) {
+                        require(
+                            factory.claimedOutput[i] == factory.totalOutput[i],
+                            "Must claim all output items before switching input item"
+                        );
+                    }
+                }
+                factory.outputItemId = new uint256[](drops.length);
+                factory.totalOutput = new uint256[](drops.length);
+                factory.claimedOutput = new uint256[](drops.length); // Reset claimed
+
                 for (uint i = 0; i < drops.length; i++) {
+                    factory.outputItemId[i] = drops[i].itemId;
+                    factory.totalOutput[i] = drops[i].yield * inputQty;
+                    factory.claimedOutput[i] = 0;
+                }
+                factory.inputItemId = inputItemId;
+                factory.startTime = currentTime; // Reset start time
+                factory.productionEndTime = uint64(
+                    currentTime + actualDuration
+                );
+            } else {
+                // Case: Refill (Add more of the same type to a running or recently finished machine)
+                // Add to an existing array
+                for (uint i = 0; i < drops.length; i++) {
+                    bool found = false;
                     for (uint j = 0; j < factory.outputItemId.length; j++) {
                         if (factory.outputItemId[j] == drops[i].itemId) {
                             factory.totalOutput[j] += (drops[i].yield *
                                 inputQty);
+                            found = true;
                             break;
                         }
                     }
                 }
-            } else {
-                // Machine has stopped -> Start from now
-                for (uint k = 0; k < factory.outputItemId.length; k++) {
-                    require(
-                        factory.claimedOutput[k] == factory.totalOutput[k],
-                        "Must claim finished rewards before restarting"
-                    );
-                }
-                factory.productionEndTime = uint64(
-                    currentTime + actualDuration
-                );
-                factory.startTime = currentTime;
 
-                for (uint i = 0; i < drops.length; i++) {
-                    for (uint j = 0; j < factory.outputItemId.length; j++) {
-                        if (factory.outputItemId[j] == drops[i].itemId) {
-                            factory.totalOutput[j] = (drops[i].yield *
-                                inputQty); 
-                            factory.claimedOutput[j] = 0; 
-                            break;
+                // Update time
+                if (factory.productionEndTime > currentTime) {
+                    // Machine is running -> Append time to productionEndTime
+                    factory.productionEndTime += uint64(actualDuration);
+                    for (uint i = 0; i < drops.length; i++) {
+                        for (uint j = 0; j < factory.outputItemId.length; j++) {
+                            if (factory.outputItemId[j] == drops[i].itemId) {
+                                factory.totalOutput[j] += (drops[i].yield *
+                                    inputQty);
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    // Machine has stopped -> Start from now
+                    for (uint k = 0; k < factory.outputItemId.length; k++) {
+                        require(
+                            factory.claimedOutput[k] == factory.totalOutput[k],
+                            "Must claim finished rewards before restarting"
+                        );
+                    }
+                    factory.productionEndTime = uint64(
+                        currentTime + actualDuration
+                    );
+                    factory.startTime = currentTime;
+
+                    for (uint i = 0; i < drops.length; i++) {
+                        for (uint j = 0; j < factory.outputItemId.length; j++) {
+                            if (factory.outputItemId[j] == drops[i].itemId) {
+                                factory.totalOutput[j] = (drops[i].yield *
+                                    inputQty);
+                                factory.claimedOutput[j] = 0;
+                                break;
+                            }
                         }
                     }
                 }

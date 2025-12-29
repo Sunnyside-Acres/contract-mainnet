@@ -10,6 +10,8 @@ contract AutomationComponent {
     uint256 public maxFactory;
     mapping(address => mapping(uint256 => FactoryState)) public userFactories;
     mapping(uint256 => uint256) public factoryPrices;
+    uint256[] public batteryIdValid;
+    uint256[] public supportIdValid;
 
     modifier onlyAuthorized() {
         require(
@@ -69,9 +71,11 @@ contract AutomationComponent {
 
     function getAllFactoryPrices() external view returns (uint256[] memory) {
         uint256[] memory prices = new uint256[](maxFactory);
-        for (uint8 i = 1; i <= maxFactory; i++) {
-            prices[i] = factoryPrices[i];
+
+        for (uint256 i = 1; i <= maxFactory; i++) {
+            prices[i - 1] = factoryPrices[i];
         }
+
         return prices;
     }
 
@@ -90,5 +94,43 @@ contract AutomationComponent {
         uint256 newMaxFactory
     ) external onlyAuthorized {
         maxFactory = newMaxFactory;
+    }
+
+    function getBatteryIdValid() external view returns (uint256[] memory) {
+        return batteryIdValid;
+    }
+
+    function getSupportIdValid() external view returns (uint256[] memory) {
+        return supportIdValid;
+    }
+
+    function setBatteryIdValid(
+        uint256[] memory newBatteryIds
+    ) external onlyAuthorized {
+        batteryIdValid = newBatteryIds;
+    }
+
+    function setSupportIdValid(
+        uint256[] memory newSupportIds
+    ) external onlyAuthorized {
+        supportIdValid = newSupportIds;
+    }
+
+    function isBatteryIdValid(uint256 batteryId) external view returns (bool) {
+        for (uint256 i = 0; i < batteryIdValid.length; i++) {
+            if (batteryIdValid[i] == batteryId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function isSupportIdValid(uint256 supportId) external view returns (bool) {
+        for (uint256 i = 0; i < supportIdValid.length; i++) {
+            if (supportIdValid[i] == supportId) {
+                return true;
+            }
+        }
+        return false;
     }
 }

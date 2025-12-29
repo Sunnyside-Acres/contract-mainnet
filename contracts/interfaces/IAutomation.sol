@@ -16,4 +16,13 @@ interface IAutomationComponent {
 
     function getMaxFactory() external view returns (uint256);
     function setMaxFactory(uint256 newMaxFactory) external;
+
+    function getBatteryIdValid() external view returns (uint256[] memory);
+    function setBatteryIdValid(uint256[] memory newBatteryIds) external;
+
+    function getSupportIdValid() external view returns (uint256[] memory);
+    function setSupportIdValid(uint256[] memory newSupportIds) external;
+
+    function isBatteryIdValid(uint256 batteryId) external view returns (bool);
+    function isSupportIdValid(uint256 supportId) external view returns (bool);
 }
