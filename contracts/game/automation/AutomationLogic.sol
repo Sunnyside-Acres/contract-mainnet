@@ -507,7 +507,6 @@ contract AutomationLogic {
         bytes calldata _proof
     ) external nonReentrant {
         address player = msg.sender;
-        uint64 currentTime = uint64(block.timestamp);
 
         bytes32 message = keccak256(
             abi.encodePacked(player, factoryId, address(this), nonces[player])
