@@ -300,11 +300,11 @@ contract AutomationLogic {
                 item.expiration
             );
 
-            uint256 resistance = itemProxy.getItemAttribute(
+            uint256 strength = itemProxy.getItemAttribute(
                 batteryId[i],
-                ItemStructs.Attribute.Resistance
+                ItemStructs.Attribute.Strength
             );
-            addedEnergy += uint64(resistance * batteryQty[i]);
+            addedEnergy += uint64(strength * batteryQty[i]);
         }
 
         if (factory.batteryExpiration < currentTime) {
