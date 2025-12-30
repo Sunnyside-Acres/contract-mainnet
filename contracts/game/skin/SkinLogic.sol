@@ -30,10 +30,10 @@ contract SkinLogic {
         skinNFT = ISkinNFT(_skinNFT);
     }
 
-    function safeMint(uint256 skinId, string memory uri, bytes calldata proof) external {
+    function safeMint(string memory uri, bytes calldata proof) external {
         address player = msg.sender;
         bytes32 message = keccak256(
-            abi.encodePacked(player, skinId, uri, address(this), nonces[player])
+            abi.encodePacked(player, uri, address(this), nonces[player])
         );
 
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
@@ -53,7 +53,7 @@ contract SkinLogic {
 
         uint256 tokenId = skinNFT.mint(player, uri);
 
-        skinProxy.setPlayerSkin(player, skinId);
+        skinProxy.setPlayerSkin(player, tokenId);
         skinProxy.addSkinOwner(uri, player);
 
         emit ClaimNFT(player, tokenId, uri);
