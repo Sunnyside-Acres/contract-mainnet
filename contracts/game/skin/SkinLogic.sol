@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 import "../../interfaces/IWorld.sol";
 import "../../interfaces/ISkinNFT.sol";
 import "../../interfaces/ISkin.sol";
-import "../../utils/MessageHashUtils.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
@@ -81,18 +80,18 @@ contract SkinLogic {
     }
 
     function tokenURI(uint256 tokenId) external view returns (string memory) {
-        return noelNFT.tokenURI(tokenId);
+        return skinNFT.tokenURI(tokenId);
     }
 
     function name() external view returns (string memory) {
-        return noelNFT.name();
+        return skinNFT.name();
     }
 
     function symbol() external view returns (string memory) {
-        return noelNFT.symbol();
+        return skinNFT.symbol();
     }
 
     function totalSupply() external view returns (uint256) {
-        return noelNFT.totalSupply();
+        return skinNFT.totalSupply();
     }
 }
