@@ -10,4 +10,5 @@ interface ISkinNFT {
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
     function totalSupply() external view returns (uint256);
+    function updateBaseURI(string memory newBaseURI) external;
 }

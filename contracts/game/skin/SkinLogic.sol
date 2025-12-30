@@ -94,4 +94,8 @@ contract SkinLogic {
     function totalSupply() external view returns (uint256) {
         return skinNFT.totalSupply();
     }
+
+    function updateBaseURI(string memory newBaseURI) external onlyAdmin {
+        skinNFT.updateBaseURI(newBaseURI);
+    }
 }

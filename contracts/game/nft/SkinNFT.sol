@@ -30,6 +30,12 @@ contract SkinNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         _baseTokenURI = baseURI;
     }
 
+    function updateBaseURI(
+        string memory newBaseURI
+    ) external onlyAuthorized {
+        _baseTokenURI = newBaseURI;
+    }
+
     function mint(address to, string memory uri) external onlyAuthorized returns (uint256) {
         require(to != address(0), "Cannot mint to zero address");
         uint256 tokenId = _nextTokenId;
