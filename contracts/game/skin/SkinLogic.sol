@@ -30,10 +30,10 @@ contract SkinLogic {
         skinNFT = ISkinNFT(_skinNFT);
     }
 
-    function safeMint(string memory uri, bytes calldata proof) external {
+    function safeMint(string memory typeSkin, bytes calldata proof) external {
         address player = msg.sender;
         bytes32 message = keccak256(
-            abi.encodePacked(player, uri, address(this), nonces[player])
+            abi.encodePacked(player, typeSkin, address(this), nonces[player])
         );
 
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
@@ -47,28 +47,29 @@ contract SkinLogic {
         nonces[player]++;
 
         require(
-                skinProxy.getSkinOwners(uri).length < skinProxy.getSkinMaxSupply(uri),
+                skinProxy.getSkinOwners(typeSkin).length < skinProxy.getSkinMaxSupply(typeSkin),
             "Max supply reached for this skin"
         );
 
-        uint256 tokenId = skinNFT.mint(player, uri);
+        uint256 skinId = skinNFT.mint(player, typeSkin);
 
-        skinProxy.setPlayerSkin(player, tokenId);
-        skinProxy.addSkinOwner(uri, player);
+        skinProxy.setPlayerSkin(player, skinId);
+        skinProxy.addSkinOwner(typeSkin, player);
+        skinProxy.setSkinType(skinId, typeSkin);
 
-        emit ClaimNFT(player, tokenId, uri);
+        emit ClaimNFT(player, skinId, typeSkin);
     }
 
-    function setSkinMaxSupply(string memory skinURI, uint256 maxSupply) external onlyAdmin {
-        skinProxy.setSkinMaxSupply(skinURI, maxSupply);
+    function setSkinMaxSupply(string memory typeSkin, uint256 maxSupply) external onlyAdmin {
+        skinProxy.setSkinMaxSupply(typeSkin, maxSupply);
     }
 
-    function getSkinMaxSupply(string memory skinURI) external view returns (uint256) {
-        return skinProxy.getSkinMaxSupply(skinURI);
+    function getSkinMaxSupply(string memory typeSkin) external view returns (uint256) {
+        return skinProxy.getSkinMaxSupply(typeSkin);
     }
 
-    function getSkinOwners(string memory skinURI) external view returns (address[] memory) {
-        return skinProxy.getSkinOwners(skinURI);
+    function getSkinOwners(string memory typeSkin) external view returns (address[] memory) {
+        return skinProxy.getSkinOwners(typeSkin);
     }
 
     function getPlayerSkins(address player) external view returns (uint256[] memory) {
@@ -97,5 +98,9 @@ contract SkinLogic {
 
     function updateBaseURI(string memory newBaseURI) external onlyAdmin {
         skinNFT.updateBaseURI(newBaseURI);
+    }
+
+    function getSkinType(uint256 skinId) external view returns (string memory) {
+        return skinProxy.getSkinType(skinId);
     }
 }
