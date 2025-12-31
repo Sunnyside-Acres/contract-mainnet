@@ -1,7 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 import '../../contracts/struct/SkinMarket.sol';
-interface ISkinMarket {
+interface ISkinMarketComponent {
+    
+    
+    function recordTransaction(address _player, uint256 _npcId, string memory _typeSkin, uint256 _quantity, uint256 _pricePerUnit, uint256 _totalPrice, bool _isBuy) external returns (uint256);
+    function addUserPurchase(uint256 _npcId, string memory _typeSkin, address _user, uint256 _quantity) external;
+
      /**
      * @notice Creates a new NPC Market (admin only)
      * @param _npcId ID of the NPC
@@ -19,14 +24,14 @@ interface ISkinMarket {
     /**
      * @notice Adds an item to the NPC Market (admin only)
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _limitPerUser Purchase limit per user (0 = unlimited)
      * @param _pricePerUnit Price per unit in wei
      * @param _isSelling Whether NPC is selling (true) or buying (false)
      */
     function addItemToMarket(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         uint256 _limitPerUser,
         uint256 _pricePerUnit,
         bool _isSelling
@@ -35,13 +40,13 @@ interface ISkinMarket {
     /**
      * @notice Updates an item's details in the NPC Market (admin only)
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _limitPerUser New purchase limit per user
      * @param _pricePerUnit New price per unit in wei
      */
     function updateItemInMarket(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         uint256 _limitPerUser,
         uint256 _pricePerUnit
     ) external;
@@ -49,9 +54,9 @@ interface ISkinMarket {
     /**
      * @notice Removes an item from the NPC Market (admin only)
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      */
-    function removeItemFromMarket(uint256 _npcId, string memory skinType) external;
+    function removeItemFromMarket(uint256 _npcId, string memory _typeSkin) external;
 
     /**
      * @notice Sets market active status (admin only)
@@ -63,38 +68,38 @@ interface ISkinMarket {
     /**
      * @notice Allows a player to purchase items from an NPC with ETH
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _quantity Quantity to purchase
      * @return transactionId ID of the transaction
      */
     function buyItemFromNPC(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         uint256 _quantity
     ) external payable returns (uint256);
 
     /**
      * @notice Allows a player to sell items to an NPC for ETH
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _quantity Quantity to sell
      * @return transactionId ID of the transaction
      */
     function sellItemToNPC(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         uint256 _quantity
     ) external returns (uint256);
 
     /**
      * @notice Resets a user's purchase history (admin only)
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _user Address of the user
      */
     function resetUserPurchases(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         address _user
     ) external;
 
@@ -110,13 +115,10 @@ interface ISkinMarket {
     /**
      * @notice Gets market item information
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @return MarketItemView struct with item details
      */
-    function getMarketItem(
-        uint256 _npcId,
-        string memory skinType
-    ) external view returns (SkinMarket.MarketItemView memory);
+    function getMarketItem(uint256 _npcId, string memory _typeSkin) external view returns (SkinMarket.MarketItemView memory);
 
     /**
      * @notice Gets all items in an NPC market
@@ -174,67 +176,62 @@ interface ISkinMarket {
     /**
      * @notice Calculates the total price to buy items
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _quantity Quantity to purchase
      * @return totalPrice Total price in wei
      */
     function calculateBuyPrice(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         uint256 _quantity
     ) external view returns (uint256);
 
     /**
      * @notice Calculates the total price when selling items
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _quantity Quantity to sell
      * @return totalPrice Total price in wei
      */
     function calculateSellPrice(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         uint256 _quantity
     ) external view returns (uint256);
 
     /**
      * @notice Gets user's purchase count for an item
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _user Address of the user
      * @return Total quantity purchased by the user
      */
     function getUserPurchases(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         address _user
     ) external view returns (uint256);
 
     /**
      * @notice Checks if a user can purchase additional quantity
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _user Address of the user
      * @param _additionalQuantity Additional quantity to check
      * @return True if user can purchase more
      */
-    function canUserPurchaseMore(
-        uint256 _npcId,
-        string memory skinType,
-        address _user,
-        uint256 _additionalQuantity
-    ) external view returns (bool);
+    function canUserPurchaseMore(uint256 _npcId, string memory _typeSkin, address _user, uint256 _additionalQuantity) external view returns (bool);
 
     /**
      * @notice Gets remaining purchase limit for a user
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _user Address of the user
      * @return Remaining limit (max uint256 if unlimited, 0 if limit reached)
      */
     function getRemainingUserLimit(
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         address _user
     ) external view returns (uint256);
 
@@ -271,7 +268,7 @@ interface ISkinMarket {
      * @notice Checks if a player can buy an item
      * @param _player Address of the player
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _quantity Quantity to buy
      * @return canBuy True if player can buy
      * @return reason Explanation if cannot buy
@@ -279,7 +276,7 @@ interface ISkinMarket {
     function canPlayerBuyItem(
         address _player,
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         uint256 _quantity
     ) external view returns (bool canBuy, string memory reason);
 
@@ -287,7 +284,7 @@ interface ISkinMarket {
      * @notice Checks if a player can sell an item
      * @param _player Address of the player
      * @param _npcId ID of the NPC market
-     * @param skinType Type of skin (e.g., "Dragon", "Phoenix")
+     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
      * @param _quantity Quantity to sell
      * @return canSell True if player can sell
      * @return reason Explanation if cannot sell
@@ -295,7 +292,7 @@ interface ISkinMarket {
     function canPlayerSellItem(
         address _player,
         uint256 _npcId,
-        string memory skinType,
+        string memory _typeSkin,
         uint256 _quantity
     ) external view returns (bool canSell, string memory reason);
 
@@ -304,4 +301,11 @@ interface ISkinMarket {
      * @return Balance in wei
      */
     function getContractBalance() external view returns (uint256);
+
+    function updateNPCMarketConfig(
+        uint256 _npcId,
+        string memory _name,
+        uint256 _minTransactionAmount,
+        uint256 _maxTransactionAmount
+    ) external; 
 }

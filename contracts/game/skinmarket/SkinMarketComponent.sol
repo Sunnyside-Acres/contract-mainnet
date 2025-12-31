@@ -586,4 +586,25 @@ contract SkinMarketComponent {
     function getNextTransactionId() external view returns (uint256) {
         return transactionCounter + 1;
     }
+
+    /**
+     * @dev Updates NPC Market configuration
+     * @param _npcId ID of the NPC market
+     * @param _name New name of the market/NPC
+     * @param _minTransactionAmount New minimum transaction amount in wei
+     * @param _maxTransactionAmount New maximum transaction amount in wei
+     */
+    function updateNPCMarketConfig(
+        uint256 _npcId,
+        string memory _name,
+        uint256 _minTransactionAmount,
+        uint256 _maxTransactionAmount
+    ) external onlyAuthorized {
+        require(npcMarkets[_npcId].isActive, "Market not found");
+        require(_maxTransactionAmount >= _minTransactionAmount, "Invalid limits");
+        
+        npcMarkets[_npcId].name = _name;
+        npcMarkets[_npcId].minTransactionAmount = _minTransactionAmount;
+        npcMarkets[_npcId].maxTransactionAmount = _maxTransactionAmount;
+    }
 }
