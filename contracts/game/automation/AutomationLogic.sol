@@ -184,7 +184,7 @@ contract AutomationLogic {
      * @param batteryQty The quantity of battery to use (optional)
      * @param _proof The cryptographic proof for authorization
      */
-    function startMachine(
+function startMachine(
         uint256 factoryId,
         uint256 inputItemId,
         uint256 inputQty,
@@ -376,8 +376,6 @@ contract AutomationLogic {
                 factory.outputItemId.length == 0 ||
                 factory.inputItemId != inputItemId
             ) {
-                // Case: New machine running for the first time or running a new item type (after the old type is finished)
-                // Initialize a new array
                 if (factory.outputItemId.length > 0) {
                     for (uint256 i = 0; i < factory.outputItemId.length; i++) {
                         require(
@@ -401,41 +399,26 @@ contract AutomationLogic {
                     currentTime + actualDuration
                 );
             } else {
-                // Case: Refill (Add more of the same type to a running or recently finished machine)
-                // Add to an existing array
-                for (uint256 i = 0; i < drops.length; i++) {
-                    bool found = false;
-                    for (uint256 j = 0; j < factory.outputItemId.length; j++) {
-                        if (factory.outputItemId[j] == drops[i].itemId) {
-                            factory.totalOutput[j] += (drops[i].yield *
-                                inputQty);
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-
                 // Update time
                 if (factory.productionEndTime > currentTime) {
-                    // Machine is running -> Append time to productionEndTime
                     factory.productionEndTime += uint64(actualDuration);
+                    
                     for (uint256 i = 0; i < drops.length; i++) {
                         for (uint256 j = 0; j < factory.outputItemId.length; j++) {
                             if (factory.outputItemId[j] == drops[i].itemId) {
-                                factory.totalOutput[j] += (drops[i].yield *
-                                    inputQty);
+                                factory.totalOutput[j] += (drops[i].yield * inputQty);
                                 break;
                             }
                         }
                     }
                 } else {
-                    // Machine has stopped -> Start from now
                     for (uint256 k = 0; k < factory.outputItemId.length; k++) {
                         require(
                             factory.claimedOutput[k] >= factory.totalOutput[k],
                             "Must claim finished rewards before restarting"
                         );
                     }
+                    
                     factory.productionEndTime = uint64(
                         currentTime + actualDuration
                     );
@@ -444,9 +427,8 @@ contract AutomationLogic {
                     for (uint256 i = 0; i < drops.length; i++) {
                         for (uint256 j = 0; j < factory.outputItemId.length; j++) {
                             if (factory.outputItemId[j] == drops[i].itemId) {
-                                factory.totalOutput[j] = (drops[i].yield *
-                                    inputQty);
-                                factory.claimedOutput[j] = 0;
+                                factory.totalOutput[j] = (drops[i].yield * inputQty);
+                                factory.claimedOutput[j] = 0; 
                                 break;
                             }
                         }
