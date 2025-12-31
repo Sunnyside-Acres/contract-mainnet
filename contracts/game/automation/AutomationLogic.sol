@@ -244,7 +244,7 @@ contract AutomationLogic {
         //add battery if exists
         uint64 addedEnergy = 0;
         // Calculate total energy from batteries (in seconds)
-        for (uint8 i = 0; i < batteryId.length; i++) {
+        for (uint256 i = 0; i < batteryId.length; i++) {
 
             require(automationProxy.isBatteryIdValid(batteryId[i]), "Invalid battery item");
 
@@ -334,7 +334,7 @@ contract AutomationLogic {
                 totalReductionPercent += (rate * supportItemQty[i]);
 
                 bool found = false;
-                for (uint j = 0; j < factory.supportItemId.length; j++) {
+                for (uint256 j = 0; j < factory.supportItemId.length; j++) {
                     if (factory.supportItemId[j] == supportItemId[i]) {
                         factory.supportItemQty[j] += supportItemQty[i];
                         found = true;
@@ -345,7 +345,7 @@ contract AutomationLogic {
                     // Dynamically resize and add new support items
                     uint256[] memory newSupportItemId = new uint256[](factory.supportItemId.length + 1);
                     uint256[] memory newSupportItemQty = new uint256[](factory.supportItemQty.length + 1);
-                    for (uint k = 0; k < factory.supportItemId.length; k++) {
+                    for (uint256 k = 0; k < factory.supportItemId.length; k++) {
                         newSupportItemId[k] = factory.supportItemId[k];
                         newSupportItemQty[k] = factory.supportItemQty[k];
                     }
@@ -379,9 +379,9 @@ contract AutomationLogic {
                 // Case: New machine running for the first time or running a new item type (after the old type is finished)
                 // Initialize a new array
                 if (factory.outputItemId.length > 0) {
-                    for (uint8 i = 0; i < factory.outputItemId.length; i++) {
+                    for (uint256 i = 0; i < factory.outputItemId.length; i++) {
                         require(
-                            factory.claimedOutput[i] == factory.totalOutput[i],
+                            factory.claimedOutput[i] >= factory.totalOutput[i],
                             "Must claim all output items before switching input item"
                         );
                     }
@@ -390,7 +390,7 @@ contract AutomationLogic {
                 factory.totalOutput = new uint256[](drops.length);
                 factory.claimedOutput = new uint256[](drops.length); // Reset claimed
 
-                for (uint i = 0; i < drops.length; i++) {
+                for (uint256 i = 0; i < drops.length; i++) {
                     factory.outputItemId[i] = drops[i].itemId;
                     factory.totalOutput[i] = drops[i].yield * inputQty;
                     factory.claimedOutput[i] = 0;
@@ -403,9 +403,9 @@ contract AutomationLogic {
             } else {
                 // Case: Refill (Add more of the same type to a running or recently finished machine)
                 // Add to an existing array
-                for (uint i = 0; i < drops.length; i++) {
+                for (uint256 i = 0; i < drops.length; i++) {
                     bool found = false;
-                    for (uint j = 0; j < factory.outputItemId.length; j++) {
+                    for (uint256 j = 0; j < factory.outputItemId.length; j++) {
                         if (factory.outputItemId[j] == drops[i].itemId) {
                             factory.totalOutput[j] += (drops[i].yield *
                                 inputQty);
@@ -419,8 +419,8 @@ contract AutomationLogic {
                 if (factory.productionEndTime > currentTime) {
                     // Machine is running -> Append time to productionEndTime
                     factory.productionEndTime += uint64(actualDuration);
-                    for (uint i = 0; i < drops.length; i++) {
-                        for (uint j = 0; j < factory.outputItemId.length; j++) {
+                    for (uint256 i = 0; i < drops.length; i++) {
+                        for (uint256 j = 0; j < factory.outputItemId.length; j++) {
                             if (factory.outputItemId[j] == drops[i].itemId) {
                                 factory.totalOutput[j] += (drops[i].yield *
                                     inputQty);
@@ -430,9 +430,9 @@ contract AutomationLogic {
                     }
                 } else {
                     // Machine has stopped -> Start from now
-                    for (uint k = 0; k < factory.outputItemId.length; k++) {
+                    for (uint256 k = 0; k < factory.outputItemId.length; k++) {
                         require(
-                            factory.claimedOutput[k] == factory.totalOutput[k],
+                            factory.claimedOutput[k] >= factory.totalOutput[k],
                             "Must claim finished rewards before restarting"
                         );
                     }
@@ -441,8 +441,8 @@ contract AutomationLogic {
                     );
                     factory.startTime = currentTime;
 
-                    for (uint i = 0; i < drops.length; i++) {
-                        for (uint j = 0; j < factory.outputItemId.length; j++) {
+                    for (uint256 i = 0; i < drops.length; i++) {
+                        for (uint256 j = 0; j < factory.outputItemId.length; j++) {
                             if (factory.outputItemId[j] == drops[i].itemId) {
                                 factory.totalOutput[j] = (drops[i].yield *
                                     inputQty);
