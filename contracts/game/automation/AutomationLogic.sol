@@ -19,11 +19,30 @@ contract AutomationLogic {
     /// @notice Treasury wallet address where ETH proceeds from sales are sent
     address public treasuryWallet;
 
-    event FactoryBought(address indexed player, uint256 factoryId, uint256 price, FactoryState factoryState);
-    event FactoryUpdateStatus(address indexed player, uint256 factoryId, FactoryState factoryState);
-    event FactoryClaimed(address indexed player, uint256 factoryId, uint256 itemDropId, uint256 claimedAmount, FactoryState factoryState);
+    event FactoryBought(
+        address indexed player,
+        uint256 factoryId,
+        uint256 price,
+        FactoryState factoryState
+    );
+    event FactoryUpdateStatus(
+        address indexed player,
+        uint256 factoryId,
+        FactoryState factoryState
+    );
+    event FactoryClaimed(
+        address indexed player,
+        uint256 factoryId,
+        uint256 itemDropId,
+        uint256 claimedAmount,
+        FactoryState factoryState
+    );
     event FactoryStopped(address indexed player, uint256 factoryId);
-    event TreasuryWalletUpdated(address indexed oldWallet, address indexed newWallet, address indexed admin);
+    event TreasuryWalletUpdated(
+        address indexed oldWallet,
+        address indexed newWallet,
+        address indexed admin
+    );
 
     constructor(
         address _world,
@@ -36,7 +55,10 @@ contract AutomationLogic {
         inventoryProxy = IInventoryComponent(_inventoryProxy);
         itemProxy = IItemComponent(_itemProxy);
         automationProxy = IAutomationComponent(_automationProxy);
-        require(_treasuryWallet != address(0), "Treasury wallet cannot be zero address");
+        require(
+            _treasuryWallet != address(0),
+            "Treasury wallet cannot be zero address"
+        );
         treasuryWallet = _treasuryWallet;
     }
     /**
@@ -122,17 +144,21 @@ contract AutomationLogic {
 
     function getBatteryIdValid() external view returns (uint256[] memory) {
         return automationProxy.getBatteryIdValid();
-    }   
+    }
 
     function getSupportIdValid() external view returns (uint256[] memory) {
         return automationProxy.getSupportIdValid();
     }
 
-    function setBatteryIdValid(uint256[] memory newBatteryIds) external onlyAdmin {
+    function setBatteryIdValid(
+        uint256[] memory newBatteryIds
+    ) external onlyAdmin {
         automationProxy.setBatteryIdValid(newBatteryIds);
     }
 
-    function setSupportIdValid(uint256[] memory newSupportIds) external onlyAdmin {
+    function setSupportIdValid(
+        uint256[] memory newSupportIds
+    ) external onlyAdmin {
         automationProxy.setSupportIdValid(newSupportIds);
     }
 
@@ -156,10 +182,7 @@ contract AutomationLogic {
 
         require(!factory.isOwned, "Factory already owned");
         uint256 factoryPrice = automationProxy.getFactoryPrice(factoryId);
-        require(
-            msg.value == factoryPrice,
-            "Incorrect SEI amount"
-        );
+        require(msg.value == factoryPrice, "Incorrect SEI amount");
 
         (bool transferSuccess, ) = payable(treasuryWallet).call{
             value: msg.value
@@ -184,7 +207,7 @@ contract AutomationLogic {
      * @param batteryQty The quantity of battery to use (optional)
      * @param _proof The cryptographic proof for authorization
      */
-function startMachine(
+    function startMachine(
         uint256 factoryId,
         uint256 inputItemId,
         uint256 inputQty,
@@ -223,8 +246,14 @@ function startMachine(
 
         // Validations
         require(batteryId.length == batteryQty.length, "Battery mismatch");
-        require(supportItemId.length == supportItemQty.length, "Support mismatch");
-        require(inventoryProxy.exists(player, inputItemId), "Missing input item");
+        require(
+            supportItemId.length == supportItemQty.length,
+            "Support mismatch"
+        );
+        require(
+            inventoryProxy.exists(player, inputItemId),
+            "Missing input item"
+        );
 
         //get factory
         FactoryState memory factory = automationProxy.getFactory(
@@ -245,8 +274,10 @@ function startMachine(
         uint64 addedEnergy = 0;
         // Calculate total energy from batteries (in seconds)
         for (uint256 i = 0; i < batteryId.length; i++) {
-
-            require(automationProxy.isBatteryIdValid(batteryId[i]), "Invalid battery item");
+            require(
+                automationProxy.isBatteryIdValid(batteryId[i]),
+                "Invalid battery item"
+            );
 
             require(
                 inventoryProxy.exists(player, batteryId[i]),
@@ -275,16 +306,29 @@ function startMachine(
         }
 
         if (factory.batteryExpiration < currentTime) {
-            factory.batteryExpiration = currentTime + addedEnergy;
+            factory.batteryExpiration =
+                currentTime +
+                addedEnergy +
+                factory.availableTime;
         } else {
             factory.batteryExpiration += addedEnergy;
         }
 
+        factory.availableTime = 0;
+        
         if (inputQty > 0) {
             // Input Item Processing
-            InventoryItem memory inputInvItem = inventoryProxy.getItem(player, inputItemId);
-            ItemStructs.Item memory itemDetails = itemProxy.getItem(inputItemId);
-            require(itemDetails.itemType == ItemStructs.ItemType.Seed, "Item must be Seed");
+            InventoryItem memory inputInvItem = inventoryProxy.getItem(
+                player,
+                inputItemId
+            );
+            ItemStructs.Item memory itemDetails = itemProxy.getItem(
+                inputItemId
+            );
+            require(
+                itemDetails.itemType == ItemStructs.ItemType.Seed,
+                "Item must be Seed"
+            );
             require(inputInvItem.quantity >= inputQty, "Not enough input");
 
             inventoryProxy.setItem(
@@ -303,7 +347,10 @@ function startMachine(
 
             uint256 totalReductionPercent = 0;
             for (uint256 i = 0; i < supportItemId.length; i++) {
-                require(automationProxy.isSupportIdValid(supportItemId[i]), "Invalid support item");
+                require(
+                    automationProxy.isSupportIdValid(supportItemId[i]),
+                    "Invalid support item"
+                );
                 require(
                     inventoryProxy.exists(player, supportItemId[i]),
                     "Player missing support item"
@@ -343,14 +390,22 @@ function startMachine(
                 }
                 if (!found) {
                     // Dynamically resize and add new support items
-                    uint256[] memory newSupportItemId = new uint256[](factory.supportItemId.length + 1);
-                    uint256[] memory newSupportItemQty = new uint256[](factory.supportItemQty.length + 1);
+                    uint256[] memory newSupportItemId = new uint256[](
+                        factory.supportItemId.length + 1
+                    );
+                    uint256[] memory newSupportItemQty = new uint256[](
+                        factory.supportItemQty.length + 1
+                    );
                     for (uint256 k = 0; k < factory.supportItemId.length; k++) {
                         newSupportItemId[k] = factory.supportItemId[k];
                         newSupportItemQty[k] = factory.supportItemQty[k];
                     }
-                    newSupportItemId[factory.supportItemId.length] = supportItemId[i];
-                    newSupportItemQty[factory.supportItemQty.length] = supportItemQty[i];
+                    newSupportItemId[
+                        factory.supportItemId.length
+                    ] = supportItemId[i];
+                    newSupportItemQty[
+                        factory.supportItemQty.length
+                    ] = supportItemQty[i];
                     factory.supportItemId = newSupportItemId;
                     factory.supportItemQty = newSupportItemQty;
                 }
@@ -403,11 +458,16 @@ function startMachine(
                 // Update time
                 if (factory.productionEndTime > currentTime) {
                     factory.productionEndTime += uint64(actualDuration);
-                    
+
                     for (uint256 i = 0; i < drops.length; i++) {
-                        for (uint256 j = 0; j < factory.outputItemId.length; j++) {
+                        for (
+                            uint256 j = 0;
+                            j < factory.outputItemId.length;
+                            j++
+                        ) {
                             if (factory.outputItemId[j] == drops[i].itemId) {
-                                factory.totalOutput[j] += (drops[i].yield * inputQty);
+                                factory.totalOutput[j] += (drops[i].yield *
+                                    inputQty);
                                 break;
                             }
                         }
@@ -420,17 +480,22 @@ function startMachine(
                             "Must claim finished rewards before restarting"
                         );
                     }
-                    
+
                     factory.productionEndTime = uint64(
                         currentTime + actualDuration
                     );
                     factory.startTime = currentTime;
 
                     for (uint256 i = 0; i < drops.length; i++) {
-                        for (uint256 j = 0; j < factory.outputItemId.length; j++) {
+                        for (
+                            uint256 j = 0;
+                            j < factory.outputItemId.length;
+                            j++
+                        ) {
                             if (factory.outputItemId[j] == drops[i].itemId) {
-                                factory.totalOutput[j] = (drops[i].yield * inputQty);
-                                factory.claimedOutput[j] = 0; 
+                                factory.totalOutput[j] = (drops[i].yield *
+                                    inputQty);
+                                factory.claimedOutput[j] = 0;
                                 break;
                             }
                         }
