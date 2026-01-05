@@ -376,6 +376,7 @@ function startMachine(
                 factory.outputItemId.length == 0 ||
                 factory.inputItemId != inputItemId
             ) {
+                factory.processableQty = 0;
                 if (factory.outputItemId.length > 0) {
                     for (uint256 i = 0; i < factory.outputItemId.length; i++) {
                         require(
@@ -412,6 +413,7 @@ function startMachine(
                         }
                     }
                 } else {
+                    factory.processableQty = 0;
                     for (uint256 k = 0; k < factory.outputItemId.length; k++) {
                         require(
                             factory.claimedOutput[k] >= factory.totalOutput[k],
