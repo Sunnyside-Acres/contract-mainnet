@@ -8,15 +8,21 @@ import "../../interfaces/ISkinMarket.sol";
 
 contract SkinShopLogic {
     IWorld public world;
+
     ISkinNFT public skinNFTProxy;
-    ISkin public skinData;
-    ISkinMarketComponent public marketProxy;
+
+    ISkin public skinProxy;
+
+    ISkinMarketComponent public skinMarketProxy;
+
     address public treasury;
+
     bool private _locked;
 
     event SkinPurchased(
         address indexed player,
         uint256 indexed npcId,
+        uint256[] tokenIds,
         string typeSkin,
         uint256 quantity,
         uint256 totalPrice
@@ -43,8 +49,8 @@ contract SkinShopLogic {
     ) {
         world = IWorld(_world);
         skinNFTProxy = ISkinNFT(_skinNFT);
-        skinData = ISkin(_skinComponent);
-        marketProxy = ISkinMarketComponent(_skinMarketComponent);
+        skinProxy = ISkin(_skinComponent);
+        skinMarketProxy = ISkinMarketComponent(_skinMarketComponent);
         require(_treasury != address(0), "Invalid treasury address");
         treasury = _treasury;
     }
@@ -63,9 +69,9 @@ contract SkinShopLogic {
         require(_quantity > 0, "Quantity must be > 0");
         address player = msg.sender;
 
-        require(marketProxy.isMarketOpen(_npcId), "Market closed");
+        require(skinMarketProxy.isMarketOpen(_npcId), "Market closed");
 
-        SkinMarket.MarketItemView memory item = marketProxy.getMarketItem(
+        SkinMarket.MarketItemView memory item = skinMarketProxy.getMarketItem(
             _npcId,
             _typeSkin
         );
@@ -73,7 +79,7 @@ contract SkinShopLogic {
         require(item.isSelling, "Item not for sale");
 
         require(
-            marketProxy.canUserPurchaseMore(
+            skinMarketProxy.canUserPurchaseMore(
                 _npcId,
                 _typeSkin,
                 player,
@@ -82,23 +88,15 @@ contract SkinShopLogic {
             "Exceeds purchase limit per user"
         );
 
-        uint256 currentSupply = skinData.getSkinOwners(_typeSkin).length;
-        uint256 maxSupply = skinData.getSkinMaxSupply(_typeSkin);
-
-        if (maxSupply > 0) {
-            require(
-                currentSupply + _quantity <= maxSupply,
-                "Sold out / Max supply reached"
-            );
-        }
+        require(
+            skinProxy.canSupply(_typeSkin, _quantity),
+            "Sold out / Max supply reached"
+        );
 
         uint256 totalPrice = item.pricePerUnit * _quantity;
         require(msg.value == totalPrice, "Insufficient ETH sent");
 
-        (bool success, ) = treasury.call{value: totalPrice}("");
-        require(success, "Transfer to treasury failed");
-
-        marketProxy.recordTransaction(
+        skinMarketProxy.recordTransaction(
             player,
             _npcId,
             _typeSkin,
@@ -107,17 +105,16 @@ contract SkinShopLogic {
             totalPrice,
             true
         );
-        marketProxy.addUserPurchase(_npcId, _typeSkin, player, _quantity);
+        skinMarketProxy.addUserPurchase(_npcId, _typeSkin, player, _quantity);
 
-        for (uint256 i = 0; i < _quantity; i++) {
-            uint256 tokenId = skinNFTProxy.mint(player, _typeSkin);
+        uint256[] memory tokenIds = skinNFTProxy.batchMint(player, _typeSkin, _quantity);
 
-            skinData.setPlayerSkin(player, tokenId);
-            skinData.addSkinOwner(_typeSkin, player);
-            skinData.setSkinType(tokenId, _typeSkin);
-        }
+        skinProxy.addSkinBatch(player, tokenIds, _typeSkin);
 
-        emit SkinPurchased(player, _npcId, _typeSkin, _quantity, totalPrice);
+        (bool success, ) = treasury.call{value: totalPrice}("");
+        require(success, "Transfer to treasury failed");
+
+        emit SkinPurchased(player, _npcId, tokenIds, _typeSkin, _quantity, totalPrice);
     }
 
     /**
@@ -126,8 +123,17 @@ contract SkinShopLogic {
      * @param _typeSkin The type of skin to buy
      * @return price per unit of the skin item
      */
-    function getSkinPrice(uint256 _npcId, string memory _typeSkin) external view returns (uint256) {
-        SkinMarket.MarketItemView memory item = marketProxy.getMarketItem(_npcId, _typeSkin);
+    function getSkinPrice(
+        uint256 _npcId,
+        string memory _typeSkin
+    ) external view returns (uint256) {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(bytes(_typeSkin).length > 0, "Invalid skin type");
+        require(skinMarketProxy.isMarketOpen(_npcId), "Market closed");
+        SkinMarket.MarketItemView memory item = skinMarketProxy.getMarketItem(
+            _npcId,
+            _typeSkin
+        );
         require(item.active && item.isSelling, "Item not for sale");
         return item.pricePerUnit;
     }
@@ -139,13 +145,27 @@ contract SkinShopLogic {
      * @param _user The address of the user
      * @return remaining purchase limit for the user
      */
-    function getUserRemainingLimit(uint256 _npcId, string memory _typeSkin, address _user) external view returns (uint256) {
-        SkinMarket.MarketItemView memory item = marketProxy.getMarketItem(_npcId, _typeSkin);
-        
+    function getUserRemainingLimit(
+        uint256 _npcId,
+        string memory _typeSkin,
+        address _user
+    ) external view returns (uint256) {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(bytes(_typeSkin).length > 0, "Invalid skin type");
+        require(skinMarketProxy.isMarketOpen(_npcId), "Market closed");
+        SkinMarket.MarketItemView memory item = skinMarketProxy.getMarketItem(
+            _npcId,
+            _typeSkin
+        );
+
         if (item.limitPerUser == 0) return type(uint256).max;
-        
-        uint256 purchased = marketProxy.getUserPurchases(_npcId, _typeSkin, _user);
-        
+
+        uint256 purchased = skinMarketProxy.getUserPurchases(
+            _npcId,
+            _typeSkin,
+            _user
+        );
+
         if (purchased >= item.limitPerUser) return 0;
         return item.limitPerUser - purchased;
     }
@@ -156,8 +176,11 @@ contract SkinShopLogic {
      * @param _typeSkin The type of skin to buy
      * @return detailed information of the skin item
      */
-    function getSkinInfo(uint256 _npcId, string memory _typeSkin) external view returns (SkinMarket.MarketItemView memory) {
-        return marketProxy.getMarketItem(_npcId, _typeSkin);
+    function getSkinInfo(
+        uint256 _npcId,
+        string memory _typeSkin
+    ) external view returns (SkinMarket.MarketItemView memory) {
+        return skinMarketProxy.getMarketItem(_npcId, _typeSkin);
     }
 
     /**
@@ -173,12 +196,11 @@ contract SkinShopLogic {
         uint256 _minTransactionAmount,
         uint256 _maxTransactionAmount
     ) external onlyAdmin {
-        marketProxy.updateNPCMarketConfig(
+        skinMarketProxy.updateNPCMarketConfig(
             _npcId,
             _name,
             _minTransactionAmount,
             _maxTransactionAmount
         );
     }
-
 }

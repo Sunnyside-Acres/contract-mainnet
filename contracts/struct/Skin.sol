@@ -1,8 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-struct Skin {
-    uint256 id;
-    string name;
-    string uri;
+struct SkinTypeInfo {
+    uint256 maxSupply;
+    uint256 currentSupply;
+    bool exists;
 }

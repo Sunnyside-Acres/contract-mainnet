@@ -2,13 +2,13 @@
 pragma solidity ^0.8.28;
 
 import "../../interfaces/IWorld.sol";
+import "../../struct/Skin.sol";
 
 contract SkinProxy {
-     address public world;
+    address public world;
     address public implementation;
-    mapping(address => uint256[]) public playerSkins; // player address => skinId
-    mapping(string => address[]) public skinOwners; // typeSkin => list of owner addresses
-    mapping(string => uint256) public skinMaxSupply; // typeSkin => max supply allowed
+    mapping(address => uint256[]) public playerSkins; // player address => skinIds
+    mapping(string => SkinTypeInfo) public skins; // typeSkin => SkinTypeInfo
     mapping(uint256 => string) public skinTypes; // skinId => typeSkin
 
     event ComponentUpdated(address indexed newImplementation);

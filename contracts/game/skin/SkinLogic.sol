@@ -11,7 +11,6 @@ contract SkinLogic {
     IWorld public world;
     ISkinNFT public skinNFT;
     ISkin public skinProxy;
-    mapping(address => uint256) public nonces;
 
     event ClaimNFT(address indexed player, uint256 indexed tokenId, string skinURI);
 
@@ -30,36 +29,6 @@ contract SkinLogic {
         skinNFT = ISkinNFT(_skinNFT);
     }
 
-    function safeMint(string memory typeSkin, bytes calldata proof) external {
-        address player = msg.sender;
-        bytes32 message = keccak256(
-            abi.encodePacked(player, typeSkin, address(this), nonces[player])
-        );
-
-        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
-            message
-        );
-        address signer = ECDSA.recover(ethSignedMessageHash, proof);
-        require(
-            IWorld(world).isAdmin(signer),
-            "Invalid proof: not signed by admin"
-        );
-        nonces[player]++;
-
-        require(
-                skinProxy.getSkinOwners(typeSkin).length < skinProxy.getSkinMaxSupply(typeSkin),
-            "Max supply reached for this skin"
-        );
-
-        uint256 skinId = skinNFT.mint(player, typeSkin);
-
-        skinProxy.setPlayerSkin(player, skinId);
-        skinProxy.addSkinOwner(typeSkin, player);
-        skinProxy.setSkinType(skinId, typeSkin);
-
-        emit ClaimNFT(player, skinId, typeSkin);
-    }
-
     function setSkinMaxSupply(string memory typeSkin, uint256 maxSupply) external onlyAdmin {
         skinProxy.setSkinMaxSupply(typeSkin, maxSupply);
     }
@@ -68,16 +37,8 @@ contract SkinLogic {
         return skinProxy.getSkinMaxSupply(typeSkin);
     }
 
-    function getSkinOwners(string memory typeSkin) external view returns (address[] memory) {
-        return skinProxy.getSkinOwners(typeSkin);
-    }
-
     function getPlayerSkins(address player) external view returns (uint256[] memory) {
         return skinProxy.getPlayerSkins(player);
-    }
-
-    function getNonce(address player) external view returns (uint256) {
-        return nonces[player];
     }
 
     function tokenURI(uint256 tokenId) external view returns (string memory) {
@@ -102,5 +63,13 @@ contract SkinLogic {
 
     function getSkinType(uint256 skinId) external view returns (string memory) {
         return skinProxy.getSkinType(skinId);
+    }
+
+    function getCurrentSupply(string memory typeSkin) external view returns (uint256) {
+        return skinProxy.getCurrentSupply(typeSkin);
+    }
+
+    function canSupply(string memory typeSkin, uint256 amount) external view returns (bool) {
+        return skinProxy.canSupply(typeSkin, amount);
     }
 }

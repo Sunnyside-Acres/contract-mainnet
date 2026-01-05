@@ -146,7 +146,7 @@ contract SkinMarketComponent {
             "Item already exists in market"
         );
 
-        // Add item to market
+        // Add skin type to market
         npcMarkets[_npcId].items[_typeSkin].skinType = _typeSkin;
         npcMarkets[_npcId].items[_typeSkin].limitPerUser = _limitPerUser;
         npcMarkets[_npcId].items[_typeSkin].pricePerUnit = _pricePerUnit;
@@ -154,7 +154,7 @@ contract SkinMarketComponent {
         npcMarkets[_npcId].items[_typeSkin].active = true;
         npcMarkets[_npcId].items[_typeSkin].lastPriceUpdate = block.timestamp;
 
-        // Add itemId to list for iteration
+        // Add skin type to list for iteration
         npcMarkets[_npcId].skinTypes.push(_typeSkin);
 
         emit ItemAddedToMarket(
@@ -197,8 +197,8 @@ contract SkinMarketComponent {
     }
 
     /**
-     * @dev Removes an item from the market
-     * @notice Marks item as inactive and removes from item list
+     * @dev Removes a skin type from the market
+     * @notice Marks skin type as inactive and removes from skin type list
      * @param _npcId ID of the NPC market
      * @param _typeSkin Type of the skin to remove
      */
@@ -214,20 +214,22 @@ contract SkinMarketComponent {
             "Item not found in market"
         );
 
-        // Mark item as inactive
+        // Mark skin type as inactive
         npcMarkets[_npcId].items[_typeSkin].active = false;
 
-        // Remove itemId from list
+        // Remove skin type from list
         string[] storage skinTypes = npcMarkets[_npcId].skinTypes;
         for (uint256 i = 0; i < skinTypes.length; i++) {
             if (keccak256(abi.encodePacked(skinTypes[i])) == keccak256(abi.encodePacked(_typeSkin))) {
                 skinTypes[i] = skinTypes[skinTypes.length - 1];
                 skinTypes.pop();
+
+                emit ItemRemovedFromMarket(_npcId, _typeSkin);
+                
                 break;
             }
         }
 
-        emit ItemRemovedFromMarket(_npcId, _typeSkin);
     }
 
     /**
