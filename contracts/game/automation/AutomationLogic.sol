@@ -315,7 +315,7 @@ contract AutomationLogic {
         }
 
         factory.availableTime = 0;
-        
+
         if (inputQty > 0) {
             // Input Item Processing
             InventoryItem memory inputInvItem = inventoryProxy.getItem(
@@ -678,7 +678,19 @@ contract AutomationLogic {
 
         require(factory.isOwned, "Not owned");
         require(factory.isActive, "Factory not active");
+        require(
+            block.timestamp >= factory.productionEndTime,
+            "Cannot reset while machine is running"
+        );
 
+        if (factory.totalOutput.length > 0) {
+            for (uint256 i = 0; i < factory.totalOutput.length; i++) {
+                require(
+                    factory.claimedOutput[i] >= factory.totalOutput[i],
+                    "Must claim all rewards before resetting"
+                );
+            }
+        }
         automationProxy.resetFactory(player, factoryId);
 
         emit FactoryStopped(player, factoryId);
