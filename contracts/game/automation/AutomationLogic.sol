@@ -61,6 +61,7 @@ contract AutomationLogic {
         );
         treasuryWallet = _treasuryWallet;
     }
+
     /**
      * @dev Prevents reentrance attacks
      * @notice Locks the contract during execution
@@ -503,15 +504,18 @@ contract AutomationLogic {
                 }
             }
         }
-        // Ensure battery can cover the production time
+        
+        uint64 deadline = factory.productionEndTime > currentTime
+            ? factory.productionEndTime
+            : currentTime;
+
         require(
-            factory.productionEndTime <= factory.batteryExpiration,
+            deadline <= factory.batteryExpiration,
             "Not enough battery for this production time"
         );
 
-        factory.availableTime =
-            factory.batteryExpiration -
-            factory.productionEndTime;
+        factory.availableTime = factory.batteryExpiration - deadline;
+        
         // Setup State for Factory
         factory.isActive = true;
         factory.processableQty += inputQty;
