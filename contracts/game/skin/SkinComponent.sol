@@ -91,4 +91,10 @@ contract SkinComponent {
         }
         skins[typeSkin].currentSupply += tokenIds.length;
     }
+
+    function getSkin(
+        string memory typeSkin
+    ) external view returns (SkinTypeInfo memory) {
+        return skins[typeSkin];
+    }
 }

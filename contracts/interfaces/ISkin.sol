@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
-
+import "../../struct/Skin.sol";
 interface ISkin {
     function setPlayerSkin(address player, uint256 skinId) external;
     function getPlayerSkins(address player) external view returns (uint256[] memory);
@@ -17,4 +17,6 @@ interface ISkin {
     function getCurrentSupply(string memory typeSkin) external view returns (uint256);
 
     function addSkinBatch(address player, uint256[] memory tokenIds, string memory typeSkin) external;
+
+    function getSkin(string memory typeSkin) external view returns (SkinTypeInfo memory);
 }
