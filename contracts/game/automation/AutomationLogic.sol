@@ -318,6 +318,14 @@ contract AutomationLogic {
         factory.availableTime = 0;
 
         if (inputQty > 0) {
+            bool isRunning = factory.isActive &&
+                factory.productionEndTime > currentTime;
+            if (!isRunning) {
+                factory.supportItemId = new uint256[](0);
+                factory.supportItemQty = new uint256[](0);
+                factory.totalSupportReductionRate = 0;
+            }
+
             // Input Item Processing
             InventoryItem memory inputInvItem = inventoryProxy.getItem(
                 player,
@@ -411,7 +419,6 @@ contract AutomationLogic {
                     factory.supportItemQty = newSupportItemQty;
                 }
             }
-
             if (totalReductionPercent > 50) {
                 totalReductionPercent = 50;
             } // Max 50% reduction
@@ -459,6 +466,9 @@ contract AutomationLogic {
                 // Update time
                 if (factory.productionEndTime > currentTime) {
                     factory.productionEndTime += uint64(actualDuration);
+                    factory.totalSupportReductionRate = totalReductionPercent;
+                    factory.supportItemId = supportItemId;
+                    factory.supportItemQty = supportItemQty;
 
                     for (uint256 i = 0; i < drops.length; i++) {
                         for (
@@ -504,7 +514,7 @@ contract AutomationLogic {
                 }
             }
         }
-        
+
         uint64 deadline = factory.productionEndTime > currentTime
             ? factory.productionEndTime
             : currentTime;
@@ -515,7 +525,7 @@ contract AutomationLogic {
         );
 
         factory.availableTime = factory.batteryExpiration - deadline;
-        
+
         // Setup State for Factory
         factory.isActive = true;
         factory.processableQty += inputQty;
