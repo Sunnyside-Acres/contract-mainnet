@@ -323,12 +323,11 @@ contract FleaSkinMarketComponent {
      * @notice Process a purchase from a listing
      * @param _listingId The ID of the listing
      * @param _buyer The buyer's address
-     * @return True if purchase was successful
      */
     function purchaseSkin(
         uint256 _listingId,
         address _buyer
-    ) external onlyAuthorized returns (bool) {
+    ) external onlyAuthorized{
         require(listings[_listingId].id != 0, "Listing does not exist");
         require(listings[_listingId].isActive, "Listing is not active");
         require(
@@ -342,8 +341,6 @@ contract FleaSkinMarketComponent {
 
         // remove listing completely
         removeListing(_listingId);
-
-        return true;
     }
 
     /**

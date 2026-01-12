@@ -24,7 +24,8 @@ contract FleaSkinMarketLogic {
         uint256 indexed tokenId,
         string skinType,
         uint256 price,
-        uint256 expirationTime
+        uint256 expirationTime,
+        uint256 commissionFeePercent
     );
 
     event ListingUpdated(
@@ -41,7 +42,7 @@ contract FleaSkinMarketLogic {
         uint256 indexed listingId,
         uint256 tokenId,
         string skinType,
-        uint256 totalCost
+        uint256 price
     );
 
     event TreasuryWalletUpdated(
@@ -105,13 +106,13 @@ contract FleaSkinMarketLogic {
     }
 
     /**
-     * @notice List an item for sale on the flea market - allows multiple orders for the same item
-     * @dev Items are deducted from inventory immediately upon listing
-     * @param tokenId The type of the skin to sell
-     * @param _price The selling price per item (in sunlight)
+     * @notice List a skin for sale on the flea market - allows multiple orders for the same skin
+     * @dev Skins are deducted from inventory immediately upon listing
+     * @param tokenId The ID of the skin to sell
+     * @param _price The selling price per skin (in sunlight)
      * @param _expired The validity period of the order (in seconds)
      */
-    function listItem(
+    function listSkin(
         uint256 tokenId,
         uint256 _price,
         uint256 _expired
@@ -152,16 +153,17 @@ contract FleaSkinMarketLogic {
             tokenId,
             skinType,
             _price,
-            block.timestamp + _expired
+            block.timestamp + _expired,
+            fleaSkinMarketProxy.getCommissionFeePercent()
         );
     }
 
     /**
-     * @notice Purchase an item from the flea market - each purchase is from a specific listing
+     * @notice Purchase a skin from the flea market - each purchase is from a specific listing
      * @dev Handles sunlight transfer and inventory updates
      * @param _listingId The ID of the listing to purchase from
      */
-    function purchaseItem(uint256 _listingId) external payable nonReentrant {
+    function purchaseSkin(uint256 _listingId) external payable nonReentrant {
         address buyer = msg.sender;
 
         // Check if player exists
@@ -177,16 +179,16 @@ contract FleaSkinMarketLogic {
             listing.expirationTime > block.timestamp,
             "Listing has expired"
         );
-        require(buyer != listing.seller, "Cannot buy your own item");
+        require(buyer != listing.seller, "Cannot buy your own skin");
         require(msg.value == listing.price, "Incorrect ETH amount sent");
         require(
-            skinNFTProxy.getApproved(listing.tokenId) == address(this),
+            skinNFTProxy.getApproved(listing.tokenId) == address(this) || 
+            skinNFTProxy.isApprovedForAll(listing.seller, address(this)),
             "Market contract not approved to transfer this skin"
         );
 
         // Process the purchase from this specific listing
-        bool success = fleaSkinMarketProxy.purchaseSkin(_listingId, buyer);
-        require(success, "Purchase failed");
+        fleaSkinMarketProxy.purchaseSkin(_listingId, buyer);
 
         // Transfer skin to buyer
         try skinNFTProxy.safeTransferFrom(listing.seller, buyer, listing.tokenId) {
@@ -194,7 +196,7 @@ contract FleaSkinMarketLogic {
             revert("Failed to transfer skin NFT to buyer");
         }
         uint256 totalCost = listing.price;
-        uint256 fee = (totalCost * listing.commissionFeePercent) / 100;
+        uint256 fee = (totalCost * listing.commissionFeePercent) / 10000;
         uint256 sellerProceeds = totalCost - fee;
 
         // Transfer fee to treasury
@@ -282,7 +284,7 @@ contract FleaSkinMarketLogic {
         return fleaSkinMarketProxy.getListingsByTokenId(_tokenId);
     }
 
-    function canListItem(
+    function canListSkin(
         address _player,
         uint256 _tokenId
     ) external view returns (bool, string memory) {
@@ -293,7 +295,7 @@ contract FleaSkinMarketLogic {
         if (skinNFTProxy.ownerOf(_tokenId) != _player) {
             return (false, "Not the owner of the skin");
         }
-        return (true, "Can list item");
+        return (true, "Can list skin");
     }
 
     function getPlayerTotalListedQuantity(
@@ -315,38 +317,5 @@ contract FleaSkinMarketLogic {
         }
 
         return totalQuantity;
-    }
-
-    function getAllListingsForTokenId(
-        uint256 _tokenId
-    ) external view returns (MarketListing[] memory filteredListings) {
-        MarketListing[] memory allListings = fleaSkinMarketProxy.getAllListings();
-
-        // Count listings for this item
-        uint256 count = 0;
-        for (uint256 i = 0; i < allListings.length; i++) {
-            if (allListings[i].tokenId == _tokenId) {
-                count++;
-            }
-        }
-
-        // Handle edge cases
-        if (count == 0) {
-            filteredListings = new MarketListing[](0);
-            return filteredListings;
-        }
-
-        // Create filtered array
-        filteredListings = new MarketListing[](count);
-        uint256 resultIndex = 0;
-
-        for (uint256 i = 0; i < allListings.length; i++) {
-            if (allListings[i].tokenId == _tokenId) {
-                filteredListings[resultIndex] = allListings[i];
-                resultIndex++;
-            }
-        }
-
-        return filteredListings;
     }
 }

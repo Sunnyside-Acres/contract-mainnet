@@ -7,7 +7,6 @@ interface ISkinNFT {
     function symbol() external view returns (string memory);
     function totalSupply() external view returns (uint256);
     function updateBaseURI(string memory newBaseURI) external;
-    function batchMint(address to, string memory uri, uint256 quantity) external returns (uint256[] memory);
     function ownerOf(uint256 tokenId) external view returns (address);
     function approve(address to, uint256 tokenId) external;
     function safeTransferFrom(address from, address to, uint256 tokenId) external;

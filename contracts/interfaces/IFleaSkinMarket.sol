@@ -42,7 +42,7 @@ interface IFleaSkinMarketComponent {
     function purchaseSkin(
         uint256 _listingId,
         address _buyer
-    ) external returns (bool);
+    ) external;
 
     function getListingCount() external view returns (uint256);
 

@@ -51,17 +51,6 @@ interface ISkinMarketComponent {
      */
     function setMarketActive(uint256 _npcId, bool _isActive) external;
 
-    /**
-     * @notice Allows a player to purchase skins from an NPC with ETH
-     * @param _npcId ID of the NPC market
-     * @param _typeSkin Type of skin (e.g., "Dragon", "Phoenix")
-     * @return transactionId ID of the transaction
-     */
-    function buySkinFromNPC(
-        uint256 _npcId,
-        string memory _typeSkin
-    ) external payable returns (uint256);
-
     // ============ READ FUNCTIONS ============
 
     /**
@@ -91,7 +80,7 @@ interface ISkinMarketComponent {
      */
     function getMarketSkinIds(
         uint256 _npcId
-    ) external view returns (uint256[] memory);
+    ) external view returns (string[] memory);
 
     /**
      * @notice Gets basic information about an NPC market

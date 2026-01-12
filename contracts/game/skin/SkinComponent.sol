@@ -24,22 +24,12 @@ contract SkinComponent {
         return skins[typeSkin].currentSupply;
     }
 
-    function incrementCurrentSupply(
-        string memory typeSkin,
-        uint256 amount
-    ) external onlyAuthorized {
-        skins[typeSkin].currentSupply += amount;
-    }
-
-    function canSupply(
-        string memory typeSkin,
-        uint256 amount
-    ) external view returns (bool) {
+    function canSupply(string memory typeSkin) external view returns (bool) {
         SkinTypeInfo storage skinInfo = skins[typeSkin];
         if (!skinInfo.exists) {
             return false;
         }
-        return (skinInfo.currentSupply + amount) <= skinInfo.maxSupply;
+        return skinInfo.currentSupply <= skinInfo.maxSupply;
     }
 
     function getPlayerSkins(

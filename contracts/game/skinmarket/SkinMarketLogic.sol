@@ -89,7 +89,7 @@ contract SkinMarketLogic {
         require(skin.active, "skin not active");
 
         require(
-            skinProxy.canSupply(_typeSkin, 1),
+            skinProxy.canSupply(_typeSkin),
             "Sold out / Max supply reached"
         );
 
