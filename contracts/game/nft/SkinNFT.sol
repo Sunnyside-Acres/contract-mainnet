@@ -46,24 +46,6 @@ contract SkinNFT is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         return tokenId;
     }
 
-    function batchMint(
-        address to,
-        string memory uri,
-        uint256 quantity
-    ) external onlyAuthorized returns (uint256[] memory) {
-        require(to != address(0), "Cannot mint to zero address");
-        uint256[] memory tokenIds = new uint256[](quantity);
-
-        for (uint256 i = 0; i < quantity; i++) {
-            uint256 tokenId = _nextTokenId;
-            _safeMint(to, tokenId);
-            _setTokenURI(tokenId, uri);
-            tokenIds[i] = tokenId;
-            _nextTokenId++;
-        }
-        return tokenIds;
-    }
-
     function tokenURI(
         uint256 tokenId
     ) public view override(ERC721, ERC721URIStorage) returns (string memory) {

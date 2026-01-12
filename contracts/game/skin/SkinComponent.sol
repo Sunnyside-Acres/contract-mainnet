@@ -24,35 +24,18 @@ contract SkinComponent {
         return skins[typeSkin].currentSupply;
     }
 
-    function incrementCurrentSupply(
-        string memory typeSkin,
-        uint256 amount
-    ) external onlyAuthorized {
-        skins[typeSkin].currentSupply += amount;
-    }
-
-    function canSupply(
-        string memory typeSkin,
-        uint256 amount
-    ) external view returns (bool) {
+    function canSupply(string memory typeSkin) external view returns (bool) {
         SkinTypeInfo storage skinInfo = skins[typeSkin];
         if (!skinInfo.exists) {
             return false;
         }
-        return (skinInfo.currentSupply + amount) <= skinInfo.maxSupply;
+        return skinInfo.currentSupply <= skinInfo.maxSupply;
     }
 
     function getPlayerSkins(
         address player
     ) external view returns (uint256[] memory) {
         return playerSkins[player];
-    }
-
-    function setPlayerSkin(
-        address player,
-        uint256 skinId
-    ) external onlyAuthorized {
-        playerSkins[player].push(skinId);
     }
 
     function setSkinMaxSupply(
@@ -80,16 +63,14 @@ contract SkinComponent {
         return skinTypes[skinId];
     }
 
-    function addSkinBatch(
+    function addSkin(
         address player,
-        uint256[] memory tokenIds,
+        uint256 tokenId,
         string memory typeSkin
     ) external onlyAuthorized {
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            playerSkins[player].push(tokenIds[i]);
-            skinTypes[tokenIds[i]] = typeSkin;
-        }
-        skins[typeSkin].currentSupply += tokenIds.length;
+        playerSkins[player].push(tokenId);
+        skinTypes[tokenId] = typeSkin;
+        skins[typeSkin].currentSupply++;
     }
 
     function getSkin(

@@ -12,32 +12,39 @@ contract SkinLogic {
     ISkinNFT public skinNFT;
     ISkin public skinProxy;
 
-    event ClaimNFT(address indexed player, uint256 indexed tokenId, string skinURI);
-
+    event Approval(
+        address indexed owner,
+        address indexed approved,
+        uint256 indexed tokenId
+    );
+    
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
         _;
     }
 
-    constructor(
-        address _world,
-        address _skinProxy,
-        address _skinNFT
-    ) {
+    constructor(address _world, address _skinProxy, address _skinNFT) {
         world = IWorld(_world);
         skinProxy = ISkin(_skinProxy);
         skinNFT = ISkinNFT(_skinNFT);
     }
 
-    function setSkinMaxSupply(string memory typeSkin, uint256 maxSupply) external onlyAdmin {
+    function setSkinMaxSupply(
+        string memory typeSkin,
+        uint256 maxSupply
+    ) external onlyAdmin {
         skinProxy.setSkinMaxSupply(typeSkin, maxSupply);
     }
 
-    function getSkinMaxSupply(string memory typeSkin) external view returns (uint256) {
+    function getSkinMaxSupply(
+        string memory typeSkin
+    ) external view returns (uint256) {
         return skinProxy.getSkinMaxSupply(typeSkin);
     }
 
-    function getPlayerSkins(address player) external view returns (uint256[] memory) {
+    function getPlayerSkins(
+        address player
+    ) external view returns (uint256[] memory) {
         return skinProxy.getPlayerSkins(player);
     }
 
@@ -65,11 +72,27 @@ contract SkinLogic {
         return skinProxy.getSkinType(skinId);
     }
 
-    function getCurrentSupply(string memory typeSkin) external view returns (uint256) {
+    function getCurrentSupply(
+        string memory typeSkin
+    ) external view returns (uint256) {
         return skinProxy.getCurrentSupply(typeSkin);
     }
 
-    function canSupply(string memory typeSkin, uint256 amount) external view returns (bool) {
-        return skinProxy.canSupply(typeSkin, amount);
+    function canSupply(string memory typeSkin) external view returns (bool) {
+        return skinProxy.canSupply(typeSkin);
+    }
+
+    function ownerOf(uint256 tokenId) external view returns (address) {
+        return skinNFT.ownerOf(tokenId);
+    }
+
+    function approve(address to, uint256 tokenId) external {
+        require(
+            skinNFT.ownerOf(tokenId) == msg.sender ||
+                skinNFT.getApproved(tokenId) == msg.sender,
+            "Not the owner of the skin or approved to transfer"
+        );
+        skinNFT.approve(to, tokenId);
+        emit Approval(msg.sender, to, tokenId);
     }
 }
