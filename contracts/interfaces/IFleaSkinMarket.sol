@@ -5,11 +5,9 @@ import "../struct/FleaSkinMarket.sol";
 interface IFleaSkinMarketComponent {
     function createListing(
         address _seller,
-        string memory _skinType,
-        uint256 _quantity,
+        uint256 _tokenId,
         uint256 _price,
-        uint256 _duration,
-        uint256 _durability,
+        string memory _skinType,
         uint256 _expiration
     ) external returns (uint256);
 
@@ -29,45 +27,30 @@ interface IFleaSkinMarketComponent {
         address _seller
     ) external view returns (MarketListing[] memory);
 
-    function getListingsBySkinType(
-        string memory _skinType
+    function getListingsByTokenId(
+        uint256 _tokenId
     ) external view returns (MarketListing[] memory);
 
     function updateListing(
         uint256 _listingId,
-        uint256 _quantity,
         uint256 _price,
-        uint256 _duration
+        uint256 _expired
     ) external;
 
     function cancelListing(uint256 _listingId) external;
 
-    function purchaseListing(
+    function purchaseSkin(
         uint256 _listingId,
-        uint256 _quantity,
         address _buyer
-    ) external;
-
-    function addTransaction(
-        uint256 _listingId,
-        address _seller,
-        address _buyer,
-        string memory _skinType,
-        uint256 _quantity,
-        uint256 _price,
-        uint256 _durability,
-        uint256 _expiration
-    ) external;
-
-    function getTransactionHistory(
-        address _player
-    ) external view returns (MarketTransaction[] memory);
-
-    function getMarketStats() external view returns (MarketStats memory);
+    ) external returns (bool);
 
     function getListingCount() external view returns (uint256);
 
     function exists(uint256 _listingId) external view returns (bool);
 
     function isListingActive(uint256 _listingId) external view returns (bool);
+
+    function getCommissionFeePercent() external view returns (uint256);
+
+    function setCommissionFeePercent(uint256 _percent) external;
 }

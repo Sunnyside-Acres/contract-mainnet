@@ -4,32 +4,24 @@ import "../../interfaces/IWorld.sol";
 import "../../struct/FleaSkinMarket.sol";
 
 contract FleaSkinMarketComponent {
-    /// @notice Address of the World contract for access control
     address public world;
-
-    /// @notice Address of the implementation logic contract
     address public implementation;
 
-    /// @notice Mapping from listing ID to MarketListing
     mapping(uint256 => MarketListing) public listings;
 
-    /// @notice Mapping from player address to their listing IDs
     mapping(address => uint256[]) public sellerListings;
-
-    /// @notice Mapping from type skin to listing IDs for that skin
-    mapping(string => uint256[]) public skinListings;
-
-    /// @notice Mapping from player address to their transaction history
-    mapping(address => MarketTransaction[]) public transactionHistory;
-
-    /// @notice Total number of listings created
-    uint256 public listingCount;
-
-    /// @notice Array of all listing IDs
+    mapping(uint256 => uint256[]) public skinListings;
     uint256[] public allListingIds;
 
-    /// @notice Market statistics
-    MarketStats public marketStats;
+    // Save the position of ListingId in the allListingIds array
+    mapping(uint256 => uint256) private allListingIndex;
+    // Save the position of ListingId in the sellerListings array
+    mapping(uint256 => uint256) private sellerListingIndex;
+    // Save the position of ListingId in the skinListings array
+    mapping(uint256 => uint256) private skinListingIndex;
+
+    uint256 public listingCount;
+    uint256 public commissionFeePercent;
 
     /// @notice Restricts access to authorized logic contracts only
     modifier onlyAuthorized() {
@@ -40,26 +32,21 @@ contract FleaSkinMarketComponent {
     /**
      * @notice Create a new market listing
      * @param _seller The address of the seller
-     * @param _skinType The type of the skin being sold
-     * @param _quantity The quantity of items
-     * @param _price The price per item
-     * @param _duration The listing duration in seconds
-     * @param _durability The durability of the item
-     * @param _expiration The expiration time of the item
+     * @param _tokenId The ID of the token being sold
+     * @param _price The price per skin
+     * @param _skinType The type of the skin
+     * @param _expiration The expiration time of the skin
      * @return The ID of the newly created listing
      */
     function createListing(
         address _seller,
-        string memory _skinType,
-        uint256 _quantity,
+        uint256 _tokenId,
         uint256 _price,
-        uint256 _duration,
-        uint256 _durability,
+        string memory _skinType,
         uint256 _expiration
     ) external onlyAuthorized returns (uint256) {
-        require(_quantity > 0, "Quantity must be greater than 0");
         require(_price > 0, "Price must be greater than 0");
-        require(_duration > 0, "Duration must be greater than 0");
+        require(_expiration > 0, "Expiration must be greater than 0");
 
         listingCount++;
         uint256 listingId = listingCount;
@@ -67,27 +54,23 @@ contract FleaSkinMarketComponent {
         MarketListing storage listing = listings[listingId];
         listing.id = listingId;
         listing.seller = _seller;
-        listing.skinType = _skinType;
-        listing.quantity = _quantity;
+        listing.tokenId = _tokenId;
         listing.price = _price;
+        listing.skinType = _skinType;
         listing.listingTime = block.timestamp;
-        listing.expirationTime = block.timestamp + _duration;
+        listing.expirationTime = block.timestamp + _expiration;
         listing.isActive = true;
-        listing.durability = _durability;
-        listing.expiration = _expiration;
+        listing.commissionFeePercent = commissionFeePercent;
 
-        // Add to seller's listings
+        // Add & Track Index
         sellerListings[_seller].push(listingId);
+        sellerListingIndex[listingId] = sellerListings[_seller].length - 1;
 
-        // Add to item's listings
-        skinListings[_skinType].push(listingId);
+        skinListings[_tokenId].push(listingId);
+        skinListingIndex[listingId] = skinListings[_tokenId].length - 1;
 
-        // Add to all listings
         allListingIds.push(listingId);
-
-        // Update stats
-        marketStats.totalListings++;
-        marketStats.activeListings++;
+        allListingIndex[listingId] = allListingIds.length - 1;
 
         return listingId;
     }
@@ -222,68 +205,64 @@ contract FleaSkinMarketComponent {
     }
 
     /**
-     * @notice Get active listings by item ID
-     * @param _skinType The skin type
-     * @return Array of active MarketListing structs for the item
+     * @notice Get active listings by skin ID
+     * @param _tokenId The token ID
+     * @return Array of active MarketListing structs for the skin
      */
-    function getListingsByItem(
-       string memory _skinType
+    function getListingsByTokenId(
+        uint256 _tokenId
     ) external view returns (MarketListing[] memory) {
-        uint256[] memory itemListingIds = skinListings[_skinType];
+        uint256[] memory skinListingIds = skinListings[_tokenId];
 
         // Count active listings first
         uint256 activeCount = 0;
-        for (uint256 i = 0; i < itemListingIds.length; i++) {
+        for (uint256 i = 0; i < skinListingIds.length; i++) {
             if (
-                listings[itemListingIds[i]].isActive &&
-                listings[itemListingIds[i]].expirationTime > block.timestamp
+                listings[skinListingIds[i]].isActive &&
+                listings[skinListingIds[i]].expirationTime > block.timestamp
             ) {
                 activeCount++;
             }
         }
 
         // Create array with correct size
-        MarketListing[] memory itemListingsArray = new MarketListing[](
+        MarketListing[] memory skinListingsArray = new MarketListing[](
             activeCount
         );
 
         uint256 currentIndex = 0;
-        for (uint256 i = 0; i < itemListingIds.length; i++) {
+        for (uint256 i = 0; i < skinListingIds.length; i++) {
             if (
-                listings[itemListingIds[i]].isActive &&
-                listings[itemListingIds[i]].expirationTime > block.timestamp
+                listings[skinListingIds[i]].isActive &&
+                listings[skinListingIds[i]].expirationTime > block.timestamp
             ) {
-                itemListingsArray[currentIndex] = listings[itemListingIds[i]];
+                skinListingsArray[currentIndex] = listings[skinListingIds[i]];
                 currentIndex++;
             }
         }
 
-        return itemListingsArray;
+        return skinListingsArray;
     }
 
     /**
      * @notice Update an existing listing
      * @param _listingId The ID of the listing to update
-     * @param _quantity The new quantity
      * @param _price The new price
-     * @param _duration The new duration in seconds
+     * @param _expired The new duration in seconds
      */
     function updateListing(
         uint256 _listingId,
-        uint256 _quantity,
         uint256 _price,
-        uint256 _duration
+        uint256 _expired
     ) external onlyAuthorized {
         require(listings[_listingId].id != 0, "Listing does not exist");
         require(listings[_listingId].isActive, "Listing is not active");
-        require(_quantity > 0, "Quantity must be greater than 0");
         require(_price > 0, "Price must be greater than 0");
-        require(_duration > 0, "Duration must be greater than 0");
+        require(_expired > 0, "Duration must be greater than 0");
 
         MarketListing storage listing = listings[_listingId];
-        listing.quantity = _quantity;
         listing.price = _price;
-        listing.expirationTime = block.timestamp + _duration;
+        listing.expirationTime = block.timestamp + _expired;
     }
 
     /**
@@ -307,59 +286,48 @@ contract FleaSkinMarketComponent {
 
         MarketListing storage listing = listings[_listingId];
 
-        // Deactivate listing
-        listing.isActive = false;
-        marketStats.activeListings--;
+        // Remove from All Listings
+        uint256 indexAll = allListingIndex[_listingId];
+        uint256 lastIdAll = allListingIds[allListingIds.length - 1];
 
-        // Remove from seller's listings array
-        uint256[] storage sellerListingIds = sellerListings[listing.seller];
-        for (uint256 i = 0; i < sellerListingIds.length; i++) {
-            if (sellerListingIds[i] == _listingId) {
-                // Move last element to current position and remove last
-                sellerListingIds[i] = sellerListingIds[
-                    sellerListingIds.length - 1
-                ];
-                sellerListingIds.pop();
-                break;
-            }
-        }
+        allListingIds[indexAll] = lastIdAll; // Move last to current
+        allListingIndex[lastIdAll] = indexAll; // Update index of moved item
+        allListingIds.pop();
+        delete allListingIndex[_listingId];
 
-        // Remove from item's listings array
-        uint256[] storage itemListingIds = skinListings[listing.skinType];
-        for (uint256 i = 0; i < itemListingIds.length; i++) {
-            if (itemListingIds[i] == _listingId) {
-                // Move last element to current position and remove last
-                itemListingIds[i] = itemListingIds[itemListingIds.length - 1];
-                itemListingIds.pop();
-                break;
-            }
-        }
+        // Remove from Seller Listings
+        uint256 indexSeller = sellerListingIndex[_listingId];
+        uint256[] storage sList = sellerListings[listing.seller];
+        uint256 lastIdSeller = sList[sList.length - 1];
 
-        // Remove from all listings array
-        for (uint256 i = 0; i < allListingIds.length; i++) {
-            if (allListingIds[i] == _listingId) {
-                // Move last element to current position and remove last
-                allListingIds[i] = allListingIds[allListingIds.length - 1];
-                allListingIds.pop();
-                break;
-            }
-        }
+        sList[indexSeller] = lastIdSeller;
+        sellerListingIndex[lastIdSeller] = indexSeller;
+        sList.pop();
+        delete sellerListingIndex[_listingId];
 
-        // Clear the listing data completely
+        // Remove from Skin Listings
+        uint256 indexSkin = skinListingIndex[_listingId];
+        uint256[] storage skList = skinListings[listing.tokenId];
+        uint256 lastIdSkin = skList[skList.length - 1];
+
+        skList[indexSkin] = lastIdSkin;
+        skinListingIndex[lastIdSkin] = indexSkin;
+        skList.pop();
+        delete skinListingIndex[_listingId];
+
+        // Delete Data
         delete listings[_listingId];
     }
 
-     /**
+    /**
      * @notice Process a purchase from a listing
      * @param _listingId The ID of the listing
      * @param _buyer The buyer's address
-     * @param _quantity The quantity to purchase
      * @return True if purchase was successful
      */
-    function purchaseItem(
+    function purchaseSkin(
         uint256 _listingId,
-        address _buyer,
-        uint256 _quantity
+        address _buyer
     ) external onlyAuthorized returns (bool) {
         require(listings[_listingId].id != 0, "Listing does not exist");
         require(listings[_listingId].isActive, "Listing is not active");
@@ -368,88 +336,14 @@ contract FleaSkinMarketComponent {
             "Listing has expired"
         );
         require(
-            listings[_listingId].quantity >= _quantity,
-            "Not enough items available"
-        );
-        require(
             _buyer != listings[_listingId].seller,
-            "Cannot buy your own item"
+            "Cannot buy your own skin"
         );
 
-        MarketListing storage listing = listings[_listingId];
-
-        // Update listing quantity
-        listing.quantity -= _quantity;
-
-        // If quantity becomes 0, remove listing completely
-        if (listing.quantity == 0) {
-            removeListing(_listingId);
-        }
+        // remove listing completely
+        removeListing(_listingId);
 
         return true;
-    }
-
-    /**
-     * @notice Add a transaction to history
-     * @param _listingId The ID of the listing
-     * @param _seller The seller's address
-     * @param _buyer The buyer's address
-     * @param _skinType The skin type
-     * @param _quantity The quantity purchased
-     * @param _price The price per item
-     * @param _durability The item durability
-     * @param _expiration The item expiration
-     */
-    function addTransaction(
-        uint256 _listingId,
-        address _seller,
-        address _buyer,
-         string memory _skinType,
-        uint256 _quantity,
-        uint256 _price,
-        uint256 _durability,
-        uint256 _expiration
-    ) external onlyAuthorized {
-        MarketTransaction memory transaction = MarketTransaction({
-            listingId: _listingId,
-            seller: _seller,
-            buyer: _buyer,
-            skinType: _skinType,
-            quantity: _quantity,
-            price: _price,
-            transactionTime: block.timestamp,
-            durability: _durability,
-            expiration: _expiration
-        });
-
-        // Add to buyer's transaction history
-        transactionHistory[_buyer].push(transaction);
-
-        // Add to seller's transaction history
-        transactionHistory[_seller].push(transaction);
-
-        // Update market stats
-        marketStats.totalTransactions++;
-        marketStats.totalVolume += _price * _quantity;
-    }
-
-    /**
-     * @notice Get a player's transaction history
-     * @param _player The player's address
-     * @return Array of MarketTransaction structs for the player
-     */
-    function getTransactionHistory(
-        address _player
-    ) external view returns (MarketTransaction[] memory) {
-        return transactionHistory[_player];
-    }
-
-    /**
-     * @notice Get market statistics
-     * @return The MarketStats struct
-     */
-    function getMarketStats() external view returns (MarketStats memory) {
-        return marketStats;
     }
 
     /**
@@ -478,5 +372,13 @@ contract FleaSkinMarketComponent {
         return
             listings[_listingId].isActive &&
             listings[_listingId].expirationTime > block.timestamp;
+    }
+
+    function getCommissionFeePercent() external view returns (uint256) {
+        return commissionFeePercent;
+    }
+
+    function setCommissionFeePercent(uint256 _percent) external onlyAuthorized {
+        commissionFeePercent = _percent;
     }
 }

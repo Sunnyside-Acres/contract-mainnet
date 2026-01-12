@@ -5,55 +5,49 @@ import "../../interfaces/IWorld.sol";
 import "../../interfaces/IPlayer.sol";
 import "../../interfaces/IFleaSkinMarket.sol";
 import "../../interfaces/ISkin.sol";
+import "../../interfaces/ISkinNFT.sol";
 
 contract FleaSkinMarketLogic {
     IWorld public world;
     IPlayerComponent public playerProxy;
     IFleaSkinMarketComponent public fleaSkinMarketProxy;
     ISkin public skinProxy;
+    ISkinNFT public skinNFTProxy;
+    address public treasury;
+    bool private _locked;
 
     // ============ EVENTS ============
 
     event SkinListed(
         address indexed seller,
         uint256 indexed listingId,
-        string indexed skinType,
-        uint256 quantity,
+        uint256 indexed tokenId,
+        string skinType,
         uint256 price,
         uint256 expirationTime
     );
 
-    event SkinPurchased(
-        address indexed buyer,
-        address indexed seller,
-        uint256 indexed listingId,
-        string indexed skinType,
-        uint256 quantity,
-        uint256 price
-    );
-
     event ListingUpdated(
         uint256 indexed listingId,
-        uint256 quantity,
         uint256 price,
         uint256 expirationTime
     );
 
     event ListingCancelled(address indexed seller, uint256 indexed listingId);
 
-    event BulkPurchaseCompleted(
+    event SkinPurchased(
         address indexed buyer,
-        uint256[] listingIds,
-        uint256[] quantities,
+        address indexed seller,
+        uint256 indexed listingId,
+        uint256 tokenId,
+        string skinType,
         uint256 totalCost
     );
 
-    event BestPricePurchaseCompleted(
-        address indexed buyer,
-        string indexed skinType,
-        uint256 requestedQuantity,
-        uint256 actualQuantity,
-        uint256 totalCost
+    event TreasuryWalletUpdated(
+        address indexed oldWallet,
+        address indexed newWallet,
+        address indexed admin
     );
 
     // ============ MODIFIERS ============
@@ -63,13 +57,13 @@ contract FleaSkinMarketLogic {
         _;
     }
 
-    modifier onlyInternal() {
-        require(
-            world.isLogicRegistered(msg.sender),
-            "Only registered logic can call this function"
-        );
+    modifier nonReentrant() {
+        require(!_locked, "Reentrant call");
+        _locked = true;
         _;
+        _locked = false;
     }
+
 
     // ============ CONSTRUCTOR ============
 
@@ -77,94 +71,282 @@ contract FleaSkinMarketLogic {
         address _world,
         address _playerProxy,
         address _fleaSkinMarketProxy,
-        address _skinProxy
+        address _skinProxy,
+        address _skinNFTProxy,
+        address _treasury
     ) {
         world = IWorld(_world);
         playerProxy = IPlayerComponent(_playerProxy);
         fleaSkinMarketProxy = IFleaSkinMarketComponent(_fleaSkinMarketProxy);
         skinProxy = ISkin(_skinProxy);
+        skinNFTProxy = ISkinNFT(_skinNFTProxy);
+        require(_treasury != address(0), "Invalid treasury address");
+        treasury = _treasury;
     }
 
     // ============ WRITE FUNCTIONS (EXTERNAL) ============
 
+    function setTreasuryWallet(address _treasury) external onlyAdmin {
+        require(
+            _treasury != address(0),
+            "Treasury wallet cannot be zero address"
+        );
+        address oldWallet = treasury;
+        treasury = _treasury;
+        emit TreasuryWalletUpdated(oldWallet, _treasury, msg.sender);
+    }
+
+    function getCommissionFeePercent() external view returns (uint256) {
+        return fleaSkinMarketProxy.getCommissionFeePercent();
+    }
+
+    function setCommissionFeePercent(uint256 _percent) external onlyAdmin {
+        fleaSkinMarketProxy.setCommissionFeePercent(_percent);
+    }
+
     /**
      * @notice List an item for sale on the flea market - allows multiple orders for the same item
      * @dev Items are deducted from inventory immediately upon listing
-     * @param _skinType The type of the skin to sell
-     * @param _quantity The quantity of items to sell in this order
+     * @param tokenId The type of the skin to sell
      * @param _price The selling price per item (in sunlight)
-     * @param _duration The validity period of the order (in seconds)
-     *
-     * Process:
-     * 1. Validate input parameters
-     * 2. Check that player and item exist
-     * 3. Check sufficient items in inventory
-     * 4. Deduct items from inventory immediately
-     * 5. Create listing with unique ID
-     * 6. Emit ItemListed event
+     * @param _expired The validity period of the order (in seconds)
      */
     function listItem(
-        string memory _skinType,
-        uint256 _quantity,
+        uint256 tokenId,
         uint256 _price,
-        uint256 _duration
-    ) external {
+        uint256 _expired
+    ) external  nonReentrant {
         address seller = msg.sender;
 
         // Validate input
-        require(_quantity > 0, "Quantity must be greater than 0");
         require(_price > 0, "Price must be greater than 0");
-        require(_duration > 0, "Duration must be greater than 0");
+        require(_expired > 0, "Duration must be greater than 0");
 
         // Check if player exists
         Player memory playerData = playerProxy.getPlayer(seller);
         require(playerData.level > 0, "Player not initialized");
 
-        // Check if skin exists in game
         require(
-            skinProxy.getSkin(_skinType).exists,
-            "Skin does not exist in game"
+            skinNFTProxy.ownerOf(tokenId) == seller,
+            "Not the owner of the skin"
         );
 
-        // Check if player has enough items in inventory
-        InventoryItem memory playerItem = inventoryProxy.getItem(
-            seller,
-            _skinType
-        );
-        require(playerItem.quantity > 0, "Item does not exist in inventory");
-        require(
-            playerItem.quantity >= _quantity,
-            "Not enough items in inventory to list"
-        );
+        bool isApproved = (skinNFTProxy.getApproved(tokenId) == address(this)) || 
+                          (skinNFTProxy.isApprovedForAll(seller, address(this)));
+        require(isApproved, "Market not approved to transfer NFT");
 
-        // Remove items from seller's inventory immediately
-        uint256 newQuantity = playerItem.quantity - _quantity;
-        inventoryProxy.setItem(
-            seller,
-            _skinType,
-            newQuantity,
-            playerItem.durability,
-            playerItem.expiration
-        );
+        string memory skinType = skinProxy.getSkinType(tokenId);
 
         // Create listing with unique ID
         uint256 listingId = fleaSkinMarketProxy.createListing(
             seller,
-            _skinType,
-            _quantity,
+            tokenId,
             _price,
-            _duration,
-            playerItem.durability,
-            playerItem.expiration
+            skinType,
+            _expired
         );
 
         emit SkinListed(
             seller,
             listingId,
-            _skinType,
-            _quantity,
+            tokenId,
+            skinType,
             _price,
-            block.timestamp + _duration
+            block.timestamp + _expired
         );
+    }
+
+    /**
+     * @notice Purchase an item from the flea market - each purchase is from a specific listing
+     * @dev Handles sunlight transfer and inventory updates
+     * @param _listingId The ID of the listing to purchase from
+     */
+    function purchaseItem(uint256 _listingId) external payable nonReentrant {
+        address buyer = msg.sender;
+
+        // Check if player exists
+        Player memory playerData = playerProxy.getPlayer(buyer);
+        require(playerData.level > 0, "Player not initialized");
+
+        // Get listing details
+        MarketListing memory listing = fleaSkinMarketProxy.getListing(
+            _listingId
+        );
+        require(listing.isActive, "Listing is not active");
+        require(
+            listing.expirationTime > block.timestamp,
+            "Listing has expired"
+        );
+        require(buyer != listing.seller, "Cannot buy your own item");
+        require(msg.value == listing.price, "Incorrect ETH amount sent");
+        require(
+            skinNFTProxy.getApproved(listing.tokenId) == address(this),
+            "Market contract not approved to transfer this skin"
+        );
+
+        // Process the purchase from this specific listing
+        bool success = fleaSkinMarketProxy.purchaseSkin(_listingId, buyer);
+        require(success, "Purchase failed");
+
+        // Transfer skin to buyer
+        try skinNFTProxy.safeTransferFrom(listing.seller, buyer, listing.tokenId) {
+        } catch {
+            revert("Failed to transfer skin NFT to buyer");
+        }
+        uint256 totalCost = listing.price;
+        uint256 fee = (totalCost * listing.commissionFeePercent) / 100;
+        uint256 sellerProceeds = totalCost - fee;
+
+        // Transfer fee to treasury
+        if (fee > 0) {
+            (bool feeSent, ) = treasury.call{value: fee}("");
+            require(feeSent, "Fee transfer failed");
+        }
+
+        // Transfer proceeds to seller
+        (bool sellerPaid, ) = listing.seller.call{value: sellerProceeds}("");
+        require(sellerPaid, "Failed to send proceeds to seller");
+
+        emit SkinPurchased(
+            buyer,
+            listing.seller,
+            _listingId,
+            listing.tokenId,
+            listing.skinType,
+            totalCost
+        );
+    }
+
+    function updateListing(
+        uint256 _listingId,
+        uint256 _price,
+        uint256 _expired
+    ) external nonReentrant{
+        address seller = msg.sender;
+
+        // Validate input
+        require(_price > 0, "Price must be greater than 0");
+        require(_expired > 0, "Expiration must be greater than 0");
+        require(_expired <= 7 days, "Expiration cannot exceed 7 days");
+
+        // Get listing details
+        MarketListing memory listing = fleaSkinMarketProxy.getListing(
+            _listingId
+        );
+        require(listing.seller == seller, "Only seller can update listing");
+        require(listing.isActive, "Listing is not active");
+        require(
+            listing.expirationTime > block.timestamp,
+            "Listing has expired"
+        );
+
+        // Update listing
+        fleaSkinMarketProxy.updateListing(_listingId, _price, _expired);
+
+        emit ListingUpdated(_listingId, _price, block.timestamp + _expired);
+    }
+
+    function cancelListing(uint256 _listingId) external nonReentrant{
+        address seller = msg.sender;
+
+        // Get listing details
+        MarketListing memory listing = fleaSkinMarketProxy.getListing(
+            _listingId
+        );
+        require(listing.seller == seller, "Only seller can cancel listing");
+        require(listing.isActive, "Listing is not active");
+
+        // Cancel listing
+        fleaSkinMarketProxy.cancelListing(_listingId);
+
+        emit ListingCancelled(seller, _listingId);
+    }
+
+    function getActiveListings()
+        external
+        view
+        returns (MarketListing[] memory)
+    {
+        return fleaSkinMarketProxy.getActiveListings();
+    }
+
+    function getListingsBySeller(
+        address _seller
+    ) external view returns (MarketListing[] memory) {
+        return fleaSkinMarketProxy.getListingsBySeller(_seller);
+    }
+
+    function getListingsByTokenId(
+        uint256 _tokenId
+    ) external view returns (MarketListing[] memory) {
+        return fleaSkinMarketProxy.getListingsByTokenId(_tokenId);
+    }
+
+    function canListItem(
+        address _player,
+        uint256 _tokenId
+    ) external view returns (bool, string memory) {
+        Player memory playerData = playerProxy.getPlayer(_player);
+        if (playerData.level == 0) {
+            return (false, "Player not initialized");
+        }
+        if (skinNFTProxy.ownerOf(_tokenId) != _player) {
+            return (false, "Not the owner of the skin");
+        }
+        return (true, "Can list item");
+    }
+
+    function getPlayerTotalListedQuantity(
+        address _player,
+        uint256 _tokenId
+    ) external view returns (uint256) {
+        MarketListing[] memory allPlayerListings = fleaSkinMarketProxy
+            .getListingsBySeller(_player);
+
+        uint256 totalQuantity = 0;
+        for (uint256 i = 0; i < allPlayerListings.length; i++) {
+            if (
+                allPlayerListings[i].tokenId == _tokenId &&
+                allPlayerListings[i].isActive &&
+                allPlayerListings[i].expirationTime > block.timestamp
+            ) {
+                totalQuantity++;
+            }
+        }
+
+        return totalQuantity;
+    }
+
+    function getAllListingsForTokenId(
+        uint256 _tokenId
+    ) external view returns (MarketListing[] memory filteredListings) {
+        MarketListing[] memory allListings = fleaSkinMarketProxy.getAllListings();
+
+        // Count listings for this item
+        uint256 count = 0;
+        for (uint256 i = 0; i < allListings.length; i++) {
+            if (allListings[i].tokenId == _tokenId) {
+                count++;
+            }
+        }
+
+        // Handle edge cases
+        if (count == 0) {
+            filteredListings = new MarketListing[](0);
+            return filteredListings;
+        }
+
+        // Create filtered array
+        filteredListings = new MarketListing[](count);
+        uint256 resultIndex = 0;
+
+        for (uint256 i = 0; i < allListings.length; i++) {
+            if (allListings[i].tokenId == _tokenId) {
+                filteredListings[resultIndex] = allListings[i];
+                resultIndex++;
+            }
+        }
+
+        return filteredListings;
     }
 }

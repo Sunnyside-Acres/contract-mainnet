@@ -9,19 +9,6 @@ contract SkinMarketProxy {
     /// @notice Mapping from NPC ID to NPCMarket struct
     mapping(uint256 => SkinMarket.NPCMarket) public npcMarkets;
 
-    /// @notice Mapping from transaction ID to TransactionRecord
-    mapping(uint256 => SkinMarket.TransactionRecord)
-        public transactions;
-
-    /// @notice Mapping from NPC ID to MarketStats
-    mapping(uint256 => SkinMarket.MarketStats) public marketStats;
-    /// @notice Mapping from (npcId, user) to UserMarketStats
-    mapping(uint256 => mapping(address => SkinMarket.UserMarketStats))
-        public userMarketStats;
-
-    /// @notice Counter for transaction IDs
-    uint256 public transactionCounter;
-
     event ComponentUpdated(address indexed newImplementation);
 
     modifier onlyAdmin() {

@@ -4,33 +4,25 @@ import "../../interfaces/IWorld.sol";
 import "../../struct/FleaSkinMarket.sol";
 
 contract FleaSkinMarketProxy {
-    /// @notice Address of the World contract for access control
     address public world;
-
-    /// @notice Address of the implementation logic contract
     address public implementation;
 
-    /// @notice Mapping from listing ID to MarketListing
     mapping(uint256 => MarketListing) public listings;
-
-    /// @notice Mapping from player address to their listing IDs
-    mapping(address => uint256[]) public sellerListings;
-
-    /// @notice Mapping from type skin to listing IDs for that skin
-    mapping(string => uint256[]) public skinListings;
     
-    /// @notice Mapping from player address to their transaction history
-    mapping(address => MarketTransaction[]) public transactionHistory;
-
-    /// @notice Total number of listings created
-    uint256 public listingCount;
-
-    /// @notice Array of all listing IDs
+    mapping(address => uint256[]) public sellerListings;
+    mapping(uint256 => uint256[]) public skinListings;
     uint256[] public allListingIds;
 
-    /// @notice Market statistics
-    MarketStats public marketStats;
+    // Save the position of ListingId in the allListingIds array
+    mapping(uint256 => uint256) private allListingIndex; 
+    // Save the position of ListingId in the sellerListings array
+    mapping(uint256 => uint256) private sellerListingIndex; 
+    // Save the position of ListingId in the skinListings array
+    mapping(uint256 => uint256) private skinListingIndex; 
 
+    uint256 public listingCount;
+    uint256 public commissionFeePercent;
+    
     /// @notice Emitted when the implementation is upgraded
     /// @param newImplementation The address of the new implementation
     event ComponentUpdated(address indexed newImplementation);
