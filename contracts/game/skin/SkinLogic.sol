@@ -11,12 +11,6 @@ contract SkinLogic {
     IWorld public world;
     ISkinNFT public skinNFT;
     ISkin public skinProxy;
-
-    event Approval(
-        address indexed owner,
-        address indexed approved,
-        uint256 indexed tokenId
-    );
     
     modifier onlyAdmin() {
         require(IWorld(world).isAdmin(msg.sender), "Not authorized as admin");
@@ -84,15 +78,5 @@ contract SkinLogic {
 
     function ownerOf(uint256 tokenId) external view returns (address) {
         return skinNFT.ownerOf(tokenId);
-    }
-
-    function approve(address to, uint256 tokenId) external {
-        require(
-            skinNFT.ownerOf(tokenId) == msg.sender ||
-                skinNFT.getApproved(tokenId) == msg.sender,
-            "Not the owner of the skin or approved to transfer"
-        );
-        skinNFT.approve(to, tokenId);
-        emit Approval(msg.sender, to, tokenId);
     }
 }
