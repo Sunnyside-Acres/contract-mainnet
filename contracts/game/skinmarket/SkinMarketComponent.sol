@@ -209,7 +209,7 @@ contract SkinMarketComponent {
      */
     function getAllMarketSkins(
         uint256 _npcId
-    ) external view returns (SkinMarket.MarketSkin[] memory) {
+    ) public view returns (SkinMarket.MarketSkin[] memory) {
         require(npcMarkets[_npcId].isActive, "NPC market is not active");
 
         string[] memory skinTypes = npcMarkets[_npcId].skinTypes;
@@ -264,7 +264,7 @@ contract SkinMarketComponent {
             market.npcId,
             market.name,
             market.isActive,
-            this.getAllMarketSkins(_npcId)
+            getAllMarketSkins(_npcId)
         );
     }
 
