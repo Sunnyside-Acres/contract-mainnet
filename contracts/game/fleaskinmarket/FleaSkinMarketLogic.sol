@@ -65,7 +65,6 @@ contract FleaSkinMarketLogic {
         _locked = false;
     }
 
-
     // ============ CONSTRUCTOR ============
 
     constructor(
@@ -116,7 +115,7 @@ contract FleaSkinMarketLogic {
         uint256 tokenId,
         uint256 _price,
         uint256 _expired
-    ) external  nonReentrant {
+    ) external nonReentrant {
         address seller = msg.sender;
 
         // Validate input
@@ -132,8 +131,9 @@ contract FleaSkinMarketLogic {
             "Not the owner of the skin"
         );
 
-        bool isApproved = (skinNFTProxy.getApproved(tokenId) == address(this)) || 
-                          (skinNFTProxy.isApprovedForAll(seller, address(this)));
+        bool isApproved = (skinNFTProxy.getApproved(tokenId) ==
+            address(this)) ||
+            (skinNFTProxy.isApprovedForAll(seller, address(this)));
         require(isApproved, "Market not approved to transfer NFT");
 
         string memory skinType = skinProxy.getSkinType(tokenId);
@@ -182,8 +182,8 @@ contract FleaSkinMarketLogic {
         require(buyer != listing.seller, "Cannot buy your own skin");
         require(msg.value == listing.price, "Incorrect ETH amount sent");
         require(
-            skinNFTProxy.getApproved(listing.tokenId) == address(this) || 
-            skinNFTProxy.isApprovedForAll(listing.seller, address(this)),
+            skinNFTProxy.getApproved(listing.tokenId) == address(this) ||
+                skinNFTProxy.isApprovedForAll(listing.seller, address(this)),
             "Market contract not approved to transfer this skin"
         );
 
@@ -191,8 +191,13 @@ contract FleaSkinMarketLogic {
         fleaSkinMarketProxy.purchaseSkin(_listingId, buyer);
 
         // Transfer skin to buyer
-        try skinNFTProxy.safeTransferFrom(listing.seller, buyer, listing.tokenId) {
-        } catch {
+        try
+            skinNFTProxy.safeTransferFrom(
+                listing.seller,
+                buyer,
+                listing.tokenId
+            )
+        {} catch {
             revert("Failed to transfer skin NFT to buyer");
         }
         uint256 totalCost = listing.price;
@@ -223,7 +228,7 @@ contract FleaSkinMarketLogic {
         uint256 _listingId,
         uint256 _price,
         uint256 _expired
-    ) external nonReentrant{
+    ) external nonReentrant {
         address seller = msg.sender;
 
         // Validate input
@@ -248,7 +253,7 @@ contract FleaSkinMarketLogic {
         emit ListingUpdated(_listingId, _price, block.timestamp + _expired);
     }
 
-    function cancelListing(uint256 _listingId) external nonReentrant{
+    function cancelListing(uint256 _listingId) external nonReentrant {
         address seller = msg.sender;
 
         // Get listing details
@@ -317,5 +322,15 @@ contract FleaSkinMarketLogic {
         }
 
         return totalQuantity;
+    }
+
+    function getListing(
+        uint256 _listingId
+    ) external view returns (MarketListing memory) {
+        return fleaSkinMarketProxy.getListing(_listingId);
+    }
+
+    function getAllListings() external view returns (MarketListing[] memory) {
+        return fleaSkinMarketProxy.getAllListings();
     }
 }

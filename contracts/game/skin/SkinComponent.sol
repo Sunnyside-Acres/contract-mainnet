@@ -29,7 +29,7 @@ contract SkinComponent {
         if (!skinInfo.exists) {
             return false;
         }
-        return skinInfo.currentSupply <= skinInfo.maxSupply;
+        return skinInfo.currentSupply < skinInfo.maxSupply;
     }
 
     function getPlayerSkins(
