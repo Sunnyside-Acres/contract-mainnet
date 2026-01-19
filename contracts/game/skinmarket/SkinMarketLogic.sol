@@ -17,6 +17,7 @@ contract SkinMarketLogic {
 
     // ============ EVENTS ============
     event NPCMarketCreated(uint256 indexed npcId, string name);
+    event NPCMarketUpdated(uint256 indexed npcId, string newName);
 
     event SkinAddedToMarket(
         uint256 indexed npcId,
@@ -124,7 +125,10 @@ contract SkinMarketLogic {
         uint256 _npcId,
         string memory _name
     ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(bytes(_name).length > 0, "NPC name cannot be empty");
         skinMarketProxy.updateNPCMarketConfig(_npcId, _name);
+        emit NPCMarketUpdated(_npcId, _name);
     }
 
     function addSkinToMarket(
@@ -162,6 +166,9 @@ contract SkinMarketLogic {
         uint256 _npcId,
         string memory _skinType
     ) external onlyAdmin {
+        require(_npcId > 0, "Invalid NPC ID");
+        require(bytes(_skinType).length > 0, "Invalid Skin Type");
+
         skinMarketProxy.removeSkinFromMarket(_npcId, _skinType);
         emit SkinRemovedFromMarket(_npcId, _skinType);
     }

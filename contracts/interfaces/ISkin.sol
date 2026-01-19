@@ -17,4 +17,8 @@ interface ISkin {
     function addSkin(address player, uint256 tokenId, string memory typeSkin) external;
 
     function getSkin(string memory typeSkin) external view returns (SkinTypeInfo memory);
+
+    function getDescription(string memory typeSkin) external view returns (string memory);
+    function setDescription(string memory typeSkin, string memory description) external;
+
 }

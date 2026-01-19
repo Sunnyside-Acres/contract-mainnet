@@ -51,6 +51,12 @@ contract FleaSkinMarketLogic {
         address indexed admin
     );
 
+    event CommissionFeePercentUpdated(
+        uint256 oldPercent,
+        uint256 newPercent,
+        address indexed admin
+    );
+
     // ============ MODIFIERS ============
 
     modifier onlyAdmin() {
@@ -101,7 +107,10 @@ contract FleaSkinMarketLogic {
     }
 
     function setCommissionFeePercent(uint256 _percent) external onlyAdmin {
+        require(_percent >= 0, "Commission fee cannot be less than 0%");
+        uint256 oldPercent = fleaSkinMarketProxy.getCommissionFeePercent();
         fleaSkinMarketProxy.setCommissionFeePercent(_percent);
+        emit CommissionFeePercentUpdated(oldPercent, _percent, msg.sender);
     }
 
     /**
@@ -119,6 +128,7 @@ contract FleaSkinMarketLogic {
         address seller = msg.sender;
 
         // Validate input
+        require(tokenId > 0, "Token ID must be greater than 0");
         require(_price > 0, "Price must be greater than 0");
         require(_expired > 0, "Duration must be greater than 0");
 
@@ -280,12 +290,14 @@ contract FleaSkinMarketLogic {
     function getListingsBySeller(
         address _seller
     ) external view returns (MarketListing[] memory) {
+        require(_seller != address(0), "Seller cannot be zero address");
         return fleaSkinMarketProxy.getListingsBySeller(_seller);
     }
 
     function getListingsByTokenId(
         uint256 _tokenId
     ) external view returns (MarketListing[] memory) {
+        require(_tokenId > 0, "Token ID must be greater than 0");
         return fleaSkinMarketProxy.getListingsByTokenId(_tokenId);
     }
 
@@ -293,6 +305,8 @@ contract FleaSkinMarketLogic {
         address _player,
         uint256 _tokenId
     ) external view returns (bool, string memory) {
+        require(_player != address(0), "Player cannot be zero address");
+        require(_tokenId > 0, "Token ID must be greater than 0");
         Player memory playerData = playerProxy.getPlayer(_player);
         if (playerData.level == 0) {
             return (false, "Player not initialized");
@@ -307,6 +321,8 @@ contract FleaSkinMarketLogic {
         address _player,
         uint256 _tokenId
     ) external view returns (uint256) {
+        require(_player != address(0), "Player cannot be zero address");
+        require(_tokenId > 0, "Token ID must be greater than 0");
         MarketListing[] memory allPlayerListings = fleaSkinMarketProxy
             .getListingsBySeller(_player);
 
@@ -327,6 +343,7 @@ contract FleaSkinMarketLogic {
     function getListing(
         uint256 _listingId
     ) external view returns (MarketListing memory) {
+        require(_listingId > 0, "Listing ID must be greater than 0");
         return fleaSkinMarketProxy.getListing(_listingId);
     }
 

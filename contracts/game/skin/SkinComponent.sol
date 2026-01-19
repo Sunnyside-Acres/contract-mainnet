@@ -78,4 +78,17 @@ contract SkinComponent {
     ) external view returns (SkinTypeInfo memory) {
         return skins[typeSkin];
     }
+
+    function getDescription(
+        string memory typeSkin
+    ) external view returns (string memory) {
+        return skins[typeSkin].description;
+    }
+
+    function setDescription(
+        string memory typeSkin,
+        string memory description
+    ) external onlyAuthorized {
+        skins[typeSkin].description = description;
+    }
 }
