@@ -53,4 +53,8 @@ interface IFleaSkinMarketComponent {
     function getCommissionFeePercent() external view returns (uint256);
 
     function setCommissionFeePercent(uint256 _percent) external;
+
+    function getSoldListingsBySeller(
+        address _seller
+    ) external view returns (MarketListing[] memory);
 }

@@ -13,6 +13,9 @@ contract FleaSkinMarketComponent {
     mapping(uint256 => uint256[]) public skinListings;
     uint256[] public allListingIds;
 
+    uint256[] public activeListingIds;
+    mapping(uint256 => uint256) private activeListingIndex;
+
     // Save the position of ListingId in the allListingIds array
     mapping(uint256 => uint256) private allListingIndex;
     // Save the position of ListingId in the sellerListings array
@@ -54,10 +57,12 @@ contract FleaSkinMarketComponent {
         MarketListing storage listing = listings[listingId];
         listing.id = listingId;
         listing.seller = _seller;
+        listing.buyer = address(0);
         listing.tokenId = _tokenId;
         listing.price = _price;
         listing.skinType = _skinType;
         listing.listingTime = block.timestamp;
+        listing.boughtTime = 0;
         listing.expirationTime = block.timestamp + _expiration;
         listing.isActive = true;
         listing.commissionFeePercent = commissionFeePercent;
@@ -71,6 +76,9 @@ contract FleaSkinMarketComponent {
 
         allListingIds.push(listingId);
         allListingIndex[listingId] = allListingIds.length - 1;
+
+        activeListingIds.push(listingId);
+        activeListingIndex[listingId] = activeListingIds.length - 1;
 
         return listingId;
     }
@@ -112,34 +120,27 @@ contract FleaSkinMarketComponent {
         view
         returns (MarketListing[] memory)
     {
-        uint256 activeCount = 0;
-
-        // Count active listings
-        for (uint256 i = 0; i < allListingIds.length; i++) {
+        uint256 validCount = 0;
+        for (uint256 i = 0; i < activeListingIds.length; i++) {
             if (
-                listings[allListingIds[i]].isActive &&
-                listings[allListingIds[i]].expirationTime > block.timestamp
+                listings[activeListingIds[i]].expirationTime > block.timestamp
             ) {
-                activeCount++;
+                validCount++;
             }
         }
 
-        MarketListing[] memory activeListings = new MarketListing[](
-            activeCount
-        );
+        MarketListing[] memory result = new MarketListing[](validCount);
         uint256 currentIndex = 0;
 
-        for (uint256 i = 0; i < allListingIds.length; i++) {
-            if (
-                listings[allListingIds[i]].isActive &&
-                listings[allListingIds[i]].expirationTime > block.timestamp
-            ) {
-                activeListings[currentIndex] = listings[allListingIds[i]];
+        for (uint256 i = 0; i < activeListingIds.length; i++) {
+            uint256 id = activeListingIds[i];
+            if (listings[id].expirationTime > block.timestamp) {
+                result[currentIndex] = listings[id];
                 currentIndex++;
             }
         }
 
-        return activeListings;
+        return result;
     }
 
     /**
@@ -286,6 +287,8 @@ contract FleaSkinMarketComponent {
 
         MarketListing storage listing = listings[_listingId];
 
+        removeFromActiveArray(_listingId);
+
         // Remove from All Listings
         uint256 indexAll = allListingIndex[_listingId];
         uint256 lastIdAll = allListingIds[allListingIds.length - 1];
@@ -319,6 +322,25 @@ contract FleaSkinMarketComponent {
         delete listings[_listingId];
     }
 
+    function removeFromActiveArray(uint256 _listingId) internal {
+        uint256 index = activeListingIndex[_listingId];
+
+        if (
+            index < activeListingIds.length &&
+            activeListingIds[index] == _listingId
+        ) {
+            uint256 lastId = activeListingIds[activeListingIds.length - 1];
+
+            // Swap last element to the current position
+            activeListingIds[index] = lastId;
+            activeListingIndex[lastId] = index;
+
+            // Pop the last element
+            activeListingIds.pop();
+            delete activeListingIndex[_listingId];
+        }
+    }
+
     /**
      * @notice Process a purchase from a listing
      * @param _listingId The ID of the listing
@@ -327,7 +349,7 @@ contract FleaSkinMarketComponent {
     function purchaseSkin(
         uint256 _listingId,
         address _buyer
-    ) external onlyAuthorized{
+    ) external onlyAuthorized {
         require(listings[_listingId].id != 0, "Listing does not exist");
         require(listings[_listingId].isActive, "Listing is not active");
         require(
@@ -338,9 +360,10 @@ contract FleaSkinMarketComponent {
             _buyer != listings[_listingId].seller,
             "Cannot buy your own skin"
         );
-
-        // remove listing completely
-        removeListing(_listingId);
+        listings[_listingId].buyer = _buyer;
+        listings[_listingId].boughtTime = block.timestamp;
+        listings[_listingId].isActive = false;
+        removeFromActiveArray(_listingId);
     }
 
     /**
@@ -377,5 +400,27 @@ contract FleaSkinMarketComponent {
 
     function setCommissionFeePercent(uint256 _percent) external onlyAuthorized {
         commissionFeePercent = _percent;
+    }
+
+    function getSoldListingsBySeller(address _seller) external view returns (MarketListing[] memory) {
+        uint256[] memory sellerListingIds = sellerListings[_seller];
+        uint256 soldCount = 0;
+        for (uint256 i = 0; i < sellerListingIds.length; i++) {
+            if (!listings[sellerListingIds[i]].isActive && listings[sellerListingIds[i]].buyer != address(0)) {
+                soldCount++;
+            }
+        }
+
+        MarketListing[] memory soldListings = new MarketListing[](soldCount);
+        uint256 currentIndex = 0;
+
+        for (uint256 i = 0; i < sellerListingIds.length; i++) {
+            if (!listings[sellerListingIds[i]].isActive && listings[sellerListingIds[i]].buyer != address(0)) {
+                soldListings[currentIndex] = listings[sellerListingIds[i]];
+                currentIndex++;
+            }
+        }
+
+        return soldListings;
     }
 }

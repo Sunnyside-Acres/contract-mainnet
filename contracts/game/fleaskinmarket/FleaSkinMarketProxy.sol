@@ -8,17 +8,20 @@ contract FleaSkinMarketProxy {
     address public implementation;
 
     mapping(uint256 => MarketListing) public listings;
-    
+
     mapping(address => uint256[]) public sellerListings;
     mapping(uint256 => uint256[]) public skinListings;
     uint256[] public allListingIds;
 
+    uint256[] public activeListingIds;
+    mapping(uint256 => uint256) private activeListingIndex;
+
     // Save the position of ListingId in the allListingIds array
-    mapping(uint256 => uint256) private allListingIndex; 
+    mapping(uint256 => uint256) private allListingIndex;
     // Save the position of ListingId in the sellerListings array
-    mapping(uint256 => uint256) private sellerListingIndex; 
+    mapping(uint256 => uint256) private sellerListingIndex;
     // Save the position of ListingId in the skinListings array
-    mapping(uint256 => uint256) private skinListingIndex; 
+    mapping(uint256 => uint256) private skinListingIndex;
 
     uint256 public listingCount;
     uint256 public commissionFeePercent;

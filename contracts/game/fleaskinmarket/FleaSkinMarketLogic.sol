@@ -350,4 +350,9 @@ contract FleaSkinMarketLogic {
     function getAllListings() external view returns (MarketListing[] memory) {
         return fleaSkinMarketProxy.getAllListings();
     }
+
+    function getSoldListingsBySeller(address _seller) external view returns (MarketListing[] memory) {
+        require(_seller != address(0), "Seller cannot be zero address");
+        return fleaSkinMarketProxy.getSoldListingsBySeller(_seller);
+    }
 }
