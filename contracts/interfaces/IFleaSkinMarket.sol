@@ -7,7 +7,6 @@ interface IFleaSkinMarketComponent {
         address _seller,
         uint256 _tokenId,
         uint256 _price,
-        string memory _skinType,
         uint256 _expiration
     ) external returns (uint256);
 

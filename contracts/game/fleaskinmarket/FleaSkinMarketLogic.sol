@@ -22,7 +22,6 @@ contract FleaSkinMarketLogic {
         address indexed seller,
         uint256 indexed listingId,
         uint256 indexed tokenId,
-        string skinType,
         uint256 price,
         uint256 expirationTime,
         uint256 commissionFeePercent
@@ -41,7 +40,6 @@ contract FleaSkinMarketLogic {
         address indexed seller,
         uint256 indexed listingId,
         uint256 tokenId,
-        string skinType,
         uint256 price
     );
 
@@ -146,14 +144,11 @@ contract FleaSkinMarketLogic {
             (skinNFTProxy.isApprovedForAll(seller, address(this)));
         require(isApproved, "Market not approved to transfer NFT");
 
-        string memory skinType = skinProxy.getSkinType(tokenId);
-
         // Create listing with unique ID
         uint256 listingId = fleaSkinMarketProxy.createListing(
             seller,
             tokenId,
             _price,
-            skinType,
             _expired
         );
 
@@ -161,7 +156,6 @@ contract FleaSkinMarketLogic {
             seller,
             listingId,
             tokenId,
-            skinType,
             _price,
             block.timestamp + _expired,
             fleaSkinMarketProxy.getCommissionFeePercent()
@@ -229,7 +223,6 @@ contract FleaSkinMarketLogic {
             listing.seller,
             _listingId,
             listing.tokenId,
-            listing.skinType,
             totalCost
         );
     }

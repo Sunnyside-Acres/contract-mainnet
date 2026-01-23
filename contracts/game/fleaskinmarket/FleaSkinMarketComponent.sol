@@ -37,7 +37,6 @@ contract FleaSkinMarketComponent {
      * @param _seller The address of the seller
      * @param _tokenId The ID of the token being sold
      * @param _price The price per skin
-     * @param _skinType The type of the skin
      * @param _expiration The expiration time of the skin
      * @return The ID of the newly created listing
      */
@@ -45,7 +44,6 @@ contract FleaSkinMarketComponent {
         address _seller,
         uint256 _tokenId,
         uint256 _price,
-        string memory _skinType,
         uint256 _expiration
     ) external onlyAuthorized returns (uint256) {
         require(_price > 0, "Price must be greater than 0");
@@ -60,7 +58,6 @@ contract FleaSkinMarketComponent {
         listing.buyer = address(0);
         listing.tokenId = _tokenId;
         listing.price = _price;
-        listing.skinType = _skinType;
         listing.listingTime = block.timestamp;
         listing.boughtTime = 0;
         listing.expirationTime = block.timestamp + _expiration;
